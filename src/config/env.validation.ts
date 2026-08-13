@@ -35,6 +35,13 @@ export const envSchema = z.object({
     ),
 
   ENABLE_SWAGGER: booleanFromString(true),
+
+  JWT_SECRET: z
+    .string()
+    .min(32, 'JWT_SECRET должен быть не короче 32 символов'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32, 'JWT_REFRESH_SECRET должен быть не короче 32 символов'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

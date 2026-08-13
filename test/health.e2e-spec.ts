@@ -1,32 +1,25 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
-import { AppModule } from '../src/app.module';
+import { StartedTestContainer } from 'testcontainers';
+import { startTestDatabase } from './support/test-database';
 
 describe('Health (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
 
   beforeAll(async () => {
-    postgres = await new GenericContainer('postgres:16')
-      .withEnvironment({
-        POSTGRES_USER: 'test',
-        POSTGRES_PASSWORD: 'test',
-        POSTGRES_DB: 'test',
-      })
-      .withExposedPorts(5432)
-      .withWaitStrategy(
-        Wait.forLogMessage(/database system is ready to accept connections/, 2),
-      )
-      .start();
+    postgres = await startTestDatabase();
 
-    process.env.DB_HOST = postgres.getHost();
-    process.env.DB_PORT = String(postgres.getMappedPort(5432));
-    process.env.DB_USER = 'test';
-    process.env.DB_PASS = 'test';
-    process.env.DB_NAME = 'test';
-    process.env.CORS_ORIGINS = 'http://localhost:3001';
+    // AppModule подгружается через require() и только теперь: ConfigModule.forRoot() внутри него
+    // читает process.env синхронно в момент вычисления модуля (несмотря на то что forRoot —
+    // async-функция, тело до первого await выполняется сразу). Статический import в начале файла
+    // вычислился бы раньше, чем startTestDatabase успеет подменить DB_HOST/DB_PORT — приложение
+    // тихо подключилось бы к обычной dev-БД вместо контейнера. Динамический import() здесь не
+    // подходит — под ts-jest + module:nodenext он не транспилируется в require() и падает без
+    // --experimental-vm-modules.
+    const { AppModule } =
+      require('../src/app.module') as typeof import('../src/app.module');
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],

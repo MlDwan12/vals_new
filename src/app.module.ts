@@ -8,6 +8,7 @@ import { EnvConfig, validate } from './config/env.validation';
 import { CoreModule } from './core/core.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { EmployeesModule } from './modules/employees/employees.module';
@@ -94,6 +95,7 @@ import { UsersModule } from './modules/users/users.module';
     ClientsModule,
     UsersModule,
     AuditModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

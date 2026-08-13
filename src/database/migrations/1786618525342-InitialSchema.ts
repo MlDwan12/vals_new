@@ -1,176 +1,449 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class InitialSchema1786618525342 implements MigrationInterface {
-    name = 'InitialSchema1786618525342'
+  name = 'InitialSchema1786618525342';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE "tariffs" ("id" SERIAL NOT NULL, "service_id" integer, "name" character varying(128) NOT NULL, "from" character varying(128) NOT NULL, "features" text NOT NULL, "is_popular" boolean NOT NULL DEFAULT false, "billing_cycles" jsonb NOT NULL DEFAULT '[]', "base_price" integer, "order_index" integer NOT NULL DEFAULT '0', CONSTRAINT "PK_7f32baf8d8b4bb0cf4d7ac97741" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "service_category" ("id" SERIAL NOT NULL, "name" text NOT NULL, "description" text, CONSTRAINT "PK_9d513b39d251063f98f2a7b941d" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "service_faq" ("id" SERIAL NOT NULL, "service_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_8437b3cc22a06cea8c614c5586f" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "service_steps" ("id" SERIAL NOT NULL, "step" integer NOT NULL, "title" text NOT NULL, "description" text NOT NULL, "time" character varying(64), "service_id" integer NOT NULL, CONSTRAINT "PK_4d4849d73cd5afda6878ed46d08" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_6c557dee2d11f953901a34ad15" ON "service_steps"  ("service_id", "step") `);
-        await queryRunner.query(`CREATE TYPE "public"."services_background_color_enum" AS ENUM('red', 'blue', 'green', 'yellow', 'white', 'black', 'purple', 'orange')`);
-        await queryRunner.query(`CREATE TABLE "services" ("id" SERIAL NOT NULL, "slug" character varying NOT NULL, "title" text NOT NULL, "subtitle" text, "description" text NOT NULL, "sub_description" text NOT NULL, "list" text array, "icon" character varying(64) NOT NULL, "background_color" "public"."services_background_color_enum" NOT NULL DEFAULT 'white', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "category_id" integer NOT NULL, CONSTRAINT "UQ_02cf0d0f46e11d22d952f623670" UNIQUE ("slug"), CONSTRAINT "PK_ba2d347a3168a296416c6c5ccb2" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "tags" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "name" character varying(100) NOT NULL, "priority" integer NOT NULL DEFAULT '0', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_e7dc17249a1148a1970748eda99" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_b3aa10c29ea4e61a830362bd25" ON "tags"  ("slug") `);
-        await queryRunner.query(`CREATE TABLE "case_faq" ("id" SERIAL NOT NULL, "case_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_8a82351b0687182af7f3cae8434" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "cases" ("id" SERIAL NOT NULL, "industry" jsonb NOT NULL DEFAULT '[]', "slug" character varying(255) NOT NULL, "title" character varying(255) NOT NULL, "description" text, "problem" text NOT NULL, "result" text NOT NULL, "content" jsonb, "content_html" text, "meta_title" character varying(255), "meta_description" character varying(255), "keywords" character varying(255), "date_published" TIMESTAMP WITH TIME ZONE, "priority" integer NOT NULL DEFAULT '0', "has_toc" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_264acb3048c240fb89aa34626db" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_334e33acab18c5105c2b8c3bb7" ON "cases"  ("slug") `);
-        await queryRunner.query(`CREATE INDEX "IDX_366f98bf75f6355ad87257d867" ON "cases"  ("date_published") `);
-        await queryRunner.query(`CREATE INDEX "IDX_5c41feda395ad65490ba85808c" ON "cases"  ("priority") `);
-        await queryRunner.query(`CREATE TABLE "employees" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "name" character varying(255) NOT NULL, "position" character varying(255) NOT NULL, "photo_url" character varying(2048), "short_bio" text, "bio" jsonb, "bio_html" text, "experience" text, "same_as" jsonb NOT NULL DEFAULT '[]', "meta_title" character varying(255), "meta_description" text, "priority" integer NOT NULL DEFAULT '0', "is_visible" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_b9535a98350d5b26e7eb0c26af4" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_f57bf2d0ed84e92d0d37e5c1db" ON "employees"  ("slug") `);
-        await queryRunner.query(`CREATE TABLE "articles" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "title" character varying(255) NOT NULL, "description" text, "content" jsonb NOT NULL, "content_html" text, "meta_title" character varying(255), "meta_description" text, "keywords" text, "date_published" TIMESTAMP WITH TIME ZONE, "priority" integer NOT NULL DEFAULT '0', "reading_time" integer, "has_toc" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_0a6e2c450d83e0b6052c2793334" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_1123ff6815c5b8fec0ba9fec37" ON "articles"  ("slug") `);
-        await queryRunner.query(`CREATE INDEX "IDX_b922d968d02bf79b44bfcc9d28" ON "articles"  ("date_published") `);
-        await queryRunner.query(`CREATE INDEX "IDX_0b7336aae4f9630a349c691eed" ON "articles"  ("priority") `);
-        await queryRunner.query(`CREATE TABLE "article_faq" ("id" SERIAL NOT NULL, "article_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_c5b810b152f16452f812e191afd" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "audit_logs" ("id" SERIAL NOT NULL, "user_id" integer, "username" character varying(255), "role" character varying(64), "action" character varying(64) NOT NULL, "method" character varying(16) NOT NULL, "path" character varying(512) NOT NULL, "resource" character varying(128), "resource_id" integer, "status_code" integer NOT NULL, "error_message" text, "ip" character varying(64), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_1bb179d048bbc581caa3b013439" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_bd2726fd31b35443f2245b93ba" ON "audit_logs"  ("user_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_cee5459245f652b75eb2759b4c" ON "audit_logs"  ("action") `);
-        await queryRunner.query(`CREATE INDEX "IDX_2cd10fda8276bb995288acfbfb" ON "audit_logs"  ("created_at") `);
-        await queryRunner.query(`CREATE TYPE "public"."client_leads_type_enum" AS ENUM('FREE_AUDIT', 'ADD_QUESTION', 'PARTNER', 'FREE_CONSULTATION', 'TARIFF_REQUEST')`);
-        await queryRunner.query(`CREATE TABLE "client_leads" ("id" SERIAL NOT NULL, "client_id" integer NOT NULL, "external_system" character varying(50) NOT NULL DEFAULT 'BITRIX', "type" "public"."client_leads_type_enum" NOT NULL, "name" character varying(255), "phone_raw" character varying(64), "phone_normalized" character varying(32), "email_raw" character varying(255), "email_normalized" character varying(255), "message" text, "comment" text, "utm" jsonb, "payload" jsonb NOT NULL, "bitrix_payload" jsonb, "bitrix_lead_id" character varying(64), "bitrix_response" jsonb, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_d21293479c8449e39f47d3a6674" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_7d57bd0139c92d2125885df9ac" ON "client_leads"  ("client_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_4f43a4ff4d0a2efdc88bfc11b7" ON "client_leads"  ("type") `);
-        await queryRunner.query(`CREATE INDEX "IDX_e2780df61fd84e2bf182e359f1" ON "client_leads"  ("phone_normalized") `);
-        await queryRunner.query(`CREATE INDEX "IDX_151000d4042158cc8a89a0a417" ON "client_leads"  ("email_normalized") `);
-        await queryRunner.query(`CREATE INDEX "IDX_845cb1bdf1fda9dbd0ff9dcb9a" ON "client_leads"  ("created_at") `);
-        await queryRunner.query(`CREATE TABLE "clients" ("id" SERIAL NOT NULL, "name" character varying(255), "primary_phone" character varying(32), "primary_email" character varying(255), "leads_count" integer NOT NULL DEFAULT '0', "last_lead_at" TIMESTAMP WITH TIME ZONE, "is_merged" boolean NOT NULL DEFAULT false, "merged_into_client_id" integer, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_f1ab7cf3a5714dbc6bb4e1c28a4" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_e4a3f694d56df07a436c8cac6e" ON "clients"  ("primary_phone") `);
-        await queryRunner.query(`CREATE INDEX "IDX_d4da8bc3a251daaf070d4251aa" ON "clients"  ("primary_email") `);
-        await queryRunner.query(`CREATE TYPE "public"."client_contacts_type_enum" AS ENUM('PHONE', 'EMAIL')`);
-        await queryRunner.query(`CREATE TABLE "client_contacts" ("id" SERIAL NOT NULL, "client_id" integer NOT NULL, "type" "public"."client_contacts_type_enum" NOT NULL, "value" character varying(255) NOT NULL, "is_primary" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "uq_client_contacts_type_value" UNIQUE ("type", "value"), CONSTRAINT "PK_1d0ab11dc872cb18d4850c970a5" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_ef47f3aae4b36f0aaedbfc0416" ON "client_contacts"  ("client_id") `);
-        await queryRunner.query(`CREATE INDEX "idx_client_contacts_type_value" ON "client_contacts"  ("type", "value") `);
-        await queryRunner.query(`CREATE TABLE "industries" ("id" SERIAL NOT NULL, "name" character varying(128) NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_447df075c342af02a92901dc810" UNIQUE ("name"), CONSTRAINT "PK_f1626dcb2d58142d7dfcca7b8d1" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "image_lib" ("id" SERIAL NOT NULL, "link" character varying(2048) NOT NULL, "name" character varying(255) NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_e0ea731e20a89c13718dcc745d9" UNIQUE ("link"), CONSTRAINT "UQ_72c5a803d83822e5c2dc0ff7b35" UNIQUE ("name"), CONSTRAINT "PK_18de5103abd5cde058122b0a123" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_e0ea731e20a89c13718dcc745d" ON "image_lib"  ("link") `);
-        await queryRunner.query(`CREATE TABLE "media" ("id" SERIAL NOT NULL, "name" character varying(255) NOT NULL, "file_name" character varying(255) NOT NULL, "alt" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_ca8e2b3f0a4806f48042ac01125" UNIQUE ("file_name"), CONSTRAINT "PK_f4e0fcac36e050de337b670d8bd" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_f603fc24759b12726df73c1ad4" ON "media"  ("name") `);
-        await queryRunner.query(`CREATE TABLE "tariff_periods" ("id" SERIAL NOT NULL, "months" integer NOT NULL, "discount_percent" integer, CONSTRAINT "PK_1539000539d08a40532ee11cbaf" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "users" ("id" SERIAL NOT NULL, "username" character varying NOT NULL, "password" character varying NOT NULL, "role" character varying(32) NOT NULL DEFAULT 'content_manager', CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_fe0bb3f6520ee0469504521e71" ON "users"  ("username") `);
-        await queryRunner.query(`CREATE INDEX "IDX_ace513fa30d485cfd25c11a9e4" ON "users"  ("role") `);
-        await queryRunner.query(`CREATE TABLE "service_to_case" ("case_id" integer NOT NULL, "service_id" integer NOT NULL, CONSTRAINT "PK_75669f7e9d2859a2bcbf4803602" PRIMARY KEY ("case_id", "service_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_e07ae7d5a521aa4ec18d2a73f0" ON "service_to_case"  ("case_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_5fc3d4fedba1f520f7af8f7fc7" ON "service_to_case"  ("service_id") `);
-        await queryRunner.query(`CREATE TABLE "case_authors" ("case_id" integer NOT NULL, "employee_id" integer NOT NULL, CONSTRAINT "PK_2efacde738e075af75f624a250c" PRIMARY KEY ("case_id", "employee_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_ef26fbd45d4829ee93fc2f55de" ON "case_authors"  ("case_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_1dffd0e61b834146065d5ccaf0" ON "case_authors"  ("employee_id") `);
-        await queryRunner.query(`CREATE TABLE "case_tags" ("case_id" integer NOT NULL, "tag_id" integer NOT NULL, CONSTRAINT "PK_8f2fbfb876d7dfb711ab5e958a1" PRIMARY KEY ("case_id", "tag_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_b58361e38b095d80ad0e309798" ON "case_tags"  ("case_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_9ff68556aec256c75acad94b0e" ON "case_tags"  ("tag_id") `);
-        await queryRunner.query(`CREATE TABLE "article_authors" ("article_id" integer NOT NULL, "employee_id" integer NOT NULL, CONSTRAINT "PK_bb6ce00dbd872491b6b822ad684" PRIMARY KEY ("article_id", "employee_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_a045495388d3a462887cc91cfc" ON "article_authors"  ("article_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_dce36b7c8ea9cda681853fbe89" ON "article_authors"  ("employee_id") `);
-        await queryRunner.query(`CREATE TABLE "article_tags" ("article_id" integer NOT NULL, "tag_id" integer NOT NULL, CONSTRAINT "PK_dd79accc42e2f122f6f3ff7588a" PRIMARY KEY ("article_id", "tag_id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_f8c9234a4c4cb37806387f0c9e" ON "article_tags"  ("article_id") `);
-        await queryRunner.query(`CREATE INDEX "IDX_1325dd0b98ee0f8f673db6ce19" ON "article_tags"  ("tag_id") `);
-        await queryRunner.query(`ALTER TABLE "tariffs" ADD CONSTRAINT "FK_8eee792265fcd93844bd3f2b829" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "service_faq" ADD CONSTRAINT "FK_aa782020e5400204a9801ee3742" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "service_steps" ADD CONSTRAINT "FK_32676d1bbdf9ecf2890c3071445" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "services" ADD CONSTRAINT "FK_1f8d1173481678a035b4a81a4ec" FOREIGN KEY ("category_id") REFERENCES "service_category"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "case_faq" ADD CONSTRAINT "FK_f5b8d0015249fc7a9cbd810251b" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "article_faq" ADD CONSTRAINT "FK_5aea6d8d280099b4feeb7f9c999" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "client_leads" ADD CONSTRAINT "FK_7d57bd0139c92d2125885df9acc" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "clients" ADD CONSTRAINT "FK_177c84445e117cecadb81a7ec30" FOREIGN KEY ("merged_into_client_id") REFERENCES "clients"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "client_contacts" ADD CONSTRAINT "FK_ef47f3aae4b36f0aaedbfc04161" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "service_to_case" ADD CONSTRAINT "FK_e07ae7d5a521aa4ec18d2a73f07" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "service_to_case" ADD CONSTRAINT "FK_5fc3d4fedba1f520f7af8f7fc7f" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "case_authors" ADD CONSTRAINT "FK_ef26fbd45d4829ee93fc2f55de6" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE RESTRICT ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "case_authors" ADD CONSTRAINT "FK_1dffd0e61b834146065d5ccaf0b" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "case_tags" ADD CONSTRAINT "FK_b58361e38b095d80ad0e3097986" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "case_tags" ADD CONSTRAINT "FK_9ff68556aec256c75acad94b0e2" FOREIGN KEY ("tag_id") REFERENCES "tags"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "article_authors" ADD CONSTRAINT "FK_a045495388d3a462887cc91cfca" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE RESTRICT ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "article_authors" ADD CONSTRAINT "FK_dce36b7c8ea9cda681853fbe895" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "article_tags" ADD CONSTRAINT "FK_f8c9234a4c4cb37806387f0c9e9" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE CASCADE ON UPDATE CASCADE`);
-        await queryRunner.query(`ALTER TABLE "article_tags" ADD CONSTRAINT "FK_1325dd0b98ee0f8f673db6ce194" FOREIGN KEY ("tag_id") REFERENCES "tags"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-    }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE "tariffs" ("id" SERIAL NOT NULL, "service_id" integer, "name" character varying(128) NOT NULL, "from" character varying(128) NOT NULL, "features" text NOT NULL, "is_popular" boolean NOT NULL DEFAULT false, "billing_cycles" jsonb NOT NULL DEFAULT '[]', "base_price" integer, "order_index" integer NOT NULL DEFAULT '0', CONSTRAINT "PK_7f32baf8d8b4bb0cf4d7ac97741" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "service_category" ("id" SERIAL NOT NULL, "name" text NOT NULL, "description" text, CONSTRAINT "PK_9d513b39d251063f98f2a7b941d" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "service_faq" ("id" SERIAL NOT NULL, "service_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_8437b3cc22a06cea8c614c5586f" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "service_steps" ("id" SERIAL NOT NULL, "step" integer NOT NULL, "title" text NOT NULL, "description" text NOT NULL, "time" character varying(64), "service_id" integer NOT NULL, CONSTRAINT "PK_4d4849d73cd5afda6878ed46d08" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_6c557dee2d11f953901a34ad15" ON "service_steps"  ("service_id", "step") `,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."services_background_color_enum" AS ENUM('red', 'blue', 'green', 'yellow', 'white', 'black', 'purple', 'orange')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "services" ("id" SERIAL NOT NULL, "slug" character varying NOT NULL, "title" text NOT NULL, "subtitle" text, "description" text NOT NULL, "sub_description" text NOT NULL, "list" text array, "icon" character varying(64) NOT NULL, "background_color" "public"."services_background_color_enum" NOT NULL DEFAULT 'white', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "category_id" integer NOT NULL, CONSTRAINT "UQ_02cf0d0f46e11d22d952f623670" UNIQUE ("slug"), CONSTRAINT "PK_ba2d347a3168a296416c6c5ccb2" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "tags" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "name" character varying(100) NOT NULL, "priority" integer NOT NULL DEFAULT '0', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_e7dc17249a1148a1970748eda99" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_b3aa10c29ea4e61a830362bd25" ON "tags"  ("slug") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "case_faq" ("id" SERIAL NOT NULL, "case_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_8a82351b0687182af7f3cae8434" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "cases" ("id" SERIAL NOT NULL, "industry" jsonb NOT NULL DEFAULT '[]', "slug" character varying(255) NOT NULL, "title" character varying(255) NOT NULL, "description" text, "problem" text NOT NULL, "result" text NOT NULL, "content" jsonb, "content_html" text, "meta_title" character varying(255), "meta_description" character varying(255), "keywords" character varying(255), "date_published" TIMESTAMP WITH TIME ZONE, "priority" integer NOT NULL DEFAULT '0', "has_toc" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_264acb3048c240fb89aa34626db" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_334e33acab18c5105c2b8c3bb7" ON "cases"  ("slug") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_366f98bf75f6355ad87257d867" ON "cases"  ("date_published") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_5c41feda395ad65490ba85808c" ON "cases"  ("priority") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "employees" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "name" character varying(255) NOT NULL, "position" character varying(255) NOT NULL, "photo_url" character varying(2048), "short_bio" text, "bio" jsonb, "bio_html" text, "experience" text, "same_as" jsonb NOT NULL DEFAULT '[]', "meta_title" character varying(255), "meta_description" text, "priority" integer NOT NULL DEFAULT '0', "is_visible" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_b9535a98350d5b26e7eb0c26af4" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_f57bf2d0ed84e92d0d37e5c1db" ON "employees"  ("slug") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "articles" ("id" SERIAL NOT NULL, "slug" character varying(255) NOT NULL, "title" character varying(255) NOT NULL, "description" text, "content" jsonb NOT NULL, "content_html" text, "meta_title" character varying(255), "meta_description" text, "keywords" text, "date_published" TIMESTAMP WITH TIME ZONE, "priority" integer NOT NULL DEFAULT '0', "reading_time" integer, "has_toc" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_0a6e2c450d83e0b6052c2793334" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_1123ff6815c5b8fec0ba9fec37" ON "articles"  ("slug") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_b922d968d02bf79b44bfcc9d28" ON "articles"  ("date_published") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_0b7336aae4f9630a349c691eed" ON "articles"  ("priority") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "article_faq" ("id" SERIAL NOT NULL, "article_id" integer NOT NULL, "question" text NOT NULL, "answer" text NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_c5b810b152f16452f812e191afd" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "audit_logs" ("id" SERIAL NOT NULL, "user_id" integer, "username" character varying(255), "role" character varying(64), "action" character varying(64) NOT NULL, "method" character varying(16) NOT NULL, "path" character varying(512) NOT NULL, "resource" character varying(128), "resource_id" integer, "status_code" integer NOT NULL, "error_message" text, "ip" character varying(64), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_1bb179d048bbc581caa3b013439" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_bd2726fd31b35443f2245b93ba" ON "audit_logs"  ("user_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_cee5459245f652b75eb2759b4c" ON "audit_logs"  ("action") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_2cd10fda8276bb995288acfbfb" ON "audit_logs"  ("created_at") `,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."client_leads_type_enum" AS ENUM('FREE_AUDIT', 'ADD_QUESTION', 'PARTNER', 'FREE_CONSULTATION', 'TARIFF_REQUEST')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "client_leads" ("id" SERIAL NOT NULL, "client_id" integer NOT NULL, "external_system" character varying(50) NOT NULL DEFAULT 'BITRIX', "type" "public"."client_leads_type_enum" NOT NULL, "name" character varying(255), "phone_raw" character varying(64), "phone_normalized" character varying(32), "email_raw" character varying(255), "email_normalized" character varying(255), "message" text, "comment" text, "utm" jsonb, "payload" jsonb NOT NULL, "bitrix_payload" jsonb, "bitrix_lead_id" character varying(64), "bitrix_response" jsonb, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_d21293479c8449e39f47d3a6674" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_7d57bd0139c92d2125885df9ac" ON "client_leads"  ("client_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_4f43a4ff4d0a2efdc88bfc11b7" ON "client_leads"  ("type") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_e2780df61fd84e2bf182e359f1" ON "client_leads"  ("phone_normalized") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_151000d4042158cc8a89a0a417" ON "client_leads"  ("email_normalized") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_845cb1bdf1fda9dbd0ff9dcb9a" ON "client_leads"  ("created_at") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "clients" ("id" SERIAL NOT NULL, "name" character varying(255), "primary_phone" character varying(32), "primary_email" character varying(255), "leads_count" integer NOT NULL DEFAULT '0', "last_lead_at" TIMESTAMP WITH TIME ZONE, "is_merged" boolean NOT NULL DEFAULT false, "merged_into_client_id" integer, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_f1ab7cf3a5714dbc6bb4e1c28a4" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_e4a3f694d56df07a436c8cac6e" ON "clients"  ("primary_phone") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_d4da8bc3a251daaf070d4251aa" ON "clients"  ("primary_email") `,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "public"."client_contacts_type_enum" AS ENUM('PHONE', 'EMAIL')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "client_contacts" ("id" SERIAL NOT NULL, "client_id" integer NOT NULL, "type" "public"."client_contacts_type_enum" NOT NULL, "value" character varying(255) NOT NULL, "is_primary" boolean NOT NULL DEFAULT false, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "uq_client_contacts_type_value" UNIQUE ("type", "value"), CONSTRAINT "PK_1d0ab11dc872cb18d4850c970a5" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_ef47f3aae4b36f0aaedbfc0416" ON "client_contacts"  ("client_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_client_contacts_type_value" ON "client_contacts"  ("type", "value") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "industries" ("id" SERIAL NOT NULL, "name" character varying(128) NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_447df075c342af02a92901dc810" UNIQUE ("name"), CONSTRAINT "PK_f1626dcb2d58142d7dfcca7b8d1" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "image_lib" ("id" SERIAL NOT NULL, "link" character varying(2048) NOT NULL, "name" character varying(255) NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_e0ea731e20a89c13718dcc745d9" UNIQUE ("link"), CONSTRAINT "UQ_72c5a803d83822e5c2dc0ff7b35" UNIQUE ("name"), CONSTRAINT "PK_18de5103abd5cde058122b0a123" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_e0ea731e20a89c13718dcc745d" ON "image_lib"  ("link") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "media" ("id" SERIAL NOT NULL, "name" character varying(255) NOT NULL, "file_name" character varying(255) NOT NULL, "alt" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_ca8e2b3f0a4806f48042ac01125" UNIQUE ("file_name"), CONSTRAINT "PK_f4e0fcac36e050de337b670d8bd" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_f603fc24759b12726df73c1ad4" ON "media"  ("name") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "tariff_periods" ("id" SERIAL NOT NULL, "months" integer NOT NULL, "discount_percent" integer, CONSTRAINT "PK_1539000539d08a40532ee11cbaf" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "users" ("id" SERIAL NOT NULL, "username" character varying NOT NULL, "password" character varying NOT NULL, "role" character varying(32) NOT NULL DEFAULT 'content_manager', CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_fe0bb3f6520ee0469504521e71" ON "users"  ("username") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_ace513fa30d485cfd25c11a9e4" ON "users"  ("role") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "service_to_case" ("case_id" integer NOT NULL, "service_id" integer NOT NULL, CONSTRAINT "PK_75669f7e9d2859a2bcbf4803602" PRIMARY KEY ("case_id", "service_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_e07ae7d5a521aa4ec18d2a73f0" ON "service_to_case"  ("case_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_5fc3d4fedba1f520f7af8f7fc7" ON "service_to_case"  ("service_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "case_authors" ("case_id" integer NOT NULL, "employee_id" integer NOT NULL, CONSTRAINT "PK_2efacde738e075af75f624a250c" PRIMARY KEY ("case_id", "employee_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_ef26fbd45d4829ee93fc2f55de" ON "case_authors"  ("case_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_1dffd0e61b834146065d5ccaf0" ON "case_authors"  ("employee_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "case_tags" ("case_id" integer NOT NULL, "tag_id" integer NOT NULL, CONSTRAINT "PK_8f2fbfb876d7dfb711ab5e958a1" PRIMARY KEY ("case_id", "tag_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_b58361e38b095d80ad0e309798" ON "case_tags"  ("case_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_9ff68556aec256c75acad94b0e" ON "case_tags"  ("tag_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "article_authors" ("article_id" integer NOT NULL, "employee_id" integer NOT NULL, CONSTRAINT "PK_bb6ce00dbd872491b6b822ad684" PRIMARY KEY ("article_id", "employee_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_a045495388d3a462887cc91cfc" ON "article_authors"  ("article_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_dce36b7c8ea9cda681853fbe89" ON "article_authors"  ("employee_id") `,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "article_tags" ("article_id" integer NOT NULL, "tag_id" integer NOT NULL, CONSTRAINT "PK_dd79accc42e2f122f6f3ff7588a" PRIMARY KEY ("article_id", "tag_id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_f8c9234a4c4cb37806387f0c9e" ON "article_tags"  ("article_id") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_1325dd0b98ee0f8f673db6ce19" ON "article_tags"  ("tag_id") `,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tariffs" ADD CONSTRAINT "FK_8eee792265fcd93844bd3f2b829" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_faq" ADD CONSTRAINT "FK_aa782020e5400204a9801ee3742" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_steps" ADD CONSTRAINT "FK_32676d1bbdf9ecf2890c3071445" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "services" ADD CONSTRAINT "FK_1f8d1173481678a035b4a81a4ec" FOREIGN KEY ("category_id") REFERENCES "service_category"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_faq" ADD CONSTRAINT "FK_f5b8d0015249fc7a9cbd810251b" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_faq" ADD CONSTRAINT "FK_5aea6d8d280099b4feeb7f9c999" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_leads" ADD CONSTRAINT "FK_7d57bd0139c92d2125885df9acc" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "clients" ADD CONSTRAINT "FK_177c84445e117cecadb81a7ec30" FOREIGN KEY ("merged_into_client_id") REFERENCES "clients"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_contacts" ADD CONSTRAINT "FK_ef47f3aae4b36f0aaedbfc04161" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_to_case" ADD CONSTRAINT "FK_e07ae7d5a521aa4ec18d2a73f07" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_to_case" ADD CONSTRAINT "FK_5fc3d4fedba1f520f7af8f7fc7f" FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_authors" ADD CONSTRAINT "FK_ef26fbd45d4829ee93fc2f55de6" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_authors" ADD CONSTRAINT "FK_1dffd0e61b834146065d5ccaf0b" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_tags" ADD CONSTRAINT "FK_b58361e38b095d80ad0e3097986" FOREIGN KEY ("case_id") REFERENCES "cases"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_tags" ADD CONSTRAINT "FK_9ff68556aec256c75acad94b0e2" FOREIGN KEY ("tag_id") REFERENCES "tags"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_authors" ADD CONSTRAINT "FK_a045495388d3a462887cc91cfca" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE RESTRICT ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_authors" ADD CONSTRAINT "FK_dce36b7c8ea9cda681853fbe895" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_tags" ADD CONSTRAINT "FK_f8c9234a4c4cb37806387f0c9e9" FOREIGN KEY ("article_id") REFERENCES "articles"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_tags" ADD CONSTRAINT "FK_1325dd0b98ee0f8f673db6ce194" FOREIGN KEY ("tag_id") REFERENCES "tags"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "article_tags" DROP CONSTRAINT "FK_1325dd0b98ee0f8f673db6ce194"`);
-        await queryRunner.query(`ALTER TABLE "article_tags" DROP CONSTRAINT "FK_f8c9234a4c4cb37806387f0c9e9"`);
-        await queryRunner.query(`ALTER TABLE "article_authors" DROP CONSTRAINT "FK_dce36b7c8ea9cda681853fbe895"`);
-        await queryRunner.query(`ALTER TABLE "article_authors" DROP CONSTRAINT "FK_a045495388d3a462887cc91cfca"`);
-        await queryRunner.query(`ALTER TABLE "case_tags" DROP CONSTRAINT "FK_9ff68556aec256c75acad94b0e2"`);
-        await queryRunner.query(`ALTER TABLE "case_tags" DROP CONSTRAINT "FK_b58361e38b095d80ad0e3097986"`);
-        await queryRunner.query(`ALTER TABLE "case_authors" DROP CONSTRAINT "FK_1dffd0e61b834146065d5ccaf0b"`);
-        await queryRunner.query(`ALTER TABLE "case_authors" DROP CONSTRAINT "FK_ef26fbd45d4829ee93fc2f55de6"`);
-        await queryRunner.query(`ALTER TABLE "service_to_case" DROP CONSTRAINT "FK_5fc3d4fedba1f520f7af8f7fc7f"`);
-        await queryRunner.query(`ALTER TABLE "service_to_case" DROP CONSTRAINT "FK_e07ae7d5a521aa4ec18d2a73f07"`);
-        await queryRunner.query(`ALTER TABLE "client_contacts" DROP CONSTRAINT "FK_ef47f3aae4b36f0aaedbfc04161"`);
-        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "FK_177c84445e117cecadb81a7ec30"`);
-        await queryRunner.query(`ALTER TABLE "client_leads" DROP CONSTRAINT "FK_7d57bd0139c92d2125885df9acc"`);
-        await queryRunner.query(`ALTER TABLE "article_faq" DROP CONSTRAINT "FK_5aea6d8d280099b4feeb7f9c999"`);
-        await queryRunner.query(`ALTER TABLE "case_faq" DROP CONSTRAINT "FK_f5b8d0015249fc7a9cbd810251b"`);
-        await queryRunner.query(`ALTER TABLE "services" DROP CONSTRAINT "FK_1f8d1173481678a035b4a81a4ec"`);
-        await queryRunner.query(`ALTER TABLE "service_steps" DROP CONSTRAINT "FK_32676d1bbdf9ecf2890c3071445"`);
-        await queryRunner.query(`ALTER TABLE "service_faq" DROP CONSTRAINT "FK_aa782020e5400204a9801ee3742"`);
-        await queryRunner.query(`ALTER TABLE "tariffs" DROP CONSTRAINT "FK_8eee792265fcd93844bd3f2b829"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_1325dd0b98ee0f8f673db6ce19"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_f8c9234a4c4cb37806387f0c9e"`);
-        await queryRunner.query(`DROP TABLE "article_tags"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_dce36b7c8ea9cda681853fbe89"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_a045495388d3a462887cc91cfc"`);
-        await queryRunner.query(`DROP TABLE "article_authors"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_9ff68556aec256c75acad94b0e"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b58361e38b095d80ad0e309798"`);
-        await queryRunner.query(`DROP TABLE "case_tags"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_1dffd0e61b834146065d5ccaf0"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_ef26fbd45d4829ee93fc2f55de"`);
-        await queryRunner.query(`DROP TABLE "case_authors"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_5fc3d4fedba1f520f7af8f7fc7"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_e07ae7d5a521aa4ec18d2a73f0"`);
-        await queryRunner.query(`DROP TABLE "service_to_case"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_ace513fa30d485cfd25c11a9e4"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_fe0bb3f6520ee0469504521e71"`);
-        await queryRunner.query(`DROP TABLE "users"`);
-        await queryRunner.query(`DROP TABLE "tariff_periods"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_f603fc24759b12726df73c1ad4"`);
-        await queryRunner.query(`DROP TABLE "media"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_e0ea731e20a89c13718dcc745d"`);
-        await queryRunner.query(`DROP TABLE "image_lib"`);
-        await queryRunner.query(`DROP TABLE "industries"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_client_contacts_type_value"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_ef47f3aae4b36f0aaedbfc0416"`);
-        await queryRunner.query(`DROP TABLE "client_contacts"`);
-        await queryRunner.query(`DROP TYPE "public"."client_contacts_type_enum"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_d4da8bc3a251daaf070d4251aa"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_e4a3f694d56df07a436c8cac6e"`);
-        await queryRunner.query(`DROP TABLE "clients"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_845cb1bdf1fda9dbd0ff9dcb9a"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_151000d4042158cc8a89a0a417"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_e2780df61fd84e2bf182e359f1"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_4f43a4ff4d0a2efdc88bfc11b7"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_7d57bd0139c92d2125885df9ac"`);
-        await queryRunner.query(`DROP TABLE "client_leads"`);
-        await queryRunner.query(`DROP TYPE "public"."client_leads_type_enum"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_2cd10fda8276bb995288acfbfb"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_cee5459245f652b75eb2759b4c"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_bd2726fd31b35443f2245b93ba"`);
-        await queryRunner.query(`DROP TABLE "audit_logs"`);
-        await queryRunner.query(`DROP TABLE "article_faq"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_0b7336aae4f9630a349c691eed"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b922d968d02bf79b44bfcc9d28"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_1123ff6815c5b8fec0ba9fec37"`);
-        await queryRunner.query(`DROP TABLE "articles"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_f57bf2d0ed84e92d0d37e5c1db"`);
-        await queryRunner.query(`DROP TABLE "employees"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_5c41feda395ad65490ba85808c"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_366f98bf75f6355ad87257d867"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_334e33acab18c5105c2b8c3bb7"`);
-        await queryRunner.query(`DROP TABLE "cases"`);
-        await queryRunner.query(`DROP TABLE "case_faq"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_b3aa10c29ea4e61a830362bd25"`);
-        await queryRunner.query(`DROP TABLE "tags"`);
-        await queryRunner.query(`DROP TABLE "services"`);
-        await queryRunner.query(`DROP TYPE "public"."services_background_color_enum"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_6c557dee2d11f953901a34ad15"`);
-        await queryRunner.query(`DROP TABLE "service_steps"`);
-        await queryRunner.query(`DROP TABLE "service_faq"`);
-        await queryRunner.query(`DROP TABLE "service_category"`);
-        await queryRunner.query(`DROP TABLE "tariffs"`);
-    }
-
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "article_tags" DROP CONSTRAINT "FK_1325dd0b98ee0f8f673db6ce194"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_tags" DROP CONSTRAINT "FK_f8c9234a4c4cb37806387f0c9e9"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_authors" DROP CONSTRAINT "FK_dce36b7c8ea9cda681853fbe895"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_authors" DROP CONSTRAINT "FK_a045495388d3a462887cc91cfca"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_tags" DROP CONSTRAINT "FK_9ff68556aec256c75acad94b0e2"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_tags" DROP CONSTRAINT "FK_b58361e38b095d80ad0e3097986"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_authors" DROP CONSTRAINT "FK_1dffd0e61b834146065d5ccaf0b"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_authors" DROP CONSTRAINT "FK_ef26fbd45d4829ee93fc2f55de6"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_to_case" DROP CONSTRAINT "FK_5fc3d4fedba1f520f7af8f7fc7f"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_to_case" DROP CONSTRAINT "FK_e07ae7d5a521aa4ec18d2a73f07"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_contacts" DROP CONSTRAINT "FK_ef47f3aae4b36f0aaedbfc04161"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "clients" DROP CONSTRAINT "FK_177c84445e117cecadb81a7ec30"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "client_leads" DROP CONSTRAINT "FK_7d57bd0139c92d2125885df9acc"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "article_faq" DROP CONSTRAINT "FK_5aea6d8d280099b4feeb7f9c999"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "case_faq" DROP CONSTRAINT "FK_f5b8d0015249fc7a9cbd810251b"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "services" DROP CONSTRAINT "FK_1f8d1173481678a035b4a81a4ec"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_steps" DROP CONSTRAINT "FK_32676d1bbdf9ecf2890c3071445"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "service_faq" DROP CONSTRAINT "FK_aa782020e5400204a9801ee3742"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "tariffs" DROP CONSTRAINT "FK_8eee792265fcd93844bd3f2b829"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_1325dd0b98ee0f8f673db6ce19"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_f8c9234a4c4cb37806387f0c9e"`,
+    );
+    await queryRunner.query(`DROP TABLE "article_tags"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_dce36b7c8ea9cda681853fbe89"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_a045495388d3a462887cc91cfc"`,
+    );
+    await queryRunner.query(`DROP TABLE "article_authors"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_9ff68556aec256c75acad94b0e"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_b58361e38b095d80ad0e309798"`,
+    );
+    await queryRunner.query(`DROP TABLE "case_tags"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_1dffd0e61b834146065d5ccaf0"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_ef26fbd45d4829ee93fc2f55de"`,
+    );
+    await queryRunner.query(`DROP TABLE "case_authors"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_5fc3d4fedba1f520f7af8f7fc7"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_e07ae7d5a521aa4ec18d2a73f0"`,
+    );
+    await queryRunner.query(`DROP TABLE "service_to_case"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_ace513fa30d485cfd25c11a9e4"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_fe0bb3f6520ee0469504521e71"`,
+    );
+    await queryRunner.query(`DROP TABLE "users"`);
+    await queryRunner.query(`DROP TABLE "tariff_periods"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_f603fc24759b12726df73c1ad4"`,
+    );
+    await queryRunner.query(`DROP TABLE "media"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_e0ea731e20a89c13718dcc745d"`,
+    );
+    await queryRunner.query(`DROP TABLE "image_lib"`);
+    await queryRunner.query(`DROP TABLE "industries"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."idx_client_contacts_type_value"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_ef47f3aae4b36f0aaedbfc0416"`,
+    );
+    await queryRunner.query(`DROP TABLE "client_contacts"`);
+    await queryRunner.query(`DROP TYPE "public"."client_contacts_type_enum"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_d4da8bc3a251daaf070d4251aa"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_e4a3f694d56df07a436c8cac6e"`,
+    );
+    await queryRunner.query(`DROP TABLE "clients"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_845cb1bdf1fda9dbd0ff9dcb9a"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_151000d4042158cc8a89a0a417"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_e2780df61fd84e2bf182e359f1"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_4f43a4ff4d0a2efdc88bfc11b7"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_7d57bd0139c92d2125885df9ac"`,
+    );
+    await queryRunner.query(`DROP TABLE "client_leads"`);
+    await queryRunner.query(`DROP TYPE "public"."client_leads_type_enum"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_2cd10fda8276bb995288acfbfb"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_cee5459245f652b75eb2759b4c"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_bd2726fd31b35443f2245b93ba"`,
+    );
+    await queryRunner.query(`DROP TABLE "audit_logs"`);
+    await queryRunner.query(`DROP TABLE "article_faq"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_0b7336aae4f9630a349c691eed"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_b922d968d02bf79b44bfcc9d28"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_1123ff6815c5b8fec0ba9fec37"`,
+    );
+    await queryRunner.query(`DROP TABLE "articles"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_f57bf2d0ed84e92d0d37e5c1db"`,
+    );
+    await queryRunner.query(`DROP TABLE "employees"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_5c41feda395ad65490ba85808c"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_366f98bf75f6355ad87257d867"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_334e33acab18c5105c2b8c3bb7"`,
+    );
+    await queryRunner.query(`DROP TABLE "cases"`);
+    await queryRunner.query(`DROP TABLE "case_faq"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_b3aa10c29ea4e61a830362bd25"`,
+    );
+    await queryRunner.query(`DROP TABLE "tags"`);
+    await queryRunner.query(`DROP TABLE "services"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."services_background_color_enum"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_6c557dee2d11f953901a34ad15"`,
+    );
+    await queryRunner.query(`DROP TABLE "service_steps"`);
+    await queryRunner.query(`DROP TABLE "service_faq"`);
+    await queryRunner.query(`DROP TABLE "service_category"`);
+    await queryRunner.query(`DROP TABLE "tariffs"`);
+  }
 }

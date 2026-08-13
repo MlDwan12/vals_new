@@ -6,19 +6,26 @@ import { validate } from './config/env.validation';
 
 loadEnv();
 
-const env = validate(process.env);
+// Функция, а не константа: значения читаются из process.env в момент вызова, не в момент импорта
+// модуля — это позволяет тестам (test/support/test-database.ts) переопределить DB_* переменные
+// (адрес эфемерного testcontainers-контейнера) до фактического построения опций подключения.
+export function buildDataSourceOptions(): DataSourceOptions {
+  const env = validate(process.env);
 
-export const dataSourceOptions: DataSourceOptions = {
-  type: 'postgres',
-  host: env.DB_HOST,
-  port: env.DB_PORT,
-  username: env.DB_USER,
-  password: env.DB_PASS,
-  database: env.DB_NAME,
-  entities: [join(__dirname, 'modules/**/*.entity{.ts,.js}')],
-  migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
-  synchronize: false,
-  logging: true,
-};
+  return {
+    type: 'postgres',
+    host: env.DB_HOST,
+    port: env.DB_PORT,
+    username: env.DB_USER,
+    password: env.DB_PASS,
+    database: env.DB_NAME,
+    entities: [join(__dirname, 'modules/**/*.entity{.ts,.js}')],
+    migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
+    synchronize: false,
+    logging: true,
+  };
+}
+
+export const dataSourceOptions: DataSourceOptions = buildDataSourceOptions();
 
 export default new DataSource(dataSourceOptions);

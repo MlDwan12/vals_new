@@ -32,4 +32,13 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // require() в e2e-тестах — намеренная отложенная загрузка AppModule после того, как тест
+    // подменит DB_* переменные под testcontainers (ConfigModule.forRoot читает process.env
+    // синхронно в момент импорта модуля). Динамический import() тут не работает под ts-jest.
+    files: ['test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );
