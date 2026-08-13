@@ -6,7 +6,19 @@ import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
 import { EnvConfig, validate } from './config/env.validation';
 import { CoreModule } from './core/core.module';
+import { ArticlesModule } from './modules/articles/articles.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { CasesModule } from './modules/cases/cases.module';
+import { ClientsModule } from './modules/clients/clients.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 import { HealthModule } from './modules/health/health.module';
+import { IndustriesModule } from './modules/industries/industries.module';
+import { MediaModule } from './modules/media/media.module';
+import { ServicesModule } from './modules/services/services.module';
+import { TagsModule } from './modules/tags/tags.module';
+import { TariffPeriodsModule } from './modules/tariff-periods/tariff-periods.module';
+import { TariffsModule } from './modules/tariffs/tariffs.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -70,6 +82,18 @@ import { HealthModule } from './modules/health/health.module';
     }),
     CoreModule,
     HealthModule,
+    ArticlesModule,
+    CasesModule,
+    ServicesModule,
+    TariffsModule,
+    TariffPeriodsModule,
+    TagsModule,
+    IndustriesModule,
+    EmployeesModule,
+    MediaModule,
+    ClientsModule,
+    UsersModule,
+    AuditModule,
   ],
 })
 export class AppModule {}
