@@ -64,7 +64,7 @@ export class Article {
 
   // Авторы (many-to-many, задел на соавторов — сейчас на практике один автор)
   @ManyToMany(() => Employee, (employee) => employee.articles, {
-    onDelete: 'RESTRICT',
+    onDelete: 'CASCADE',
   })
   @JoinTable({
     name: 'article_authors',

@@ -85,7 +85,7 @@ export class Case {
 
   // Авторы (many-to-many, задел на соавторов — сейчас на практике один автор)
   @ManyToMany(() => Employee, (employee) => employee.cases, {
-    onDelete: 'RESTRICT',
+    onDelete: 'CASCADE',
   })
   @JoinTable({
     name: 'case_authors',
