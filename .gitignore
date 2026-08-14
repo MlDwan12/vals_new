@@ -2,6 +2,9 @@
 /dist
 /node_modules
 
+# загруженные пользователем файлы
+/uploads
+
 # logs
 *.log
 npm-debug.log*

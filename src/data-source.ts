@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { validate } from './config/env.validation';
 
-loadEnv();
+loadEnv({ quiet: true });
 
 // Функция, а не константа: значения читаются из process.env в момент вызова, не в момент импорта
 // модуля — это позволяет тестам (test/support/test-database.ts) переопределить DB_* переменные

@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
 import { EnvConfig, validate } from './config/env.validation';
 import { CoreModule } from './core/core.module';
+import { UPLOADS_ROOT } from './core/uploads.constants';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -26,6 +28,10 @@ import { UsersModule } from './modules/users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: UPLOADS_ROOT,
+      serveRoot: '/uploads',
     }),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
