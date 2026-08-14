@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,7 @@ import { Employee } from '../../employees/domain/employee.entity';
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
+import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { Service } from '../../services/domain/service.entity';
 import { ServicesRepository } from '../../services/infrastructure/services.repository';
 import { Tag } from '../../tags/domain/tag.entity';
@@ -30,9 +32,11 @@ export class CasesService {
   ) {}
 
   async create(dto: CreateCaseDto): Promise<CaseResponseDto> {
-    const services = await this.resolveServices(dto.serviceIds);
-    const authors = await this.resolveAuthors(dto.authorIds);
-    const tags = await this.resolveTags(dto.tagIds);
+    const [services, authors, tags] = await Promise.all([
+      this.resolveServices(dto.serviceIds),
+      this.resolveAuthors(dto.authorIds),
+      this.resolveTags(dto.tagIds),
+    ]);
 
     const caseEntity = this.casesRepository.create({
       slug: dto.slug,
@@ -54,10 +58,14 @@ export class CasesService {
       tags,
     });
 
-    const saved = await this.casesRepository.save(caseEntity);
-    return CaseResponseDto.fromEntity(
-      await this.findEntityByIdOrFail(saved.id),
-    );
+    try {
+      const saved = await this.casesRepository.save(caseEntity);
+      return CaseResponseDto.fromEntity(
+        await this.findEntityByIdOrFail(saved.id),
+      );
+    } catch (error) {
+      throw this.mapSlugConflict(error);
+    }
   }
 
   async update(id: number, dto: UpdateCaseDto): Promise<CaseResponseDto> {
@@ -96,10 +104,14 @@ export class CasesService {
       hasToc: dto.hasToc,
     });
 
-    const saved = await this.casesRepository.save(caseEntity);
-    return CaseResponseDto.fromEntity(
-      await this.findEntityByIdOrFail(saved.id),
-    );
+    try {
+      const saved = await this.casesRepository.save(caseEntity);
+      return CaseResponseDto.fromEntity(
+        await this.findEntityByIdOrFail(saved.id),
+      );
+    } catch (error) {
+      throw this.mapSlugConflict(error);
+    }
   }
 
   async remove(id: number): Promise<void> {
@@ -245,5 +257,12 @@ export class CasesService {
     const foundSet = new Set(found);
     const missing = requested.filter((id) => !foundSet.has(id));
     throw new BadRequestException(`${label} не найдены: ${missing.join(', ')}`);
+  }
+
+  private mapSlugConflict(error: unknown): unknown {
+    if (isUniqueViolation(error)) {
+      return new ConflictException('Кейс с таким slug уже существует');
+    }
+    return error;
   }
 }

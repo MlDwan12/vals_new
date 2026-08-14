@@ -1,0 +1,45 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Industry } from '../domain/industry.entity';
+
+interface CreateIndustryRecord {
+  name: string;
+}
+
+type UpdateIndustryRecord = Partial<CreateIndustryRecord>;
+
+@Injectable()
+export class IndustriesRepository {
+  constructor(
+    @InjectRepository(Industry) private readonly repo: Repository<Industry>,
+  ) {}
+
+  findAndCount(page: number, limit: number): Promise<[Industry[], number]> {
+    return this.repo.findAndCount({
+      order: { id: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+  }
+
+  findById(id: number): Promise<Industry | null> {
+    return this.repo.findOne({ where: { id } });
+  }
+
+  create(data: CreateIndustryRecord): Promise<Industry> {
+    return this.repo.save(this.repo.create(data));
+  }
+
+  async update(
+    id: number,
+    patch: UpdateIndustryRecord,
+  ): Promise<Industry | null> {
+    await this.repo.update(id, patch);
+    return this.findById(id);
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.repo.delete(id);
+  }
+}

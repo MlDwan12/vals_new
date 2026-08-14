@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
+import {
+  applyAuthorSlugFilter,
+  applyTagSlugFilter,
+  AUTHOR_SHORT_FIELDS,
+  TAG_SHORT_FIELDS,
+} from '../../../core/persistence/author-tag-relation-filters.util';
 import { SortByDate } from '../../../core/enums/sort-by-date.enum';
 import {
   buildPaginatedResult,
@@ -10,7 +16,7 @@ import { Case } from '../domain/case.entity';
 import { CaseListQueryDto } from '../dto/case-list-query.dto';
 import { CaseSitemapItemDto } from '../dto/case-sitemap-item.dto';
 
-const CASE_MAIN_FIELDS = [
+export const CASE_MAIN_FIELDS = [
   'cases.id',
   'cases.slug',
   'cases.title',
@@ -23,17 +29,6 @@ const CASE_MAIN_FIELDS = [
   'cases.createdAt',
   'cases.updatedAt',
 ];
-
-const AUTHOR_SHORT_FIELDS = [
-  'author.id',
-  'author.slug',
-  'author.name',
-  'author.photoUrl',
-  'author.position',
-  'author.experience',
-];
-
-const TAG_SHORT_FIELDS = ['tag.id', 'tag.slug', 'tag.name', 'tag.priority'];
 
 const SORT_COLUMN: Record<
   SortByDate,
@@ -53,45 +48,17 @@ const SORT_COLUMN: Record<
   },
 };
 
-// Подзапрос, а не andWhere на join-алиасе: join нужен только чтобы подгрузить ПОЛНЫЙ список
-// авторов кейса, не для фильтрации — иначе у кейса с несколькими авторами из результата
-// пропали бы все совпавшие строки, кроме той, что относится к автору-фильтру.
-function applyAuthorSlugFilter(
-  qb: SelectQueryBuilder<Case>,
-  authorSlug?: string,
-): void {
-  if (!authorSlug) return;
+const AUTHOR_JOIN = {
+  entityAlias: 'cases',
+  joinTable: 'case_authors',
+  entityIdColumn: 'case_id',
+};
 
-  qb.andWhere((sub) => {
-    const subQuery = sub
-      .subQuery()
-      .select('ca.case_id')
-      .from('case_authors', 'ca')
-      .innerJoin('employees', 'e', 'e.id = ca.employee_id')
-      .where('e.slug = :authorSlug')
-      .getQuery();
-    return `cases.id IN ${subQuery}`;
-  }).setParameter('authorSlug', authorSlug);
-}
-
-// Тот же приём, что и у авторов (см. applyAuthorSlugFilter).
-function applyTagSlugFilter(
-  qb: SelectQueryBuilder<Case>,
-  tagSlug?: string,
-): void {
-  if (!tagSlug) return;
-
-  qb.andWhere((sub) => {
-    const subQuery = sub
-      .subQuery()
-      .select('ct.case_id')
-      .from('case_tags', 'ct')
-      .innerJoin('tags', 't', 't.id = ct.tag_id')
-      .where('t.slug = :tagSlug')
-      .getQuery();
-    return `cases.id IN ${subQuery}`;
-  }).setParameter('tagSlug', tagSlug);
-}
+const TAG_JOIN = {
+  entityAlias: 'cases',
+  joinTable: 'case_tags',
+  entityIdColumn: 'case_id',
+};
 
 @Injectable()
 export class CasesRepository {
@@ -115,8 +82,8 @@ export class CasesRepository {
         search: `%${query.search}%`,
       });
     }
-    applyAuthorSlugFilter(qb, query.authorSlug);
-    applyTagSlugFilter(qb, query.tagSlug);
+    applyAuthorSlugFilter(qb, AUTHOR_JOIN, query.authorSlug);
+    applyTagSlugFilter(qb, TAG_JOIN, query.tagSlug);
 
     return qb;
   }
@@ -184,23 +151,13 @@ export class CasesRepository {
     });
   }
 
+  existsById(id: number): Promise<boolean> {
+    return this.repo.exists({ where: { id } });
+  }
+
   // Опубликованные кейсы по услуге — публичная страница услуги, блок «Кейсы».
   findPublishedByServiceId(serviceId: number): Promise<Case[]> {
-    return this.repo
-      .createQueryBuilder('cases')
-      .innerJoin('cases.services', 'service')
-      .leftJoin('cases.authors', 'author')
-      .leftJoin('cases.tags', 'tag')
-      .select(CASE_MAIN_FIELDS)
-      .addSelect(AUTHOR_SHORT_FIELDS)
-      .addSelect(TAG_SHORT_FIELDS)
-      .where('service.id = :serviceId', { serviceId })
-      .andWhere('cases.datePublished IS NOT NULL')
-      .andWhere('cases.datePublished <= :now', { now: new Date() })
-      .orderBy('cases.priority', 'DESC')
-      .addOrderBy('cases.datePublished', 'DESC')
-      .addOrderBy('cases.id', 'DESC')
-      .getMany();
+    return findPublishedCasesByServiceId(this.repo, serviceId);
   }
 
   // Похожие кейсы (шаг 1) — id опубликованных кейсов, ранжированные по числу совпавших тегов.
@@ -280,4 +237,28 @@ export class CasesRepository {
   async remove(id: number): Promise<void> {
     await this.repo.delete(id);
   }
+}
+
+// Обычная функция (не метод CasesRepository) — переиспользуется в ServicesRepository для embed'а
+// кейсов в /services/info/:slug, не создавая циклической зависимости модулей (CasesModule уже
+// импортирует ServicesModule).
+export function findPublishedCasesByServiceId(
+  repo: Repository<Case>,
+  serviceId: number,
+): Promise<Case[]> {
+  return repo
+    .createQueryBuilder('cases')
+    .innerJoin('cases.services', 'service')
+    .leftJoin('cases.authors', 'author')
+    .leftJoin('cases.tags', 'tag')
+    .select(CASE_MAIN_FIELDS)
+    .addSelect(AUTHOR_SHORT_FIELDS)
+    .addSelect(TAG_SHORT_FIELDS)
+    .where('service.id = :serviceId', { serviceId })
+    .andWhere('cases.datePublished IS NOT NULL')
+    .andWhere('cases.datePublished <= :now', { now: new Date() })
+    .orderBy('cases.priority', 'DESC')
+    .addOrderBy('cases.datePublished', 'DESC')
+    .addOrderBy('cases.id', 'DESC')
+    .getMany();
 }

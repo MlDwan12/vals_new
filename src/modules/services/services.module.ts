@@ -1,9 +1,23 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Service } from './domain/service.entity';
+import { Case } from '../cases/domain/case.entity';
+import { ServiceCategoriesAdminController } from './api/service-categories-admin.controller';
+import { ServiceCategoriesController } from './api/service-categories.controller';
+import { ServiceFaqAdminController } from './api/service-faq-admin.controller';
+import { ServiceStepsAdminController } from './api/service-steps-admin.controller';
+import { ServicesAdminController } from './api/services-admin.controller';
+import { ServicesController } from './api/services.controller';
+import { ServiceCategoriesService } from './application/service-categories.service';
+import { ServiceFaqService } from './application/service-faq.service';
+import { ServiceStepsService } from './application/service-steps.service';
+import { ServicesService } from './application/services.service';
 import { ServiceCategory } from './domain/service-category.entity';
 import { ServiceFaq } from './domain/service-faq.entity';
 import { ServiceStep } from './domain/service-step.entity';
+import { Service } from './domain/service.entity';
+import { ServiceCategoriesRepository } from './infrastructure/service-categories.repository';
+import { ServiceFaqRepository } from './infrastructure/service-faq.repository';
+import { ServiceStepsRepository } from './infrastructure/service-steps.repository';
 import { ServicesRepository } from './infrastructure/services.repository';
 
 @Module({
@@ -13,9 +27,27 @@ import { ServicesRepository } from './infrastructure/services.repository';
       ServiceCategory,
       ServiceStep,
       ServiceFaq,
+      Case,
     ]),
   ],
-  providers: [ServicesRepository],
+  controllers: [
+    ServicesController,
+    ServicesAdminController,
+    ServiceCategoriesController,
+    ServiceCategoriesAdminController,
+    ServiceStepsAdminController,
+    ServiceFaqAdminController,
+  ],
+  providers: [
+    ServicesService,
+    ServicesRepository,
+    ServiceCategoriesService,
+    ServiceCategoriesRepository,
+    ServiceStepsService,
+    ServiceStepsRepository,
+    ServiceFaqService,
+    ServiceFaqRepository,
+  ],
   exports: [ServicesRepository],
 })
 export class ServicesModule {}

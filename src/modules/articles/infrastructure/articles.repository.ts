@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
+import {
+  applyAuthorSlugFilter,
+  applyTagSlugFilter,
+  AUTHOR_SHORT_FIELDS,
+  TAG_SHORT_FIELDS,
+} from '../../../core/persistence/author-tag-relation-filters.util';
 import { SortByDate } from '../../../core/enums/sort-by-date.enum';
 import {
   buildPaginatedResult,
@@ -22,17 +28,6 @@ const ARTICLE_MAIN_FIELDS = [
   'article.updatedAt',
 ];
 
-const AUTHOR_SHORT_FIELDS = [
-  'author.id',
-  'author.slug',
-  'author.name',
-  'author.photoUrl',
-  'author.position',
-  'author.experience',
-];
-
-const TAG_SHORT_FIELDS = ['tag.id', 'tag.slug', 'tag.name', 'tag.priority'];
-
 const SORT_COLUMN: Record<
   SortByDate,
   { column: string; direction: 'ASC' | 'DESC' }
@@ -51,45 +46,17 @@ const SORT_COLUMN: Record<
   },
 };
 
-// Подзапрос, а не andWhere на join-алиасе: join нужен только чтобы подгрузить ПОЛНЫЙ список
-// авторов статьи, не для фильтрации — иначе у статьи с несколькими авторами из результата
-// пропали бы все совпавшие строки, кроме той, что относится к автору-фильтру.
-function applyAuthorSlugFilter(
-  qb: SelectQueryBuilder<Article>,
-  authorSlug?: string,
-): void {
-  if (!authorSlug) return;
+const AUTHOR_JOIN = {
+  entityAlias: 'article',
+  joinTable: 'article_authors',
+  entityIdColumn: 'article_id',
+};
 
-  qb.andWhere((sub) => {
-    const subQuery = sub
-      .subQuery()
-      .select('aa.article_id')
-      .from('article_authors', 'aa')
-      .innerJoin('employees', 'e', 'e.id = aa.employee_id')
-      .where('e.slug = :authorSlug')
-      .getQuery();
-    return `article.id IN ${subQuery}`;
-  }).setParameter('authorSlug', authorSlug);
-}
-
-// Тот же приём, что и у авторов (см. applyAuthorSlugFilter).
-function applyTagSlugFilter(
-  qb: SelectQueryBuilder<Article>,
-  tagSlug?: string,
-): void {
-  if (!tagSlug) return;
-
-  qb.andWhere((sub) => {
-    const subQuery = sub
-      .subQuery()
-      .select('at.article_id')
-      .from('article_tags', 'at')
-      .innerJoin('tags', 't', 't.id = at.tag_id')
-      .where('t.slug = :tagSlug')
-      .getQuery();
-    return `article.id IN ${subQuery}`;
-  }).setParameter('tagSlug', tagSlug);
-}
+const TAG_JOIN = {
+  entityAlias: 'article',
+  joinTable: 'article_tags',
+  entityIdColumn: 'article_id',
+};
 
 @Injectable()
 export class ArticlesRepository {
@@ -115,8 +82,8 @@ export class ArticlesRepository {
         search: `%${query.search}%`,
       });
     }
-    applyAuthorSlugFilter(qb, query.authorSlug);
-    applyTagSlugFilter(qb, query.tagSlug);
+    applyAuthorSlugFilter(qb, AUTHOR_JOIN, query.authorSlug);
+    applyTagSlugFilter(qb, TAG_JOIN, query.tagSlug);
 
     return qb;
   }
@@ -182,6 +149,10 @@ export class ArticlesRepository {
       relations: { authors: true, tags: true, faq: true },
       order: { faq: { id: 'ASC' } },
     });
+  }
+
+  existsById(id: number): Promise<boolean> {
+    return this.repo.exists({ where: { id } });
   }
 
   // Похожие статьи (шаг 1) — id опубликованных статей, ранжированные по числу совпавших тегов.

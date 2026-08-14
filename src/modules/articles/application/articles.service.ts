@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
+import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { Employee } from '../../employees/domain/employee.entity';
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
 import { Tag } from '../../tags/domain/tag.entity';
@@ -27,8 +29,10 @@ export class ArticlesService {
   ) {}
 
   async create(dto: CreateArticleDto): Promise<ArticleResponseDto> {
-    const authors = await this.resolveAuthors(dto.authorIds);
-    const tags = await this.resolveTags(dto.tagIds);
+    const [authors, tags] = await Promise.all([
+      this.resolveAuthors(dto.authorIds),
+      this.resolveTags(dto.tagIds),
+    ]);
 
     const article = this.articlesRepository.create({
       slug: dto.slug,
@@ -47,10 +51,14 @@ export class ArticlesService {
       tags,
     });
 
-    const saved = await this.articlesRepository.save(article);
-    return ArticleResponseDto.fromEntity(
-      await this.findEntityByIdOrFail(saved.id),
-    );
+    try {
+      const saved = await this.articlesRepository.save(article);
+      return ArticleResponseDto.fromEntity(
+        await this.findEntityByIdOrFail(saved.id),
+      );
+    } catch (error) {
+      throw this.mapSlugConflict(error);
+    }
   }
 
   async update(id: number, dto: UpdateArticleDto): Promise<ArticleResponseDto> {
@@ -84,10 +92,14 @@ export class ArticlesService {
       hasToc: dto.hasToc,
     });
 
-    const saved = await this.articlesRepository.save(article);
-    return ArticleResponseDto.fromEntity(
-      await this.findEntityByIdOrFail(saved.id),
-    );
+    try {
+      const saved = await this.articlesRepository.save(article);
+      return ArticleResponseDto.fromEntity(
+        await this.findEntityByIdOrFail(saved.id),
+      );
+    } catch (error) {
+      throw this.mapSlugConflict(error);
+    }
   }
 
   async remove(id: number): Promise<void> {
@@ -199,5 +211,12 @@ export class ArticlesService {
     const foundSet = new Set(found);
     const missing = requested.filter((id) => !foundSet.has(id));
     throw new BadRequestException(`${label} не найдены: ${missing.join(', ')}`);
+  }
+
+  private mapSlugConflict(error: unknown): unknown {
+    if (isUniqueViolation(error)) {
+      return new ConflictException('Статья с таким slug уже существует');
+    }
+    return error;
   }
 }

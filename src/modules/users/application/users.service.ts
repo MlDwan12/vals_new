@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PinoLogger } from 'nestjs-pino';
-import { QueryFailedError } from 'typeorm';
+import { Role } from '../../../core/enums/role.enum';
 import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
-import { Role } from '../../../core/enums/role.enum';
+import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { User } from '../domain/user.entity';
 import { UsersRepository } from '../infrastructure/users.repository';
@@ -134,12 +134,4 @@ export class UsersService {
 // была только при создании, из-за чего переименование ломало вход.
 function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    error instanceof QueryFailedError &&
-    (error as QueryFailedError & { driverError?: { code?: string } })
-      .driverError?.code === '23505'
-  );
 }

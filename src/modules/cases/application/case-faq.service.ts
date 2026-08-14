@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { CasesRepository } from '../infrastructure/cases.repository';
 import { CaseFaq } from '../domain/case-faq.entity';
 import { CaseFaqResponseDto } from '../dto/case-faq-response.dto';
 import { CreateCaseFaqDto } from '../dto/create-case-faq.dto';
@@ -11,15 +16,21 @@ import { CaseFaqRepository } from '../infrastructure/case-faq.repository';
 
 @Injectable()
 export class CaseFaqService {
-  constructor(private readonly caseFaqRepository: CaseFaqRepository) {}
+  constructor(
+    private readonly caseFaqRepository: CaseFaqRepository,
+    private readonly casesRepository: CasesRepository,
+  ) {}
 
   async create(dto: CreateCaseFaqDto): Promise<CaseFaqResponseDto> {
+    await this.assertCaseExists(dto.caseId);
     const faq = await this.caseFaqRepository.create(dto);
     return CaseFaqResponseDto.fromEntity(faq);
   }
 
   async update(id: number, dto: UpdateCaseFaqDto): Promise<CaseFaqResponseDto> {
-    await this.findEntityByIdOrFail(id);
+    if (dto.caseId !== undefined) {
+      await this.assertCaseExists(dto.caseId);
+    }
 
     const updated = await this.caseFaqRepository.update(id, dto);
     if (!updated) {
@@ -59,5 +70,11 @@ export class CaseFaqService {
       throw new NotFoundException(`FAQ с ID ${id} не найдено`);
     }
     return faq;
+  }
+
+  private async assertCaseExists(caseId: number): Promise<void> {
+    if (!(await this.casesRepository.existsById(caseId))) {
+      throw new BadRequestException(`Кейс с ID ${caseId} не найден`);
+    }
   }
 }

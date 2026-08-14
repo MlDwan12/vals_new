@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { ArticlesRepository } from '../infrastructure/articles.repository';
 import { ArticleFaq } from '../domain/article-faq.entity';
 import { ArticleFaqResponseDto } from '../dto/article-faq-response.dto';
 import { CreateArticleFaqDto } from '../dto/create-article-faq.dto';
@@ -11,9 +16,13 @@ import { ArticleFaqRepository } from '../infrastructure/article-faq.repository';
 
 @Injectable()
 export class ArticleFaqService {
-  constructor(private readonly articleFaqRepository: ArticleFaqRepository) {}
+  constructor(
+    private readonly articleFaqRepository: ArticleFaqRepository,
+    private readonly articlesRepository: ArticlesRepository,
+  ) {}
 
   async create(dto: CreateArticleFaqDto): Promise<ArticleFaqResponseDto> {
+    await this.assertArticleExists(dto.articleId);
     const faq = await this.articleFaqRepository.create(dto);
     return ArticleFaqResponseDto.fromEntity(faq);
   }
@@ -22,7 +31,9 @@ export class ArticleFaqService {
     id: number,
     dto: UpdateArticleFaqDto,
   ): Promise<ArticleFaqResponseDto> {
-    await this.findEntityByIdOrFail(id);
+    if (dto.articleId !== undefined) {
+      await this.assertArticleExists(dto.articleId);
+    }
 
     const updated = await this.articleFaqRepository.update(id, dto);
     if (!updated) {
@@ -64,5 +75,11 @@ export class ArticleFaqService {
       throw new NotFoundException(`FAQ с ID ${id} не найдено`);
     }
     return faq;
+  }
+
+  private async assertArticleExists(articleId: number): Promise<void> {
+    if (!(await this.articlesRepository.existsById(articleId))) {
+      throw new BadRequestException(`Статья с ID ${articleId} не найдена`);
+    }
   }
 }
