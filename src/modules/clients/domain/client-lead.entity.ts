@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ClientLeadType } from '../enums/client-lead-type.enum';
+import { LeadDeliveryStatus } from '../enums/lead-delivery-status.enum';
 import { Client } from './client.entity';
 
 @Entity('client_leads')
@@ -89,6 +90,27 @@ export class ClientLead {
 
   @Column({ name: 'bitrix_response', type: 'jsonb', nullable: true })
   bitrixResponse: Record<string, unknown> | null;
+
+  // Доставка в Bitrix — асинхронная, планировщиком (ТЗ §7 п.1). status/retryCount/nextRetryAt
+  // описывают состояние доставки, не самой заявки — заявка уже сохранена к моменту, когда эти поля
+  // начинают меняться.
+  @Index()
+  @Column({
+    type: 'enum',
+    enum: LeadDeliveryStatus,
+    default: LeadDeliveryStatus.PENDING,
+  })
+  status: LeadDeliveryStatus;
+
+  @Column({ name: 'retry_count', type: 'int', default: 0 })
+  retryCount: number;
+
+  @Index()
+  @Column({ name: 'next_retry_at', type: 'timestamptz', nullable: true })
+  nextRetryAt: Date | null;
+
+  @Column({ name: 'bitrix_error', type: 'text', nullable: true })
+  bitrixError: string | null;
 
   @Index()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

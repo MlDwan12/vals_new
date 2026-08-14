@@ -42,6 +42,16 @@ export const envSchema = z.object({
   JWT_REFRESH_SECRET: z
     .string()
     .min(32, 'JWT_REFRESH_SECRET должен быть не короче 32 символов'),
+
+  // Не через .min(1)/.url() как обязательное — иначе миграции/тесты/dev-сервер падают на старте
+  // ещё до того, как реально понадобится доставка в Bitrix. Проверка — в рантайме, в BitrixClient,
+  // тем же способом, что в старом bitrix.service.ts ("Webhook Bitrix не настроен").
+  BITRIX_WEBHOOK: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && value.trim().length > 0 ? value : undefined,
+    ),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

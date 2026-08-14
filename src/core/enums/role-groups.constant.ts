@@ -7,3 +7,9 @@ export const CONTENT_ROLES = [
   Role.ADMIN,
   Role.CONTENT_MANAGER,
 ] as const;
+
+export const CLIENT_ROLES = [
+  Role.DEVELOPER,
+  Role.ADMIN,
+  Role.CLIENT_MANAGER,
+] as const;

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -33,6 +34,7 @@ import { UsersModule } from './modules/users/users.module';
       rootPath: UPLOADS_ROOT,
       serveRoot: '/uploads',
     }),
+    ScheduleModule.forRoot(),
     LoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService<EnvConfig, true>) => ({

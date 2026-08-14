@@ -15,5 +15,6 @@ import { TariffsRepository } from './infrastructure/tariffs.repository';
   ],
   controllers: [TariffsAdminController],
   providers: [TariffsService, TariffsRepository],
+  exports: [TariffsRepository],
 })
 export class TariffsModule {}

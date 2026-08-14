@@ -23,6 +23,10 @@ export async function startTestDatabase(): Promise<StartedTestContainer> {
   process.env.CORS_ORIGINS = 'http://localhost:3001';
   process.env.JWT_SECRET = 'e2e-test-access-secret-min-32-characters';
   process.env.JWT_REFRESH_SECRET = 'e2e-test-refresh-secret-min-32-characters';
+  // Не настоящий webhook — только чтобы пройти обязательную zod-валидацию env на старте приложения.
+  // Тесты, которым реально нужно управлять доставкой в Bitrix, подменяют BitrixClient через
+  // overrideProvider, а не ходят по этому URL.
+  process.env.BITRIX_WEBHOOK = 'http://bitrix-webhook.invalid';
 
   return container;
 }

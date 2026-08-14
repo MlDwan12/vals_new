@@ -21,6 +21,11 @@ export class TariffsRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  // Резолв тарифа для приёма заявок (TARIFF_REQUEST) — нужен service.title для текста заявки.
+  findByIdWithService(id: number): Promise<Tariff | null> {
+    return this.repo.findOne({ where: { id }, relations: { service: true } });
+  }
+
   create(data: {
     service: Tariff['service'];
     name: string;
