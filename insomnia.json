@@ -1,0 +1,2725 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/audit-logs": {
+      "get": {
+        "operationId": "AuditLogsAdminController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AuditLogsAdmin"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The Health Check is successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {},
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The Health Check is not successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "error"
+                    },
+                    "info": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "error": {
+                      "type": "object",
+                      "example": {
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "nullable": true
+                    },
+                    "details": {
+                      "type": "object",
+                      "example": {
+                        "database": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down",
+                          "message": "Could not connect"
+                        }
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "SearchController_search",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/articles/similar": {
+      "get": {
+        "operationId": "ArticlesController_findSimilar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
+    "/articles/published/main-info": {
+      "get": {
+        "operationId": "ArticlesController_findPublishedList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
+    "/articles/published/all": {
+      "get": {
+        "operationId": "ArticlesController_findAllPublishedSitemapItems",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
+    "/articles/info/{slug}": {
+      "get": {
+        "operationId": "ArticlesController_findBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
+    "/admin/articles": {
+      "post": {
+        "operationId": "ArticlesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateArticleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ArticlesAdminController_findList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      }
+    },
+    "/admin/articles/reindex": {
+      "post": {
+        "operationId": "ArticlesAdminController_reindex",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      }
+    },
+    "/admin/articles/all/main-info": {
+      "get": {
+        "operationId": "ArticlesAdminController_findAllMainInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      }
+    },
+    "/admin/articles/{id}": {
+      "get": {
+        "operationId": "ArticlesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ArticlesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateArticleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ArticlesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticlesAdmin"
+        ]
+      }
+    },
+    "/admin/article-faq": {
+      "post": {
+        "operationId": "ArticleFaqAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateArticleFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticleFaqAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ArticleFaqAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticleFaqAdmin"
+        ]
+      }
+    },
+    "/admin/article-faq/{id}": {
+      "get": {
+        "operationId": "ArticleFaqAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticleFaqAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ArticleFaqAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateArticleFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticleFaqAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ArticleFaqAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ArticleFaqAdmin"
+        ]
+      }
+    },
+    "/employees/published": {
+      "get": {
+        "operationId": "EmployeesController_findPublishedList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Employees"
+        ]
+      }
+    },
+    "/employees/info/{slug}": {
+      "get": {
+        "operationId": "EmployeesController_findPublishedBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Employees"
+        ]
+      }
+    },
+    "/admin/employees": {
+      "post": {
+        "operationId": "EmployeesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmployeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "EmployeesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "EmployeesAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "EmployeesAdmin"
+        ]
+      }
+    },
+    "/admin/employees/{id}": {
+      "get": {
+        "operationId": "EmployeesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "EmployeesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "EmployeesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "EmployeesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "EmployeesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "EmployeesAdmin"
+        ]
+      }
+    },
+    "/tags": {
+      "get": {
+        "operationId": "TagsController_findPublicList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tags"
+        ]
+      }
+    },
+    "/admin/tags": {
+      "post": {
+        "operationId": "TagsAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TagsAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "TagsAdminController_findAllWithCounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TagsAdmin"
+        ]
+      }
+    },
+    "/admin/tags/{id}": {
+      "get": {
+        "operationId": "TagsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TagsAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "TagsAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TagsAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "TagsAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TagsAdmin"
+        ]
+      }
+    },
+    "/cases/similar": {
+      "get": {
+        "operationId": "CasesController_findSimilar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Cases"
+        ]
+      }
+    },
+    "/cases/published/main-info": {
+      "get": {
+        "operationId": "CasesController_findPublishedList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Cases"
+        ]
+      }
+    },
+    "/cases/published/all": {
+      "get": {
+        "operationId": "CasesController_findAllPublishedSitemapItems",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Cases"
+        ]
+      }
+    },
+    "/cases/service/{slug}": {
+      "get": {
+        "operationId": "CasesController_findPublishedByServiceSlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Cases"
+        ]
+      }
+    },
+    "/cases/info/case/{slug}": {
+      "get": {
+        "operationId": "CasesController_findBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Cases"
+        ]
+      }
+    },
+    "/admin/cases": {
+      "post": {
+        "operationId": "CasesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "CasesAdminController_findList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      }
+    },
+    "/admin/cases/reindex": {
+      "post": {
+        "operationId": "CasesAdminController_reindex",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      }
+    },
+    "/admin/cases/all/main-info": {
+      "get": {
+        "operationId": "CasesAdminController_findAllMainInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      }
+    },
+    "/admin/cases/slug/{slug}": {
+      "get": {
+        "operationId": "CasesAdminController_findBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      }
+    },
+    "/admin/cases/{id}": {
+      "get": {
+        "operationId": "CasesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "CasesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "CasesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CasesAdmin"
+        ]
+      }
+    },
+    "/admin/case-faq": {
+      "post": {
+        "operationId": "CaseFaqAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaseFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CaseFaqAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "CaseFaqAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CaseFaqAdmin"
+        ]
+      }
+    },
+    "/admin/case-faq/{id}": {
+      "get": {
+        "operationId": "CaseFaqAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CaseFaqAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "CaseFaqAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCaseFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CaseFaqAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "CaseFaqAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CaseFaqAdmin"
+        ]
+      }
+    },
+    "/services/all/info": {
+      "get": {
+        "operationId": "ServicesController_findAllInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/services/all/short-info": {
+      "get": {
+        "operationId": "ServicesController_findAllShortInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/services/all/full-info": {
+      "get": {
+        "operationId": "ServicesController_findAllFullInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/services/list/faq": {
+      "get": {
+        "operationId": "ServicesController_findListWithFaq",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/services/info/{slug}": {
+      "get": {
+        "operationId": "ServicesController_findBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Services"
+        ]
+      }
+    },
+    "/admin/services": {
+      "post": {
+        "operationId": "ServicesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ServicesAdminController_findList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      }
+    },
+    "/admin/services/reindex": {
+      "post": {
+        "operationId": "ServicesAdminController_reindex",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      }
+    },
+    "/admin/services/all/main-info": {
+      "get": {
+        "operationId": "ServicesAdminController_findAllMainInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      }
+    },
+    "/admin/services/{id}": {
+      "get": {
+        "operationId": "ServicesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ServicesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ServicesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServicesAdmin"
+        ]
+      }
+    },
+    "/service-categories": {
+      "get": {
+        "operationId": "ServiceCategoriesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategories"
+        ]
+      }
+    },
+    "/admin/service-categories": {
+      "post": {
+        "operationId": "ServiceCategoriesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategoriesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ServiceCategoriesAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategoriesAdmin"
+        ]
+      }
+    },
+    "/admin/service-categories/{id}": {
+      "get": {
+        "operationId": "ServiceCategoriesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategoriesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ServiceCategoriesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategoriesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ServiceCategoriesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceCategoriesAdmin"
+        ]
+      }
+    },
+    "/admin/service-steps": {
+      "post": {
+        "operationId": "ServiceStepsAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceStepDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceStepsAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ServiceStepsAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceStepsAdmin"
+        ]
+      }
+    },
+    "/admin/service-steps/{id}": {
+      "get": {
+        "operationId": "ServiceStepsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceStepsAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ServiceStepsAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceStepDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceStepsAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ServiceStepsAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceStepsAdmin"
+        ]
+      }
+    },
+    "/admin/faq": {
+      "post": {
+        "operationId": "ServiceFaqAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceFaqAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "ServiceFaqAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceFaqAdmin"
+        ]
+      }
+    },
+    "/admin/faq/{id}": {
+      "get": {
+        "operationId": "ServiceFaqAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceFaqAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "ServiceFaqAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceFaqAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ServiceFaqAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceFaqAdmin"
+        ]
+      }
+    },
+    "/admin/tariffs": {
+      "post": {
+        "operationId": "TariffsAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTariffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffsAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "TariffsAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffsAdmin"
+        ]
+      }
+    },
+    "/admin/tariffs/{id}": {
+      "get": {
+        "operationId": "TariffsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffsAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "TariffsAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffsAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "TariffsAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffsAdmin"
+        ]
+      }
+    },
+    "/tariff-periods": {
+      "get": {
+        "operationId": "TariffPeriodsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriods"
+        ]
+      }
+    },
+    "/admin/tariff-periods": {
+      "post": {
+        "operationId": "TariffPeriodsAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTariffPeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriodsAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "TariffPeriodsAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriodsAdmin"
+        ]
+      }
+    },
+    "/admin/tariff-periods/{id}": {
+      "get": {
+        "operationId": "TariffPeriodsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriodsAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "TariffPeriodsAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffPeriodDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriodsAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "TariffPeriodsAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TariffPeriodsAdmin"
+        ]
+      }
+    },
+    "/admin/industry": {
+      "post": {
+        "operationId": "IndustriesAdminController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIndustryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "IndustriesAdmin"
+        ]
+      },
+      "get": {
+        "operationId": "IndustriesAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "IndustriesAdmin"
+        ]
+      }
+    },
+    "/admin/industry/{id}": {
+      "get": {
+        "operationId": "IndustriesAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "IndustriesAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "IndustriesAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIndustryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "IndustriesAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "IndustriesAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "IndustriesAdmin"
+        ]
+      }
+    },
+    "/admin/media": {
+      "get": {
+        "operationId": "MediaAdminController_findAndCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAdmin"
+        ]
+      }
+    },
+    "/admin/media/upload": {
+      "post": {
+        "operationId": "MediaAdminController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadMediaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAdmin"
+        ]
+      }
+    },
+    "/admin/media/{id}": {
+      "delete": {
+        "operationId": "MediaAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MediaAdmin"
+        ]
+      }
+    },
+    "/bitrix": {
+      "post": {
+        "operationId": "LeadsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leads"
+        ]
+      }
+    },
+    "/admin/clients": {
+      "get": {
+        "operationId": "ClientsAdminController_findAndCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientsAdmin"
+        ]
+      }
+    },
+    "/admin/clients/{id}": {
+      "get": {
+        "operationId": "ClientsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientsAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "ClientsAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientsAdmin"
+        ]
+      }
+    },
+    "/admin/client-contacts": {
+      "get": {
+        "operationId": "ClientContactsAdminController_findAndCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientContactsAdmin"
+        ]
+      }
+    },
+    "/admin/client-contacts/client/{clientId}": {
+      "get": {
+        "operationId": "ClientContactsAdminController_findByClientId",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientContactsAdmin"
+        ]
+      }
+    },
+    "/admin/client-contacts/{id}": {
+      "get": {
+        "operationId": "ClientContactsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientContactsAdmin"
+        ]
+      }
+    },
+    "/admin/client-leads": {
+      "get": {
+        "operationId": "ClientLeadsAdminController_findAndCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientLeadsAdmin"
+        ]
+      }
+    },
+    "/admin/client-leads/client/{clientId}": {
+      "get": {
+        "operationId": "ClientLeadsAdminController_findByClientId",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientLeadsAdmin"
+        ]
+      }
+    },
+    "/admin/client-leads/{id}": {
+      "get": {
+        "operationId": "ClientLeadsAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientLeadsAdmin"
+        ]
+      }
+    },
+    "/admin/client-leads/{id}/retry": {
+      "post": {
+        "operationId": "ClientLeadsAdminController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientLeadsAdmin"
+        ]
+      }
+    },
+    "/admin/users/content-managers": {
+      "post": {
+        "operationId": "UsersAdminController_createContentManager",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      }
+    },
+    "/admin/users/client-managers": {
+      "post": {
+        "operationId": "UsersAdminController_createClientManager",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      }
+    },
+    "/admin/users/admins": {
+      "post": {
+        "operationId": "UsersAdminController_createAdmin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "UsersAdminController_paginate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      }
+    },
+    "/admin/users/{id}": {
+      "get": {
+        "operationId": "UsersAdminController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersAdminController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersAdminController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "UsersAdmin"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/dashboard/stats": {
+      "get": {
+        "operationId": "DashboardController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "VALS.DIGITAL API",
+    "description": "",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "CreateArticleDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateArticleDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateArticleFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateArticleFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateEmployeeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateEmployeeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTagDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTagDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCaseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCaseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCaseFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateCaseFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateServiceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateServiceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateServiceCategoryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateServiceCategoryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateServiceStepDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateServiceStepDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateServiceFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateServiceFaqDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTariffDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTariffDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTariffPeriodDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateTariffPeriodDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateIndustryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateIndustryDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UploadMediaDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateLeadDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}
