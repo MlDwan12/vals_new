@@ -27,7 +27,8 @@
     "migration:revert": "yarn build && node ./node_modules/typeorm/cli.js migration:revert --dataSource dist/data-source.js",
     "migration:show": "yarn build && node ./node_modules/typeorm/cli.js migration:show --dataSource dist/data-source.js",
     "seed:developer": "ts-node src/database/seeds/create-developer.seed.ts",
-    "migrate:prod-data": "ts-node src/database/data-migration/migrate-prod-data.script.ts"
+    "migrate:prod-data": "ts-node src/database/data-migration/migrate-prod-data.script.ts",
+    "insomnia:generate": "node scripts/generate-insomnia-collection.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

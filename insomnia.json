@@ -1,2725 +1,1796 @@
 {
-  "openapi": "3.0.0",
-  "paths": {
-    "/audit-logs": {
-      "get": {
-        "operationId": "AuditLogsAdminController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "AuditLogsAdmin"
-        ]
-      }
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-17T08:34:34.060Z",
+  "__export_source": "vals_new:generate-insomnia-collection",
+  "resources": [
+    {
+      "_id": "wrk_vals_new",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "VALS.DIGITAL (vals_new)",
+      "description": "Сгенерировано из http://localhost:3000/docs-json — 2026-08-17T08:34:34.059Z"
     },
-    "/health": {
-      "get": {
-        "operationId": "HealthController_check",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "The Health Check is successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "ok"
-                    },
-                    "info": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "error": {
-                      "type": "object",
-                      "example": {},
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "details": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The Health Check is not successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "info": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "error": {
-                      "type": "object",
-                      "example": {
-                        "redis": {
-                          "status": "down",
-                          "message": "Could not connect"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      },
-                      "nullable": true
-                    },
-                    "details": {
-                      "type": "object",
-                      "example": {
-                        "database": {
-                          "status": "up"
-                        },
-                        "redis": {
-                          "status": "down",
-                          "message": "Could not connect"
-                        }
-                      },
-                      "additionalProperties": {
-                        "type": "object",
-                        "required": [
-                          "status"
-                        ],
-                        "properties": {
-                          "status": {
-                            "type": "string"
-                          }
-                        },
-                        "additionalProperties": true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Health"
-        ]
-      }
-    },
-    "/search": {
-      "get": {
-        "operationId": "SearchController_search",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Search"
-        ]
-      }
-    },
-    "/articles/similar": {
-      "get": {
-        "operationId": "ArticlesController_findSimilar",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Articles"
-        ]
-      }
-    },
-    "/articles/published/main-info": {
-      "get": {
-        "operationId": "ArticlesController_findPublishedList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Articles"
-        ]
-      }
-    },
-    "/articles/published/all": {
-      "get": {
-        "operationId": "ArticlesController_findAllPublishedSitemapItems",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Articles"
-        ]
-      }
-    },
-    "/articles/info/{slug}": {
-      "get": {
-        "operationId": "ArticlesController_findBySlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Articles"
-        ]
-      }
-    },
-    "/admin/articles": {
-      "post": {
-        "operationId": "ArticlesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateArticleDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_vals_new",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:3000"
       },
-      "get": {
-        "operationId": "ArticlesAdminController_findList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
-      }
+      "color": "#4552d6",
+      "isPrivate": false
     },
-    "/admin/articles/reindex": {
-      "post": {
-        "operationId": "ArticlesAdminController_reindex",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
-      }
+    {
+      "_id": "fld_auditlogsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "AuditLogsAdmin"
     },
-    "/admin/articles/all/main-info": {
-      "get": {
-        "operationId": "ArticlesAdminController_findAllMainInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
-      }
+    {
+      "_id": "req_1_AuditLogsAdminController_findAll",
+      "_type": "request",
+      "parentId": "fld_auditlogsadmin",
+      "name": "Get — /audit-logs",
+      "method": "GET",
+      "url": "{{ base_url }}/audit-logs",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/articles/{id}": {
-      "get": {
-        "operationId": "ArticlesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Health"
+    },
+    {
+      "_id": "req_2_HealthController_check",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Get — /health",
+      "method": "GET",
+      "url": "{{ base_url }}/health",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_search",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Search"
+    },
+    {
+      "_id": "req_3_SearchController_search",
+      "_type": "request",
+      "parentId": "fld_search",
+      "name": "Get — /search",
+      "method": "GET",
+      "url": "{{ base_url }}/search",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_articles",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Articles"
+    },
+    {
+      "_id": "req_4_ArticlesController_findSimilar",
+      "_type": "request",
+      "parentId": "fld_articles",
+      "name": "Get — /articles/similar",
+      "method": "GET",
+      "url": "{{ base_url }}/articles/similar",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_5_ArticlesController_findPublishedList",
+      "_type": "request",
+      "parentId": "fld_articles",
+      "name": "Get — /articles/published/main-info",
+      "method": "GET",
+      "url": "{{ base_url }}/articles/published/main-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_6_ArticlesController_findAllPublishedSitemapItems",
+      "_type": "request",
+      "parentId": "fld_articles",
+      "name": "Get — /articles/published/all",
+      "method": "GET",
+      "url": "{{ base_url }}/articles/published/all",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_7_ArticlesController_findBySlug",
+      "_type": "request",
+      "parentId": "fld_articles",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/articles/info/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_articlesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ArticlesAdmin"
+    },
+    {
+      "_id": "req_8_ArticlesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Create — /admin/articles",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/articles",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-article\",\n  \"title\": \"Заголовок статьи\",\n  \"content\": {\n    \"type\": \"doc\",\n    \"content\": []\n  },\n  \"authorIds\": [\n    1\n  ],\n  \"tagIds\": [\n    1\n  ],\n  \"datePublished\": \"2020-01-01T00:00:00.000Z\"\n}"
       },
-      "patch": {
-        "operationId": "ArticlesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateArticleDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_9_ArticlesAdminController_findList",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Get — /admin/articles",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/articles",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_10_ArticlesAdminController_reindex",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Create — /admin/articles/reindex",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/articles/reindex",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_11_ArticlesAdminController_findAllMainInfo",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Get — /admin/articles/all/main-info",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/articles/all/main-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_12_ArticlesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/articles/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_13_ArticlesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/articles/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-article\",\n  \"title\": \"Заголовок статьи\",\n  \"content\": {\n    \"type\": \"doc\",\n    \"content\": []\n  },\n  \"authorIds\": [\n    1\n  ],\n  \"tagIds\": [\n    1\n  ],\n  \"datePublished\": \"2020-01-01T00:00:00.000Z\"\n}"
       },
-      "delete": {
-        "operationId": "ArticlesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticlesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/article-faq": {
-      "post": {
-        "operationId": "ArticleFaqAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateArticleFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticleFaqAdmin"
-        ]
+    {
+      "_id": "req_14_ArticlesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_articlesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/articles/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_articlefaqadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ArticleFaqAdmin"
+    },
+    {
+      "_id": "req_15_ArticleFaqAdminController_create",
+      "_type": "request",
+      "parentId": "fld_articlefaqadmin",
+      "name": "Create — /admin/article-faq",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/article-faq",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"articleId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "get": {
-        "operationId": "ArticleFaqAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticleFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/article-faq/{id}": {
-      "get": {
-        "operationId": "ArticleFaqAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticleFaqAdmin"
-        ]
+    {
+      "_id": "req_16_ArticleFaqAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_articlefaqadmin",
+      "name": "Get — /admin/article-faq",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/article-faq",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_17_ArticleFaqAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_articlefaqadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/article-faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_18_ArticleFaqAdminController_update",
+      "_type": "request",
+      "parentId": "fld_articlefaqadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/article-faq/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"articleId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "patch": {
-        "operationId": "ArticleFaqAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateArticleFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticleFaqAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_19_ArticleFaqAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_articlefaqadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/article-faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_employees",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Employees"
+    },
+    {
+      "_id": "req_20_EmployeesController_findPublishedList",
+      "_type": "request",
+      "parentId": "fld_employees",
+      "name": "Get — /employees/published",
+      "method": "GET",
+      "url": "{{ base_url }}/employees/published",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_21_EmployeesController_findPublishedBySlug",
+      "_type": "request",
+      "parentId": "fld_employees",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/employees/info/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_employeesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "EmployeesAdmin"
+    },
+    {
+      "_id": "req_22_EmployeesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_employeesadmin",
+      "name": "Create — /admin/employees",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/employees",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-employee\",\n  \"name\": \"Имя Фамилия\",\n  \"position\": \"Должность\"\n}"
       },
-      "delete": {
-        "operationId": "ArticleFaqAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ArticleFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/employees/published": {
-      "get": {
-        "operationId": "EmployeesController_findPublishedList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Employees"
-        ]
-      }
+    {
+      "_id": "req_23_EmployeesAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_employeesadmin",
+      "name": "Get — /admin/employees",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/employees",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/employees/info/{slug}": {
-      "get": {
-        "operationId": "EmployeesController_findPublishedBySlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Employees"
-        ]
-      }
+    {
+      "_id": "req_24_EmployeesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_employeesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/employees/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/employees": {
-      "post": {
-        "operationId": "EmployeesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEmployeeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "EmployeesAdmin"
-        ]
+    {
+      "_id": "req_25_EmployeesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_employeesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/employees/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-employee\",\n  \"name\": \"Имя Фамилия\",\n  \"position\": \"Должность\"\n}"
       },
-      "get": {
-        "operationId": "EmployeesAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "EmployeesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/employees/{id}": {
-      "get": {
-        "operationId": "EmployeesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "EmployeesAdmin"
-        ]
+    {
+      "_id": "req_26_EmployeesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_employeesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/employees/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_tags",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Tags"
+    },
+    {
+      "_id": "req_27_TagsController_findPublicList",
+      "_type": "request",
+      "parentId": "fld_tags",
+      "name": "Get — /tags",
+      "method": "GET",
+      "url": "{{ base_url }}/tags",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_tagsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "TagsAdmin"
+    },
+    {
+      "_id": "req_28_TagsAdminController_create",
+      "_type": "request",
+      "parentId": "fld_tagsadmin",
+      "name": "Create — /admin/tags",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/tags",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-tag\",\n  \"name\": \"Название тега\"\n}"
       },
-      "patch": {
-        "operationId": "EmployeesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEmployeeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "EmployeesAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_29_TagsAdminController_findAllWithCounts",
+      "_type": "request",
+      "parentId": "fld_tagsadmin",
+      "name": "Get — /admin/tags",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tags",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_30_TagsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_tagsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tags/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_31_TagsAdminController_update",
+      "_type": "request",
+      "parentId": "fld_tagsadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/tags/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-tag\",\n  \"name\": \"Название тега\"\n}"
       },
-      "delete": {
-        "operationId": "EmployeesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "EmployeesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/tags": {
-      "get": {
-        "operationId": "TagsController_findPublicList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Tags"
-        ]
-      }
+    {
+      "_id": "req_32_TagsAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_tagsadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/tags/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/tags": {
-      "post": {
-        "operationId": "TagsAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTagDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TagsAdmin"
-        ]
+    {
+      "_id": "fld_cases",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Cases"
+    },
+    {
+      "_id": "req_33_CasesController_findSimilar",
+      "_type": "request",
+      "parentId": "fld_cases",
+      "name": "Get — /cases/similar",
+      "method": "GET",
+      "url": "{{ base_url }}/cases/similar",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_34_CasesController_findPublishedList",
+      "_type": "request",
+      "parentId": "fld_cases",
+      "name": "Get — /cases/published/main-info",
+      "method": "GET",
+      "url": "{{ base_url }}/cases/published/main-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_35_CasesController_findAllPublishedSitemapItems",
+      "_type": "request",
+      "parentId": "fld_cases",
+      "name": "Get — /cases/published/all",
+      "method": "GET",
+      "url": "{{ base_url }}/cases/published/all",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_36_CasesController_findPublishedByServiceSlug",
+      "_type": "request",
+      "parentId": "fld_cases",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/cases/service/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_37_CasesController_findBySlug",
+      "_type": "request",
+      "parentId": "fld_cases",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/cases/info/case/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_casesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "CasesAdmin"
+    },
+    {
+      "_id": "req_38_CasesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Create — /admin/cases",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/cases",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-case\",\n  \"title\": \"Заголовок кейса\",\n  \"problem\": \"Проблема клиента\",\n  \"result\": \"Результат работы\",\n  \"industry\": [\n    \"IT\"\n  ],\n  \"serviceIds\": [\n    1\n  ],\n  \"authorIds\": [\n    1\n  ],\n  \"datePublished\": \"2020-01-01T00:00:00.000Z\"\n}"
       },
-      "get": {
-        "operationId": "TagsAdminController_findAllWithCounts",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TagsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/tags/{id}": {
-      "get": {
-        "operationId": "TagsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TagsAdmin"
-        ]
+    {
+      "_id": "req_39_CasesAdminController_findList",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Get — /admin/cases",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/cases",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_40_CasesAdminController_reindex",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Create — /admin/cases/reindex",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/cases/reindex",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_41_CasesAdminController_findAllMainInfo",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Get — /admin/cases/all/main-info",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/cases/all/main-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_42_CasesAdminController_findBySlug",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/cases/slug/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_43_CasesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/cases/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_44_CasesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/cases/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-case\",\n  \"title\": \"Заголовок кейса\",\n  \"problem\": \"Проблема клиента\",\n  \"result\": \"Результат работы\",\n  \"industry\": [\n    \"IT\"\n  ],\n  \"serviceIds\": [\n    1\n  ],\n  \"authorIds\": [\n    1\n  ],\n  \"datePublished\": \"2020-01-01T00:00:00.000Z\"\n}"
       },
-      "patch": {
-        "operationId": "TagsAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTagDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TagsAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_45_CasesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_casesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/cases/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_casefaqadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "CaseFaqAdmin"
+    },
+    {
+      "_id": "req_46_CaseFaqAdminController_create",
+      "_type": "request",
+      "parentId": "fld_casefaqadmin",
+      "name": "Create — /admin/case-faq",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/case-faq",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"caseId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "delete": {
-        "operationId": "TagsAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TagsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/cases/similar": {
-      "get": {
-        "operationId": "CasesController_findSimilar",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Cases"
-        ]
-      }
+    {
+      "_id": "req_47_CaseFaqAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_casefaqadmin",
+      "name": "Get — /admin/case-faq",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/case-faq",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/cases/published/main-info": {
-      "get": {
-        "operationId": "CasesController_findPublishedList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Cases"
-        ]
-      }
+    {
+      "_id": "req_48_CaseFaqAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_casefaqadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/case-faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/cases/published/all": {
-      "get": {
-        "operationId": "CasesController_findAllPublishedSitemapItems",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Cases"
-        ]
-      }
-    },
-    "/cases/service/{slug}": {
-      "get": {
-        "operationId": "CasesController_findPublishedByServiceSlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Cases"
-        ]
-      }
-    },
-    "/cases/info/case/{slug}": {
-      "get": {
-        "operationId": "CasesController_findBySlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Cases"
-        ]
-      }
-    },
-    "/admin/cases": {
-      "post": {
-        "operationId": "CasesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCaseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
+    {
+      "_id": "req_49_CaseFaqAdminController_update",
+      "_type": "request",
+      "parentId": "fld_casefaqadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/case-faq/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"caseId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "get": {
-        "operationId": "CasesAdminController_findList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/cases/reindex": {
-      "post": {
-        "operationId": "CasesAdminController_reindex",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
-      }
+    {
+      "_id": "req_50_CaseFaqAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_casefaqadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/case-faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/cases/all/main-info": {
-      "get": {
-        "operationId": "CasesAdminController_findAllMainInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
-      }
+    {
+      "_id": "fld_services",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Services"
     },
-    "/admin/cases/slug/{slug}": {
-      "get": {
-        "operationId": "CasesAdminController_findBySlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
-      }
+    {
+      "_id": "req_51_ServicesController_findAllInfo",
+      "_type": "request",
+      "parentId": "fld_services",
+      "name": "Get — /services/all/info",
+      "method": "GET",
+      "url": "{{ base_url }}/services/all/info",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/cases/{id}": {
-      "get": {
-        "operationId": "CasesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
+    {
+      "_id": "req_52_ServicesController_findAllShortInfo",
+      "_type": "request",
+      "parentId": "fld_services",
+      "name": "Get — /services/all/short-info",
+      "method": "GET",
+      "url": "{{ base_url }}/services/all/short-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_53_ServicesController_findAllFullInfo",
+      "_type": "request",
+      "parentId": "fld_services",
+      "name": "Get — /services/all/full-info",
+      "method": "GET",
+      "url": "{{ base_url }}/services/all/full-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_54_ServicesController_findListWithFaq",
+      "_type": "request",
+      "parentId": "fld_services",
+      "name": "Get — /services/list/faq",
+      "method": "GET",
+      "url": "{{ base_url }}/services/list/faq",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_55_ServicesController_findBySlug",
+      "_type": "request",
+      "parentId": "fld_services",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/services/info/example-slug",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_servicesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ServicesAdmin"
+    },
+    {
+      "_id": "req_56_ServicesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Create — /admin/services",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/services",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-service\",\n  \"categoryId\": 1,\n  \"title\": \"Название услуги\",\n  \"description\": \"Полное описание\",\n  \"subDescription\": \"Короткое описание\",\n  \"icon\": \"shield\"\n}"
       },
-      "patch": {
-        "operationId": "CasesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCaseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_57_ServicesAdminController_findList",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Get — /admin/services",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/services",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_58_ServicesAdminController_reindex",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Create — /admin/services/reindex",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/services/reindex",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_59_ServicesAdminController_findAllMainInfo",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Get — /admin/services/all/main-info",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/services/all/main-info",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_60_ServicesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/services/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_61_ServicesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/services/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"slug\": \"example-service\",\n  \"categoryId\": 1,\n  \"title\": \"Название услуги\",\n  \"description\": \"Полное описание\",\n  \"subDescription\": \"Короткое описание\",\n  \"icon\": \"shield\"\n}"
       },
-      "delete": {
-        "operationId": "CasesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CasesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/case-faq": {
-      "post": {
-        "operationId": "CaseFaqAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCaseFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CaseFaqAdmin"
-        ]
+    {
+      "_id": "req_62_ServicesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_servicesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/services/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_servicecategories",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ServiceCategories"
+    },
+    {
+      "_id": "req_63_ServiceCategoriesController_findAll",
+      "_type": "request",
+      "parentId": "fld_servicecategories",
+      "name": "Get — /service-categories",
+      "method": "GET",
+      "url": "{{ base_url }}/service-categories",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_servicecategoriesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ServiceCategoriesAdmin"
+    },
+    {
+      "_id": "req_64_ServiceCategoriesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_servicecategoriesadmin",
+      "name": "Create — /admin/service-categories",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/service-categories",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Название категории\"\n}"
       },
-      "get": {
-        "operationId": "CaseFaqAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CaseFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/case-faq/{id}": {
-      "get": {
-        "operationId": "CaseFaqAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CaseFaqAdmin"
-        ]
+    {
+      "_id": "req_65_ServiceCategoriesAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_servicecategoriesadmin",
+      "name": "Get — /admin/service-categories",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/service-categories",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_66_ServiceCategoriesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_servicecategoriesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/service-categories/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_67_ServiceCategoriesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_servicecategoriesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/service-categories/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Название категории\"\n}"
       },
-      "patch": {
-        "operationId": "CaseFaqAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCaseFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CaseFaqAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_68_ServiceCategoriesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_servicecategoriesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/service-categories/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_servicestepsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ServiceStepsAdmin"
+    },
+    {
+      "_id": "req_69_ServiceStepsAdminController_create",
+      "_type": "request",
+      "parentId": "fld_servicestepsadmin",
+      "name": "Create — /admin/service-steps",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/service-steps",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"step\": 1,\n  \"title\": \"Название шага\",\n  \"description\": \"Описание шага\",\n  \"serviceId\": 1\n}"
       },
-      "delete": {
-        "operationId": "CaseFaqAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "CaseFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/services/all/info": {
-      "get": {
-        "operationId": "ServicesController_findAllInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Services"
-        ]
-      }
+    {
+      "_id": "req_70_ServiceStepsAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_servicestepsadmin",
+      "name": "Get — /admin/service-steps",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/service-steps",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/services/all/short-info": {
-      "get": {
-        "operationId": "ServicesController_findAllShortInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Services"
-        ]
-      }
+    {
+      "_id": "req_71_ServiceStepsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_servicestepsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/service-steps/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/services/all/full-info": {
-      "get": {
-        "operationId": "ServicesController_findAllFullInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Services"
-        ]
-      }
-    },
-    "/services/list/faq": {
-      "get": {
-        "operationId": "ServicesController_findListWithFaq",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Services"
-        ]
-      }
-    },
-    "/services/info/{slug}": {
-      "get": {
-        "operationId": "ServicesController_findBySlug",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Services"
-        ]
-      }
-    },
-    "/admin/services": {
-      "post": {
-        "operationId": "ServicesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateServiceDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
+    {
+      "_id": "req_72_ServiceStepsAdminController_update",
+      "_type": "request",
+      "parentId": "fld_servicestepsadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/service-steps/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"step\": 1,\n  \"title\": \"Название шага\",\n  \"description\": \"Описание шага\",\n  \"serviceId\": 1\n}"
       },
-      "get": {
-        "operationId": "ServicesAdminController_findList",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/services/reindex": {
-      "post": {
-        "operationId": "ServicesAdminController_reindex",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
-      }
+    {
+      "_id": "req_73_ServiceStepsAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_servicestepsadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/service-steps/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/services/all/main-info": {
-      "get": {
-        "operationId": "ServicesAdminController_findAllMainInfo",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
-      }
+    {
+      "_id": "fld_servicefaqadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ServiceFaqAdmin"
     },
-    "/admin/services/{id}": {
-      "get": {
-        "operationId": "ServicesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
+    {
+      "_id": "req_74_ServiceFaqAdminController_create",
+      "_type": "request",
+      "parentId": "fld_servicefaqadmin",
+      "name": "Create — /admin/faq",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/faq",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "patch": {
-        "operationId": "ServicesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateServiceDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_75_ServiceFaqAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_servicefaqadmin",
+      "name": "Get — /admin/faq",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/faq",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_76_ServiceFaqAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_servicefaqadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_77_ServiceFaqAdminController_update",
+      "_type": "request",
+      "parentId": "fld_servicefaqadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/faq/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceId\": 1,\n  \"question\": \"Вопрос?\",\n  \"answer\": \"Ответ.\"\n}"
       },
-      "delete": {
-        "operationId": "ServicesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServicesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/service-categories": {
-      "get": {
-        "operationId": "ServiceCategoriesController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategories"
-        ]
-      }
+    {
+      "_id": "req_78_ServiceFaqAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_servicefaqadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/faq/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/service-categories": {
-      "post": {
-        "operationId": "ServiceCategoriesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateServiceCategoryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategoriesAdmin"
-        ]
+    {
+      "_id": "fld_tariffsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "TariffsAdmin"
+    },
+    {
+      "_id": "req_79_TariffsAdminController_create",
+      "_type": "request",
+      "parentId": "fld_tariffsadmin",
+      "name": "Create — /admin/tariffs",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/tariffs",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceId\": 1,\n  \"name\": \"Базовый\",\n  \"from\": \"от\",\n  \"features\": \"Пункт 1||Пункт 2\",\n  \"basePrice\": 50000,\n  \"periodIds\": [\n    1\n  ]\n}"
       },
-      "get": {
-        "operationId": "ServiceCategoriesAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategoriesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/service-categories/{id}": {
-      "get": {
-        "operationId": "ServiceCategoriesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategoriesAdmin"
-        ]
+    {
+      "_id": "req_80_TariffsAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_tariffsadmin",
+      "name": "Get — /admin/tariffs",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tariffs",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_81_TariffsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_tariffsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tariffs/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_82_TariffsAdminController_update",
+      "_type": "request",
+      "parentId": "fld_tariffsadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/tariffs/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"serviceId\": 1,\n  \"name\": \"Базовый\",\n  \"from\": \"от\",\n  \"features\": \"Пункт 1||Пункт 2\",\n  \"basePrice\": 50000,\n  \"periodIds\": [\n    1\n  ]\n}"
       },
-      "patch": {
-        "operationId": "ServiceCategoriesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateServiceCategoryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategoriesAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_83_TariffsAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_tariffsadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/tariffs/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_tariffperiods",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "TariffPeriods"
+    },
+    {
+      "_id": "req_84_TariffPeriodsController_findAll",
+      "_type": "request",
+      "parentId": "fld_tariffperiods",
+      "name": "Get — /tariff-periods",
+      "method": "GET",
+      "url": "{{ base_url }}/tariff-periods",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_tariffperiodsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "TariffPeriodsAdmin"
+    },
+    {
+      "_id": "req_85_TariffPeriodsAdminController_create",
+      "_type": "request",
+      "parentId": "fld_tariffperiodsadmin",
+      "name": "Create — /admin/tariff-periods",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/tariff-periods",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"months\": 1\n}"
       },
-      "delete": {
-        "operationId": "ServiceCategoriesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceCategoriesAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/service-steps": {
-      "post": {
-        "operationId": "ServiceStepsAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateServiceStepDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceStepsAdmin"
-        ]
+    {
+      "_id": "req_86_TariffPeriodsAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_tariffperiodsadmin",
+      "name": "Get — /admin/tariff-periods",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tariff-periods",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_87_TariffPeriodsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_tariffperiodsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/tariff-periods/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_88_TariffPeriodsAdminController_update",
+      "_type": "request",
+      "parentId": "fld_tariffperiodsadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/tariff-periods/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"months\": 1\n}"
       },
-      "get": {
-        "operationId": "ServiceStepsAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceStepsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/service-steps/{id}": {
-      "get": {
-        "operationId": "ServiceStepsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceStepsAdmin"
-        ]
+    {
+      "_id": "req_89_TariffPeriodsAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_tariffperiodsadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/tariff-periods/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_industriesadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "IndustriesAdmin"
+    },
+    {
+      "_id": "req_90_IndustriesAdminController_create",
+      "_type": "request",
+      "parentId": "fld_industriesadmin",
+      "name": "Create — /admin/industry",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/industry",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"FinTech\"\n}"
       },
-      "patch": {
-        "operationId": "ServiceStepsAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateServiceStepDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceStepsAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_91_IndustriesAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_industriesadmin",
+      "name": "Get — /admin/industry",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/industry",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_92_IndustriesAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_industriesadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/industry/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_93_IndustriesAdminController_update",
+      "_type": "request",
+      "parentId": "fld_industriesadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/industry/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"FinTech\"\n}"
       },
-      "delete": {
-        "operationId": "ServiceStepsAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceStepsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/faq": {
-      "post": {
-        "operationId": "ServiceFaqAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateServiceFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceFaqAdmin"
-        ]
+    {
+      "_id": "req_94_IndustriesAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_industriesadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/industry/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_mediaadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "MediaAdmin"
+    },
+    {
+      "_id": "req_95_MediaAdminController_findAndCount",
+      "_type": "request",
+      "parentId": "fld_mediaadmin",
+      "name": "Get — /admin/media",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/media",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_96_MediaAdminController_upload",
+      "_type": "request",
+      "parentId": "fld_mediaadmin",
+      "name": "Create — /admin/media/upload",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/media/upload",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
       },
-      "get": {
-        "operationId": "ServiceFaqAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/faq/{id}": {
-      "get": {
-        "operationId": "ServiceFaqAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceFaqAdmin"
-        ]
+    {
+      "_id": "req_97_MediaAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_mediaadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/media/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_leads",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Leads"
+    },
+    {
+      "_id": "req_98_LeadsController_submit",
+      "_type": "request",
+      "parentId": "fld_leads",
+      "name": "Create — /bitrix",
+      "method": "POST",
+      "url": "{{ base_url }}/bitrix",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Имя клиента\",\n  \"phone\": \"+79990001122\",\n  \"type\": \"FREE_CONSULTATION\",\n  \"message\": \"Текст обращения\"\n}"
       },
-      "patch": {
-        "operationId": "ServiceFaqAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateServiceFaqDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceFaqAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "fld_clientsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ClientsAdmin"
+    },
+    {
+      "_id": "req_99_ClientsAdminController_findAndCount",
+      "_type": "request",
+      "parentId": "fld_clientsadmin",
+      "name": "Get — /admin/clients",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/clients",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_100_ClientsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_clientsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/clients/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_101_ClientsAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_clientsadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/clients/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_clientcontactsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ClientContactsAdmin"
+    },
+    {
+      "_id": "req_102_ClientContactsAdminController_findAndCount",
+      "_type": "request",
+      "parentId": "fld_clientcontactsadmin",
+      "name": "Get — /admin/client-contacts",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-contacts",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_103_ClientContactsAdminController_findByClientId",
+      "_type": "request",
+      "parentId": "fld_clientcontactsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-contacts/client/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_104_ClientContactsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_clientcontactsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-contacts/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_clientleadsadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "ClientLeadsAdmin"
+    },
+    {
+      "_id": "req_105_ClientLeadsAdminController_findAndCount",
+      "_type": "request",
+      "parentId": "fld_clientleadsadmin",
+      "name": "Get — /admin/client-leads",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-leads",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_106_ClientLeadsAdminController_findByClientId",
+      "_type": "request",
+      "parentId": "fld_clientleadsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-leads/client/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_107_ClientLeadsAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_clientleadsadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/client-leads/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_108_ClientLeadsAdminController_retry",
+      "_type": "request",
+      "parentId": "fld_clientleadsadmin",
+      "name": "Create — /admin/client-leads/{id}/retry",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/client-leads/1/retry",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "fld_usersadmin",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "UsersAdmin"
+    },
+    {
+      "_id": "req_109_UsersAdminController_createContentManager",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Create — /admin/users/content-managers",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/users/content-managers",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"new_user\",\n  \"password\": \"ChangeMe123!\"\n}"
       },
-      "delete": {
-        "operationId": "ServiceFaqAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ServiceFaqAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/tariffs": {
-      "post": {
-        "operationId": "TariffsAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTariffDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffsAdmin"
-        ]
+    {
+      "_id": "req_110_UsersAdminController_createClientManager",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Create — /admin/users/client-managers",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/users/client-managers",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"new_user\",\n  \"password\": \"ChangeMe123!\"\n}"
       },
-      "get": {
-        "operationId": "TariffsAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/tariffs/{id}": {
-      "get": {
-        "operationId": "TariffsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffsAdmin"
-        ]
+    {
+      "_id": "req_111_UsersAdminController_createAdmin",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Create — /admin/users/admins",
+      "method": "POST",
+      "url": "{{ base_url }}/admin/users/admins",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"new_user\",\n  \"password\": \"ChangeMe123!\"\n}"
       },
-      "patch": {
-        "operationId": "TariffsAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTariffDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffsAdmin"
-        ]
+      "parameters": []
+    },
+    {
+      "_id": "req_112_UsersAdminController_paginate",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Get — /admin/users",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/users",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_113_UsersAdminController_findById",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Get by id",
+      "method": "GET",
+      "url": "{{ base_url }}/admin/users/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
+    },
+    {
+      "_id": "req_114_UsersAdminController_update",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Update by id",
+      "method": "PATCH",
+      "url": "{{ base_url }}/admin/users/1",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"new_user\",\n  \"password\": \"ChangeMe123!\"\n}"
       },
-      "delete": {
-        "operationId": "TariffsAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/tariff-periods": {
-      "get": {
-        "operationId": "TariffPeriodsController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriods"
-        ]
-      }
+    {
+      "_id": "req_115_UsersAdminController_remove",
+      "_type": "request",
+      "parentId": "fld_usersadmin",
+      "name": "Delete by id",
+      "method": "DELETE",
+      "url": "{{ base_url }}/admin/users/1",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/tariff-periods": {
-      "post": {
-        "operationId": "TariffPeriodsAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTariffPeriodDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriodsAdmin"
-        ]
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Auth"
+    },
+    {
+      "_id": "req_116_AuthController_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Create — /auth/login",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"developer\",\n  \"password\": \"changeme\"\n}"
       },
-      "get": {
-        "operationId": "TariffPeriodsAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriodsAdmin"
-        ]
-      }
+      "parameters": []
     },
-    "/admin/tariff-periods/{id}": {
-      "get": {
-        "operationId": "TariffPeriodsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriodsAdmin"
-        ]
-      },
-      "patch": {
-        "operationId": "TariffPeriodsAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTariffPeriodDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriodsAdmin"
-        ]
-      },
-      "delete": {
-        "operationId": "TariffPeriodsAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "TariffPeriodsAdmin"
-        ]
-      }
+    {
+      "_id": "req_117_AuthController_refresh",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Create — /auth/refresh",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/refresh",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/industry": {
-      "post": {
-        "operationId": "IndustriesAdminController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateIndustryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "IndustriesAdmin"
-        ]
-      },
-      "get": {
-        "operationId": "IndustriesAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "IndustriesAdmin"
-        ]
-      }
+    {
+      "_id": "req_118_AuthController_logout",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Create — /auth/logout",
+      "method": "POST",
+      "url": "{{ base_url }}/auth/logout",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/industry/{id}": {
-      "get": {
-        "operationId": "IndustriesAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "IndustriesAdmin"
-        ]
-      },
-      "patch": {
-        "operationId": "IndustriesAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateIndustryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "IndustriesAdmin"
-        ]
-      },
-      "delete": {
-        "operationId": "IndustriesAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "IndustriesAdmin"
-        ]
-      }
+    {
+      "_id": "req_119_AuthController_me",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Get — /auth/me",
+      "method": "GET",
+      "url": "{{ base_url }}/auth/me",
+      "headers": [],
+      "body": {},
+      "parameters": []
     },
-    "/admin/media": {
-      "get": {
-        "operationId": "MediaAdminController_findAndCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "MediaAdmin"
-        ]
-      }
+    {
+      "_id": "fld_dashboard",
+      "_type": "request_group",
+      "parentId": "wrk_vals_new",
+      "name": "Dashboard"
     },
-    "/admin/media/upload": {
-      "post": {
-        "operationId": "MediaAdminController_upload",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadMediaDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "MediaAdmin"
-        ]
-      }
-    },
-    "/admin/media/{id}": {
-      "delete": {
-        "operationId": "MediaAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "MediaAdmin"
-        ]
-      }
-    },
-    "/bitrix": {
-      "post": {
-        "operationId": "LeadsController_submit",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLeadDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Leads"
-        ]
-      }
-    },
-    "/admin/clients": {
-      "get": {
-        "operationId": "ClientsAdminController_findAndCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientsAdmin"
-        ]
-      }
-    },
-    "/admin/clients/{id}": {
-      "get": {
-        "operationId": "ClientsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientsAdmin"
-        ]
-      },
-      "delete": {
-        "operationId": "ClientsAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientsAdmin"
-        ]
-      }
-    },
-    "/admin/client-contacts": {
-      "get": {
-        "operationId": "ClientContactsAdminController_findAndCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientContactsAdmin"
-        ]
-      }
-    },
-    "/admin/client-contacts/client/{clientId}": {
-      "get": {
-        "operationId": "ClientContactsAdminController_findByClientId",
-        "parameters": [
-          {
-            "name": "clientId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientContactsAdmin"
-        ]
-      }
-    },
-    "/admin/client-contacts/{id}": {
-      "get": {
-        "operationId": "ClientContactsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientContactsAdmin"
-        ]
-      }
-    },
-    "/admin/client-leads": {
-      "get": {
-        "operationId": "ClientLeadsAdminController_findAndCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientLeadsAdmin"
-        ]
-      }
-    },
-    "/admin/client-leads/client/{clientId}": {
-      "get": {
-        "operationId": "ClientLeadsAdminController_findByClientId",
-        "parameters": [
-          {
-            "name": "clientId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientLeadsAdmin"
-        ]
-      }
-    },
-    "/admin/client-leads/{id}": {
-      "get": {
-        "operationId": "ClientLeadsAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientLeadsAdmin"
-        ]
-      }
-    },
-    "/admin/client-leads/{id}/retry": {
-      "post": {
-        "operationId": "ClientLeadsAdminController_retry",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "ClientLeadsAdmin"
-        ]
-      }
-    },
-    "/admin/users/content-managers": {
-      "post": {
-        "operationId": "UsersAdminController_createContentManager",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      }
-    },
-    "/admin/users/client-managers": {
-      "post": {
-        "operationId": "UsersAdminController_createClientManager",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      }
-    },
-    "/admin/users/admins": {
-      "post": {
-        "operationId": "UsersAdminController_createAdmin",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      }
-    },
-    "/admin/users": {
-      "get": {
-        "operationId": "UsersAdminController_paginate",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      }
-    },
-    "/admin/users/{id}": {
-      "get": {
-        "operationId": "UsersAdminController_findById",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      },
-      "patch": {
-        "operationId": "UsersAdminController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      },
-      "delete": {
-        "operationId": "UsersAdminController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "UsersAdmin"
-        ]
-      }
-    },
-    "/auth/login": {
-      "post": {
-        "operationId": "AuthController_login",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/refresh": {
-      "post": {
-        "operationId": "AuthController_refresh",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/logout": {
-      "post": {
-        "operationId": "AuthController_logout",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/auth/me": {
-      "get": {
-        "operationId": "AuthController_me",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Auth"
-        ]
-      }
-    },
-    "/dashboard/stats": {
-      "get": {
-        "operationId": "DashboardController_getStats",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Dashboard"
-        ]
-      }
+    {
+      "_id": "req_120_DashboardController_getStats",
+      "_type": "request",
+      "parentId": "fld_dashboard",
+      "name": "Get — /dashboard/stats",
+      "method": "GET",
+      "url": "{{ base_url }}/dashboard/stats",
+      "headers": [],
+      "body": {},
+      "parameters": []
     }
-  },
-  "info": {
-    "title": "VALS.DIGITAL API",
-    "description": "",
-    "version": "0.1.0",
-    "contact": {}
-  },
-  "tags": [],
-  "servers": [],
-  "components": {
-    "schemas": {
-      "CreateArticleDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateArticleDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateArticleFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateArticleFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateEmployeeDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateEmployeeDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateTagDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateTagDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateCaseDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateCaseDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateCaseFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateCaseFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateServiceDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateServiceDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateServiceCategoryDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateServiceCategoryDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateServiceStepDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateServiceStepDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateServiceFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateServiceFaqDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateTariffDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateTariffDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateTariffPeriodDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateTariffPeriodDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateIndustryDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateIndustryDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UploadMediaDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateLeadDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateUserDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "UpdateUserDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "LoginDto": {
-        "type": "object",
-        "properties": {}
-      }
-    }
-  }
+  ]
 }
