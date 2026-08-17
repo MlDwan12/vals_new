@@ -18,6 +18,21 @@ export class ServiceFaqRepository {
     private readonly repo: Repository<ServiceFaq>,
   ) {}
 
+  // Для reindex поиска — вопрос/ответ + slug родительской услуги (услуги всегда опубликованы,
+  // гейта по датам нет).
+  findAllForSearchIndex(): Promise<
+    { id: number; question: string; answer: string; serviceSlug: string }[]
+  > {
+    return this.repo
+      .createQueryBuilder('faq')
+      .innerJoin('faq.service', 'service')
+      .select('faq.id', 'id')
+      .addSelect('faq.question', 'question')
+      .addSelect('faq.answer', 'answer')
+      .addSelect('service.slug', 'serviceSlug')
+      .getRawMany();
+  }
+
   findAndCount(page: number, limit: number): Promise<[ServiceFaq[], number]> {
     return this.repo.findAndCount({
       order: { id: 'ASC' },

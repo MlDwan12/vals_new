@@ -46,5 +46,6 @@ import { ClientsRepository } from './infrastructure/clients.repository';
     LeadDeliveryService,
     LeadDeliveryScheduler,
   ],
+  exports: [ClientsRepository, ClientLeadsRepository],
 })
 export class ClientsModule {}

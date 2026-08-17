@@ -31,6 +31,12 @@ export class ServicesAdminController {
     return this.servicesService.create(dto);
   }
 
+  @Post('reindex')
+  @HttpCode(HttpStatus.OK)
+  reindex(): Promise<void> {
+    return this.servicesService.reindexSearch();
+  }
+
   @Get()
   findList(
     @Query() query: ServiceListQueryDto,

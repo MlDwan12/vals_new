@@ -14,6 +14,10 @@ export class ClientsRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  count(): Promise<number> {
+    return this.repo.count();
+  }
+
   // Совпадает со старым контрактом: поиск по primaryPhone/primaryEmail, слитые дубли из списка не
   // видны (isMerged: false) — как и в старом admin/client.
   findAndCount(

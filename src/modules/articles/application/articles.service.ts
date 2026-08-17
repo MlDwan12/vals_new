@@ -9,8 +9,15 @@ import { applyDefinedFields } from '../../../core/persistence/apply-defined-fiel
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { Employee } from '../../employees/domain/employee.entity';
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
+import { SearchIndexService } from '../../search/application/search-index.service';
 import { Tag } from '../../tags/domain/tag.entity';
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
+import { ArticleFaqService } from './article-faq.service';
+import {
+  articleFaqDocumentIds,
+  buildArticleSearchDocument,
+  isArticlePublished,
+} from './article-search-document.util';
 import { Article } from '../domain/article.entity';
 import { ArticleListQueryDto } from '../dto/article-list-query.dto';
 import { ArticleMainInfoDto } from '../dto/article-main-info.dto';
@@ -26,6 +33,8 @@ export class ArticlesService {
     private readonly articlesRepository: ArticlesRepository,
     private readonly employeesRepository: EmployeesRepository,
     private readonly tagsRepository: TagsRepository,
+    private readonly searchIndexService: SearchIndexService,
+    private readonly articleFaqService: ArticleFaqService,
   ) {}
 
   async create(dto: CreateArticleDto): Promise<ArticleResponseDto> {
@@ -53,9 +62,9 @@ export class ArticlesService {
 
     try {
       const saved = await this.articlesRepository.save(article);
-      return ArticleResponseDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.indexArticle(entity);
+      return ArticleResponseDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
@@ -94,17 +103,44 @@ export class ArticlesService {
 
     try {
       const saved = await this.articlesRepository.save(article);
-      return ArticleResponseDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.indexArticle(entity);
+      return ArticleResponseDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntityByIdOrFail(id);
+    const article = await this.findEntityByIdOrFail(id);
     await this.articlesRepository.remove(id);
+    // CASCADE в БД удаляет article_faq вместе со статьёй — документы FAQ из индекса поиска сами
+    // не исчезают, чистим их здесь же по уже загруженной relations.faq (findEntityByIdOrFail).
+    await this.searchIndexService.deleteDocuments([
+      `article_${id}`,
+      ...articleFaqDocumentIds(article),
+    ]);
+  }
+
+  // Полная переиндексация (admin) — статьи + их FAQ одним вызовом, без отдельного эндпоинта
+  // на FAQ (в новой схеме это часть переиндексации статей, не самостоятельный раздел поиска).
+  async reindexSearch(): Promise<void> {
+    const now = new Date();
+    const [articles, faqDocs] = await Promise.all([
+      this.articlesRepository.findAllForSearchIndex(),
+      this.articleFaqService.buildAllSearchDocuments(now),
+    ]);
+    const publishedDocs = articles
+      .filter(
+        (article) =>
+          article.datePublished !== null && article.datePublished <= now,
+      )
+      .map((article) => buildArticleSearchDocument(article));
+
+    await this.searchIndexService.upsertDocuments([
+      ...publishedDocs,
+      ...faqDocs,
+    ]);
   }
 
   async findById(id: number): Promise<ArticleResponseDto> {
@@ -218,5 +254,17 @@ export class ArticlesService {
       return new ConflictException('Статья с таким slug уже существует');
     }
     return error;
+  }
+
+  // Черновик/отложенная статья не должна утекать в публичный поиск (ТЗ §2 — только опубликованный
+  // контент виден на сайте; старый код индексировал вообще без проверки публикации).
+  private async indexArticle(article: Article): Promise<void> {
+    if (isArticlePublished(article)) {
+      await this.searchIndexService.upsertDocuments([
+        buildArticleSearchDocument(article),
+      ]);
+    } else {
+      await this.searchIndexService.deleteDocuments([`article_${article.id}`]);
+    }
   }
 }

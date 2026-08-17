@@ -17,6 +17,27 @@ export class CaseFaqRepository {
     @InjectRepository(CaseFaq) private readonly repo: Repository<CaseFaq>,
   ) {}
 
+  // Для reindex поиска — вопрос/ответ + slug и статус публикации родительского кейса одним JOIN.
+  findAllForSearchIndex(): Promise<
+    {
+      id: number;
+      question: string;
+      answer: string;
+      caseSlug: string;
+      caseDatePublished: Date | null;
+    }[]
+  > {
+    return this.repo
+      .createQueryBuilder('faq')
+      .innerJoin('faq.case', 'caseEntity')
+      .select('faq.id', 'id')
+      .addSelect('faq.question', 'question')
+      .addSelect('faq.answer', 'answer')
+      .addSelect('caseEntity.slug', 'caseSlug')
+      .addSelect('caseEntity.datePublished', 'caseDatePublished')
+      .getRawMany();
+  }
+
   findAndCount(page: number, limit: number): Promise<[CaseFaq[], number]> {
     return this.repo.findAndCount({
       order: { id: 'ASC' },

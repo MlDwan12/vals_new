@@ -358,6 +358,10 @@ export class ClientLeadsRepository {
 
   // --- Админка (read-only, как в старом коде) ---
 
+  count(): Promise<number> {
+    return this.dataSource.getRepository(ClientLead).count();
+  }
+
   findById(id: number): Promise<ClientLead | null> {
     return this.dataSource.getRepository(ClientLead).findOne({ where: { id } });
   }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmployeesModule } from '../employees/employees.module';
+import { SearchModule } from '../search/search.module';
 import { ServicesModule } from '../services/services.module';
 import { TagsModule } from '../tags/tags.module';
 import { CaseFaqAdminController } from './api/case-faq-admin.controller';
@@ -19,8 +20,10 @@ import { CasesRepository } from './infrastructure/cases.repository';
     EmployeesModule,
     TagsModule,
     ServicesModule,
+    SearchModule,
   ],
   controllers: [CasesController, CasesAdminController, CaseFaqAdminController],
   providers: [CasesService, CasesRepository, CaseFaqService, CaseFaqRepository],
+  exports: [CasesRepository],
 })
 export class CasesModule {}

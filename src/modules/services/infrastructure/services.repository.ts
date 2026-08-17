@@ -55,6 +55,10 @@ export class ServicesRepository {
     @InjectRepository(Case) private readonly caseRepo: Repository<Case>,
   ) {}
 
+  count(): Promise<number> {
+    return this.repo.count();
+  }
+
   findByIds(ids: number[]): Promise<Service[]> {
     if (!ids.length) return Promise.resolve([]);
     return this.repo.find({
@@ -139,6 +143,21 @@ export class ServicesRepository {
   // циклическую зависимость модулей: CasesModule уже импортирует ServicesModule).
   findPublishedCasesForService(serviceId: number): Promise<Case[]> {
     return findPublishedCasesByServiceId(this.caseRepo, serviceId);
+  }
+
+  // Полный список для reindex — только поля, нужные для поискового документа, без relations.
+  findAllForSearchIndex(): Promise<
+    Pick<Service, 'id' | 'slug' | 'title' | 'subtitle' | 'description'>[]
+  > {
+    return this.repo.find({
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        subtitle: true,
+        description: true,
+      },
+    });
   }
 
   create(data: {

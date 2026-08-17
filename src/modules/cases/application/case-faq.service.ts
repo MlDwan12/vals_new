@@ -7,8 +7,14 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { GlobalSearchDocument } from '../../search/application/global-search-document.interface';
+import { SearchIndexService } from '../../search/application/search-index.service';
+import { buildFaqSearchDocument } from '../../search/application/faq-search-document.util';
 import { CasesRepository } from '../infrastructure/cases.repository';
+import { Case } from '../domain/case.entity';
 import { CaseFaq } from '../domain/case-faq.entity';
+
+type CaseMeta = Pick<Case, 'id' | 'slug' | 'datePublished'>;
 import { CaseFaqResponseDto } from '../dto/case-faq-response.dto';
 import { CreateCaseFaqDto } from '../dto/create-case-faq.dto';
 import { UpdateCaseFaqDto } from '../dto/update-case-faq.dto';
@@ -19,29 +25,50 @@ export class CaseFaqService {
   constructor(
     private readonly caseFaqRepository: CaseFaqRepository,
     private readonly casesRepository: CasesRepository,
+    private readonly searchIndexService: SearchIndexService,
   ) {}
 
   async create(dto: CreateCaseFaqDto): Promise<CaseFaqResponseDto> {
-    await this.assertCaseExists(dto.caseId);
+    const caseEntity = await this.resolveCase(dto.caseId);
     const faq = await this.caseFaqRepository.create(dto);
+    await this.indexFaq(faq, caseEntity);
     return CaseFaqResponseDto.fromEntity(faq);
   }
 
   async update(id: number, dto: UpdateCaseFaqDto): Promise<CaseFaqResponseDto> {
-    if (dto.caseId !== undefined) {
-      await this.assertCaseExists(dto.caseId);
-    }
+    const existing = await this.findEntityByIdOrFail(id);
+    const caseEntity = await this.resolveCase(dto.caseId ?? existing.caseId);
 
     const updated = await this.caseFaqRepository.update(id, dto);
     if (!updated) {
       throw new NotFoundException(`FAQ с ID ${id} не найдено`);
     }
+    await this.indexFaq(updated, caseEntity);
     return CaseFaqResponseDto.fromEntity(updated);
   }
 
   async remove(id: number): Promise<void> {
     await this.findEntityByIdOrFail(id);
     await this.caseFaqRepository.remove(id);
+    await this.searchIndexService.deleteDocuments([`caseFaq_${id}`]);
+  }
+
+  // Часть переиндексации кейсов (CasesService.reindexSearch()), не отдельный admin-эндпоинт.
+  async buildAllSearchDocuments(now: Date): Promise<GlobalSearchDocument[]> {
+    const rows = await this.caseFaqRepository.findAllForSearchIndex();
+    return rows
+      .filter(
+        (row) => row.caseDatePublished !== null && row.caseDatePublished <= now,
+      )
+      .map((row) =>
+        buildFaqSearchDocument({
+          idPrefix: 'caseFaq',
+          id: row.id,
+          question: row.question,
+          answer: row.answer,
+          parentUrl: `/cases/${row.caseSlug}`,
+        }),
+      );
   }
 
   async findById(id: number): Promise<CaseFaqResponseDto> {
@@ -72,9 +99,32 @@ export class CaseFaqService {
     return faq;
   }
 
-  private async assertCaseExists(caseId: number): Promise<void> {
-    if (!(await this.casesRepository.existsById(caseId))) {
+  private async resolveCase(caseId: number): Promise<CaseMeta> {
+    const caseEntity =
+      await this.casesRepository.findPublicationMetaById(caseId);
+    if (!caseEntity) {
       throw new BadRequestException(`Кейс с ID ${caseId} не найден`);
+    }
+    return caseEntity;
+  }
+
+  private async indexFaq(faq: CaseFaq, caseEntity: CaseMeta): Promise<void> {
+    const doc = buildFaqSearchDocument({
+      idPrefix: 'caseFaq',
+      id: faq.id,
+      question: faq.question,
+      answer: faq.answer,
+      parentUrl: `/cases/${caseEntity.slug}`,
+    });
+
+    const isPublished =
+      caseEntity.datePublished !== null &&
+      caseEntity.datePublished <= new Date();
+
+    if (isPublished) {
+      await this.searchIndexService.upsertDocuments([doc]);
+    } else {
+      await this.searchIndexService.deleteDocuments([doc.id]);
     }
   }
 }

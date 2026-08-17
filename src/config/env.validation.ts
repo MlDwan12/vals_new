@@ -52,6 +52,16 @@ export const envSchema = z.object({
     .transform((value) =>
       value && value.trim().length > 0 ? value : undefined,
     ),
+
+  MEILI_HOST: z.string().min(1),
+  // Мастер-ключ — только для админских операций (индексация/reindex), приложение выпускает его
+  // сам при разворачивании Meilisearch (не сторонний секрет вроде BITRIX_WEBHOOK), обязателен.
+  MEILI_MASTER_KEY: z
+    .string()
+    .min(16, 'MEILI_MASTER_KEY должен быть не короче 16 символов'),
+  // Ограниченный ключ (только права search) — публичный GET /search ходит им, не мастер-ключом
+  // (ТЗ §6). Значение выдаёт сам Meilisearch после старта (GET /keys), не задаётся заранее.
+  MEILI_SEARCH_KEY: z.string().min(1),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -31,6 +31,12 @@ export class CasesAdminController {
     return this.casesService.create(dto);
   }
 
+  @Post('reindex')
+  @HttpCode(HttpStatus.OK)
+  reindex(): Promise<void> {
+    return this.casesService.reindexSearch();
+  }
+
   @Get()
   findList(
     @Query() query: CaseListQueryDto,

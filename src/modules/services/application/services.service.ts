@@ -7,6 +7,12 @@ import {
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { SearchIndexService } from '../../search/application/search-index.service';
+import { ServiceFaqService } from './service-faq.service';
+import {
+  buildServiceSearchDocument,
+  serviceFaqDocumentIds,
+} from './service-search-document.util';
 import { ServiceCategory } from '../domain/service-category.entity';
 import { Service } from '../domain/service.entity';
 import { CreateServiceDto } from '../dto/create-service.dto';
@@ -25,6 +31,8 @@ export class ServicesService {
   constructor(
     private readonly servicesRepository: ServicesRepository,
     private readonly serviceCategoriesRepository: ServiceCategoriesRepository,
+    private readonly searchIndexService: SearchIndexService,
+    private readonly serviceFaqService: ServiceFaqService,
   ) {}
 
   async create(dto: CreateServiceDto): Promise<ServiceFullInfoDto> {
@@ -44,9 +52,11 @@ export class ServicesService {
 
     try {
       const saved = await this.servicesRepository.save(service);
-      return ServiceFullInfoDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.searchIndexService.upsertDocuments([
+        buildServiceSearchDocument(entity),
+      ]);
+      return ServiceFullInfoDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
@@ -72,17 +82,36 @@ export class ServicesService {
 
     try {
       const saved = await this.servicesRepository.save(service);
-      return ServiceFullInfoDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.searchIndexService.upsertDocuments([
+        buildServiceSearchDocument(entity),
+      ]);
+      return ServiceFullInfoDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntityByIdOrFail(id);
+    const service = await this.findEntityByIdOrFail(id);
     await this.servicesRepository.remove(id);
+    await this.searchIndexService.deleteDocuments([
+      `service_${id}`,
+      ...serviceFaqDocumentIds(service),
+    ]);
+  }
+
+  // Полная переиндексация (admin) — услуги + их FAQ одним вызовом.
+  async reindexSearch(): Promise<void> {
+    const [services, faqDocs] = await Promise.all([
+      this.servicesRepository.findAllForSearchIndex(),
+      this.serviceFaqService.buildAllSearchDocuments(),
+    ]);
+
+    await this.searchIndexService.upsertDocuments([
+      ...services.map((service) => buildServiceSearchDocument(service)),
+      ...faqDocs,
+    ]);
   }
 
   async findById(id: number): Promise<ServiceFullInfoDto> {

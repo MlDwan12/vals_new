@@ -9,10 +9,17 @@ import { EmployeesRepository } from '../../employees/infrastructure/employees.re
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import { SearchIndexService } from '../../search/application/search-index.service';
 import { Service } from '../../services/domain/service.entity';
 import { ServicesRepository } from '../../services/infrastructure/services.repository';
 import { Tag } from '../../tags/domain/tag.entity';
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
+import { CaseFaqService } from './case-faq.service';
+import {
+  buildCaseSearchDocument,
+  caseFaqDocumentIds,
+  isCasePublished,
+} from './case-search-document.util';
 import { Case } from '../domain/case.entity';
 import { CaseListQueryDto } from '../dto/case-list-query.dto';
 import { CaseMainInfoDto } from '../dto/case-main-info.dto';
@@ -29,6 +36,8 @@ export class CasesService {
     private readonly servicesRepository: ServicesRepository,
     private readonly employeesRepository: EmployeesRepository,
     private readonly tagsRepository: TagsRepository,
+    private readonly searchIndexService: SearchIndexService,
+    private readonly caseFaqService: CaseFaqService,
   ) {}
 
   async create(dto: CreateCaseDto): Promise<CaseResponseDto> {
@@ -60,9 +69,9 @@ export class CasesService {
 
     try {
       const saved = await this.casesRepository.save(caseEntity);
-      return CaseResponseDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.indexCase(entity);
+      return CaseResponseDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
@@ -106,17 +115,41 @@ export class CasesService {
 
     try {
       const saved = await this.casesRepository.save(caseEntity);
-      return CaseResponseDto.fromEntity(
-        await this.findEntityByIdOrFail(saved.id),
-      );
+      const entity = await this.findEntityByIdOrFail(saved.id);
+      await this.indexCase(entity);
+      return CaseResponseDto.fromEntity(entity);
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntityByIdOrFail(id);
+    const caseEntity = await this.findEntityByIdOrFail(id);
     await this.casesRepository.remove(id);
+    await this.searchIndexService.deleteDocuments([
+      `case_${id}`,
+      ...caseFaqDocumentIds(caseEntity),
+    ]);
+  }
+
+  // Полная переиндексация (admin) — кейсы + их FAQ одним вызовом.
+  async reindexSearch(): Promise<void> {
+    const now = new Date();
+    const [cases, faqDocs] = await Promise.all([
+      this.casesRepository.findAllForSearchIndex(),
+      this.caseFaqService.buildAllSearchDocuments(now),
+    ]);
+    const publishedDocs = cases
+      .filter(
+        (caseEntity) =>
+          caseEntity.datePublished !== null && caseEntity.datePublished <= now,
+      )
+      .map((caseEntity) => buildCaseSearchDocument(caseEntity));
+
+    await this.searchIndexService.upsertDocuments([
+      ...publishedDocs,
+      ...faqDocs,
+    ]);
   }
 
   async findById(id: number): Promise<CaseResponseDto> {
@@ -264,5 +297,15 @@ export class CasesService {
       return new ConflictException('Кейс с таким slug уже существует');
     }
     return error;
+  }
+
+  private async indexCase(caseEntity: Case): Promise<void> {
+    if (isCasePublished(caseEntity)) {
+      await this.searchIndexService.upsertDocuments([
+        buildCaseSearchDocument(caseEntity),
+      ]);
+    } else {
+      await this.searchIndexService.deleteDocuments([`case_${caseEntity.id}`]);
+    }
   }
 }

@@ -31,6 +31,12 @@ export class ArticlesAdminController {
     return this.articlesService.create(dto);
   }
 
+  @Post('reindex')
+  @HttpCode(HttpStatus.OK)
+  reindex(): Promise<void> {
+    return this.articlesService.reindexSearch();
+  }
+
   @Get()
   findList(
     @Query() query: ArticleListQueryDto,

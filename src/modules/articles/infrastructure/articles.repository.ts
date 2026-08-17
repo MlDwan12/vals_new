@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
 import {
+  countPublicationStats,
+  PublicationStats,
+} from '../../../core/persistence/count-publication-stats.util';
+import {
   applyAuthorSlugFilter,
   applyTagSlugFilter,
   AUTHOR_SHORT_FIELDS,
@@ -151,8 +155,16 @@ export class ArticlesRepository {
     });
   }
 
-  existsById(id: number): Promise<boolean> {
-    return this.repo.exists({ where: { id } });
+  // Для FAQ-сервиса (ArticleFaqService.resolveArticle) — проверка существования родителя +
+  // slug/datePublished для построения поискового документа, без тяжёлого findById с
+  // authors/tags/faq (которые FAQ-мутации не используют).
+  findPublicationMetaById(
+    id: number,
+  ): Promise<Pick<Article, 'id' | 'slug' | 'datePublished'> | null> {
+    return this.repo.findOne({
+      where: { id },
+      select: { id: true, slug: true, datePublished: true },
+    });
   }
 
   // Похожие статьи (шаг 1) — id опубликованных статей, ранжированные по числу совпавших тегов.
@@ -201,6 +213,27 @@ export class ArticlesRepository {
     return items.sort(
       (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
     );
+  }
+
+  // Для дашборда — см. countPublicationStats().
+  countStats(): Promise<PublicationStats> {
+    return countPublicationStats(this.repo, 'datePublished');
+  }
+
+  // Полный список для reindex — только поля, нужные для поискового документа, без relations
+  // (авторов/тегов/faq), чтобы не плодить JOIN-дубликаты строк на сотнях статей разом.
+  findAllForSearchIndex(): Promise<
+    Pick<Article, 'id' | 'slug' | 'title' | 'description' | 'datePublished'>[]
+  > {
+    return this.repo.find({
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        description: true,
+        datePublished: true,
+      },
+    });
   }
 
   create(data: {

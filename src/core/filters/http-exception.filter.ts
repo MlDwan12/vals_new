@@ -7,7 +7,21 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { AuditService } from '../../modules/audit/application/audit.service';
+import { AuditAction } from '../../modules/audit/enums/audit-action.enum';
+import {
+  MUTATION_METHODS,
+  resolveAuditResource,
+  resolveClientIp,
+} from '../audit/resolve-audit-context.util';
+import { AuthenticatedRequestUser } from '../guards/auth.guard';
 import { ErrorCode } from '../exceptions/error-code.enum';
+
+// Окно подавления повторных анонимных ACCESS_DENIED с одного IP (ТЗ §7 п.5 — без этого 401/403 от
+// бота, перебирающего роуты, раздувают таблицу одной строкой на запрос). Только здесь, а не в
+// AuditService.log(): это политика конкретно ACCESS_DENIED-ветки этого фильтра (единственного
+// источника ACCESS_DENIED), а не общего механизма записи, которым пользуются и другие вызывающие.
+const ANONYMOUS_ACCESS_DENIED_WINDOW_MS = 60_000;
 
 interface ApiErrorResponse {
   success: false;
@@ -22,6 +36,8 @@ interface ApiErrorResponse {
 // HttpStatus — enum, но статус пришедший из exception.getStatus()/дефолта — обычный number;
 // сравнение через типизированную-как-number константу, чтобы не сравнивать number с enum напрямую.
 const INTERNAL_SERVER_ERROR_STATUS: number = HttpStatus.INTERNAL_SERVER_ERROR;
+const UNAUTHORIZED_STATUS: number = HttpStatus.UNAUTHORIZED;
+const FORBIDDEN_STATUS: number = HttpStatus.FORBIDDEN;
 
 const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
   [HttpStatus.BAD_REQUEST]: ErrorCode.VALIDATION_ERROR,
@@ -34,7 +50,12 @@ const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  constructor(private readonly logger: PinoLogger) {
+  private readonly lastAnonymousAccessDeniedAt = new Map<string, number>();
+
+  constructor(
+    private readonly logger: PinoLogger,
+    private readonly auditService: AuditService,
+  ) {
     this.logger.setContext(HttpExceptionFilter.name);
   }
 
@@ -56,6 +77,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else {
       this.logger.warn({ requestId, status, code }, message);
     }
+
+    this.writeAuditLog(request, status, message);
 
     const body: ApiErrorResponse = {
       success: false,
@@ -116,5 +139,72 @@ export class HttpExceptionFilter implements ExceptionFilter {
     // Тело не в стандартной форме class-validator/Nest (например, отчёт Terminus) —
     // сообщение общее, диагностика — в details.
     return { message: 'Ошибка запроса', details: body };
+  }
+
+  // Аудит здесь, а не только в AuditInterceptor — интерцептор видит лишь успешные ответы,
+  // security-события (401/403) и 5xx долетают только сюда (ТЗ §2 "аудит-лог ... событий
+  // безопасности"). Пишем не каждую ошибку, а мутации/auth-пути/401/403/5xx — иначе 404 от
+  // случайного сканера роутов раздувает таблицу так же, как если бы это была не ошибка вовсе.
+  private writeAuditLog(
+    request: Request,
+    status: number,
+    errorMessage: string,
+  ): void {
+    const method = request.method.toUpperCase();
+    const path = request.path;
+    const isMutation = MUTATION_METHODS.has(method);
+    const isAuthPath = path.startsWith('/auth/');
+    const isSecurityEvent =
+      status === UNAUTHORIZED_STATUS || status === FORBIDDEN_STATUS;
+    const isServerError = status >= INTERNAL_SERVER_ERROR_STATUS;
+
+    if (!isMutation && !isAuthPath && !isSecurityEvent && !isServerError) {
+      return;
+    }
+
+    const user = (request as Request & { user?: AuthenticatedRequestUser })
+      .user;
+    const ip = resolveClientIp(request);
+
+    if (
+      isSecurityEvent &&
+      user === undefined &&
+      ip &&
+      this.isAnonymousAccessDeniedSuppressed(ip)
+    ) {
+      return;
+    }
+    // При неудачном логине request.user ещё не выставлен (AuthGuard/стратегия падает раньше) —
+    // подхватываем логин из тела запроса, чтобы в аудите было видно, под каким именем пытались войти.
+    const attemptedUsername =
+      path === '/auth/login'
+        ? (request.body as { username?: unknown } | undefined)?.username
+        : undefined;
+    const username =
+      user?.username ??
+      (typeof attemptedUsername === 'string' ? attemptedUsername : null);
+
+    const { resource, resourceId } = resolveAuditResource(path);
+
+    void this.auditService.log({
+      userId: user?.sub ?? null,
+      username,
+      role: user?.role ?? null,
+      action: isSecurityEvent ? AuditAction.ACCESS_DENIED : AuditAction.ERROR,
+      method,
+      path,
+      resource,
+      resourceId,
+      statusCode: status,
+      errorMessage,
+      ip,
+    });
+  }
+
+  private isAnonymousAccessDeniedSuppressed(ip: string): boolean {
+    const now = Date.now();
+    const last = this.lastAnonymousAccessDeniedAt.get(ip);
+    this.lastAnonymousAccessDeniedAt.set(ip, now);
+    return last !== undefined && now - last < ANONYMOUS_ACCESS_DENIED_WINDOW_MS;
   }
 }

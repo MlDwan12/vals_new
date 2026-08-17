@@ -17,6 +17,28 @@ export class ArticleFaqRepository {
     @InjectRepository(ArticleFaq) private readonly repo: Repository<ArticleFaq>,
   ) {}
 
+  // Для reindex поиска — вопрос/ответ + slug и статус публикации родительской статьи одним JOIN,
+  // без N+1 (нужно решить, попадает ли каждый FAQ в индекс, ещё до формирования документов).
+  findAllForSearchIndex(): Promise<
+    {
+      id: number;
+      question: string;
+      answer: string;
+      articleSlug: string;
+      articleDatePublished: Date | null;
+    }[]
+  > {
+    return this.repo
+      .createQueryBuilder('faq')
+      .innerJoin('faq.article', 'article')
+      .select('faq.id', 'id')
+      .addSelect('faq.question', 'question')
+      .addSelect('faq.answer', 'answer')
+      .addSelect('article.slug', 'articleSlug')
+      .addSelect('article.datePublished', 'articleDatePublished')
+      .getRawMany();
+  }
+
   findAndCount(page: number, limit: number): Promise<[ArticleFaq[], number]> {
     return this.repo.findAndCount({
       order: { id: 'ASC' },

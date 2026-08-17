@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Case } from '../cases/domain/case.entity';
+import { SearchModule } from '../search/search.module';
 import { ServiceCategoriesAdminController } from './api/service-categories-admin.controller';
 import { ServiceCategoriesController } from './api/service-categories.controller';
 import { ServiceFaqAdminController } from './api/service-faq-admin.controller';
@@ -29,6 +30,7 @@ import { ServicesRepository } from './infrastructure/services.repository';
       ServiceFaq,
       Case,
     ]),
+    SearchModule,
   ],
   controllers: [
     ServicesController,

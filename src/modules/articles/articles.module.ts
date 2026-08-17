@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmployeesModule } from '../employees/employees.module';
+import { SearchModule } from '../search/search.module';
 import { TagsModule } from '../tags/tags.module';
 import { ArticleFaqAdminController } from './api/article-faq-admin.controller';
 import { ArticlesAdminController } from './api/articles-admin.controller';
@@ -17,6 +18,7 @@ import { ArticlesRepository } from './infrastructure/articles.repository';
     TypeOrmModule.forFeature([Article, ArticleFaq]),
     EmployeesModule,
     TagsModule,
+    SearchModule,
   ],
   controllers: [
     ArticlesController,
@@ -29,5 +31,6 @@ import { ArticlesRepository } from './infrastructure/articles.repository';
     ArticleFaqService,
     ArticleFaqRepository,
   ],
+  exports: [ArticlesRepository],
 })
 export class ArticlesModule {}

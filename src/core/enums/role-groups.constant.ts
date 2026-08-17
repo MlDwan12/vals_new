@@ -13,3 +13,12 @@ export const CLIENT_ROLES = [
   Role.ADMIN,
   Role.CLIENT_MANAGER,
 ] as const;
+
+// Любая аутентифицированная админская роль — дашборд одинаково доступен всем четырём (ТЗ:
+// шире, чем ADMIN_ROLES у аудита).
+export const ALL_ROLES = [
+  Role.DEVELOPER,
+  Role.ADMIN,
+  Role.CONTENT_MANAGER,
+  Role.CLIENT_MANAGER,
+] as const;

@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
 import {
+  countPublicationStats,
+  PublicationStats,
+} from '../../../core/persistence/count-publication-stats.util';
+import {
   applyAuthorSlugFilter,
   applyTagSlugFilter,
   AUTHOR_SHORT_FIELDS,
@@ -151,8 +155,14 @@ export class CasesRepository {
     });
   }
 
-  existsById(id: number): Promise<boolean> {
-    return this.repo.exists({ where: { id } });
+  // Для FAQ-сервиса (CaseFaqService.resolveCase) — см. ArticlesRepository.findPublicationMetaById.
+  findPublicationMetaById(
+    id: number,
+  ): Promise<Pick<Case, 'id' | 'slug' | 'datePublished'> | null> {
+    return this.repo.findOne({
+      where: { id },
+      select: { id: true, slug: true, datePublished: true },
+    });
   }
 
   // Опубликованные кейсы по услуге — публичная страница услуги, блок «Кейсы».
@@ -206,6 +216,26 @@ export class CasesRepository {
     return items.sort(
       (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
     );
+  }
+
+  // Для дашборда — см. countPublicationStats().
+  countStats(): Promise<PublicationStats> {
+    return countPublicationStats(this.repo, 'datePublished');
+  }
+
+  // Полный список для reindex — только поля, нужные для поискового документа, без relations.
+  findAllForSearchIndex(): Promise<
+    Pick<Case, 'id' | 'slug' | 'title' | 'description' | 'datePublished'>[]
+  > {
+    return this.repo.find({
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        description: true,
+        datePublished: true,
+      },
+    });
   }
 
   create(data: {

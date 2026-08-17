@@ -14,10 +14,12 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { ClientsModule } from './modules/clients/clients.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { HealthModule } from './modules/health/health.module';
 import { IndustriesModule } from './modules/industries/industries.module';
 import { MediaModule } from './modules/media/media.module';
+import { SearchModule } from './modules/search/search.module';
 import { ServicesModule } from './modules/services/services.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { TariffPeriodsModule } from './modules/tariff-periods/tariff-periods.module';
@@ -91,6 +93,7 @@ import { UsersModule } from './modules/users/users.module';
     }),
     CoreModule,
     HealthModule,
+    SearchModule,
     ArticlesModule,
     CasesModule,
     ServicesModule,
@@ -104,6 +107,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     AuditModule,
     AuthModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

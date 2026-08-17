@@ -27,6 +27,11 @@ export async function startTestDatabase(): Promise<StartedTestContainer> {
   // Тесты, которым реально нужно управлять доставкой в Bitrix, подменяют BitrixClient через
   // overrideProvider, а не ходят по этому URL.
   process.env.BITRIX_WEBHOOK = 'http://bitrix-webhook.invalid';
+  // Meilisearch недоступен в тестовом окружении — только чтобы пройти обязательную zod-валидацию.
+  // SearchIndexService.onModuleInit() ловит ошибку подключения и не роняет приложение (ТЗ §7 п.2).
+  process.env.MEILI_HOST = 'http://meilisearch.invalid';
+  process.env.MEILI_MASTER_KEY = 'e2e-test-master-key-invalid';
+  process.env.MEILI_SEARCH_KEY = 'e2e-test-search-key-invalid';
 
   return container;
 }
