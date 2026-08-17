@@ -45,7 +45,13 @@ const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
   [HttpStatus.FORBIDDEN]: ErrorCode.FORBIDDEN,
   [HttpStatus.NOT_FOUND]: ErrorCode.NOT_FOUND,
   [HttpStatus.CONFLICT]: ErrorCode.CONFLICT,
+  // Nest сам транслирует превышение лимита размера файла (Multer LIMIT_FILE_SIZE) в
+  // PayloadTooLargeException — см. media-admin.controller.ts (загрузка) и transformException()
+  // в @nestjs/platform-express.
+  [HttpStatus.PAYLOAD_TOO_LARGE]: ErrorCode.PAYLOAD_TOO_LARGE,
   [HttpStatus.TOO_MANY_REQUESTS]: ErrorCode.RATE_LIMITED,
+  // Terminus (health-чек БД) и SearchIndexService.search() бросают ServiceUnavailableException.
+  [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCode.SERVICE_UNAVAILABLE,
 };
 
 @Catch()

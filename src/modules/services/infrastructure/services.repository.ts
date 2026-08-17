@@ -8,6 +8,7 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { Service } from '../domain/service.entity';
 import { ServiceListQueryDto } from '../dto/service-list-query.dto';
 
@@ -93,7 +94,7 @@ export class ServicesRepository {
 
     if (query.search) {
       qb.andWhere('service.title ILIKE :search', {
-        search: `%${query.search}%`,
+        search: `%${escapeLikePattern(query.search)}%`,
       });
     }
 

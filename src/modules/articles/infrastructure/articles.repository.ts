@@ -5,6 +5,7 @@ import {
   countPublicationStats,
   PublicationStats,
 } from '../../../core/persistence/count-publication-stats.util';
+import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import {
   applyAuthorSlugFilter,
   applyTagSlugFilter,
@@ -83,7 +84,7 @@ export class ArticlesRepository {
 
     if (query.search) {
       qb.andWhere('article.title ILIKE :search', {
-        search: `%${query.search}%`,
+        search: `%${escapeLikePattern(query.search)}%`,
       });
     }
     applyAuthorSlugFilter(qb, AUTHOR_JOIN, query.authorSlug);

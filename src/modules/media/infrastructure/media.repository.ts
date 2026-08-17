@@ -5,6 +5,7 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { MediaListQueryDto } from '../dto/media-list-query.dto';
 import { Media } from '../domain/media.entity';
 
@@ -31,7 +32,9 @@ export class MediaRepository {
       .take(query.limit);
 
     if (query.search) {
-      qb.andWhere('media.name ILIKE :search', { search: `%${query.search}%` });
+      qb.andWhere('media.name ILIKE :search', {
+        search: `%${escapeLikePattern(query.search)}%`,
+      });
     }
 
     const [items, total] = await qb.getManyAndCount();
