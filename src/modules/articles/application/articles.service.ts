@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,10 +6,12 @@ import {
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
-import { Employee } from '../../employees/domain/employee.entity';
+import {
+  resolveOptionalEntitiesByIds,
+  resolveRequiredEntitiesByIds,
+} from '../../../core/persistence/resolve-entities-by-ids.util';
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
 import { SearchIndexService } from '../../search/application/search-index.service';
-import { Tag } from '../../tags/domain/tag.entity';
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
 import { ArticleFaqService } from './article-faq.service';
 import {
@@ -39,8 +40,17 @@ export class ArticlesService {
 
   async create(dto: CreateArticleDto): Promise<ArticleResponseDto> {
     const [authors, tags] = await Promise.all([
-      this.resolveAuthors(dto.authorIds),
-      this.resolveTags(dto.tagIds),
+      resolveRequiredEntitiesByIds(
+        dto.authorIds,
+        (ids) => this.employeesRepository.findByIds(ids),
+        'Сотрудники',
+        'authorIds',
+      ),
+      resolveOptionalEntitiesByIds(
+        dto.tagIds,
+        (ids) => this.tagsRepository.findByIds(ids),
+        'Теги',
+      ),
     ]);
 
     const article = this.articlesRepository.create({
@@ -74,10 +84,19 @@ export class ArticlesService {
     const article = await this.findEntityByIdOrFail(id);
 
     if (dto.authorIds !== undefined) {
-      article.authors = await this.resolveAuthors(dto.authorIds);
+      article.authors = await resolveRequiredEntitiesByIds(
+        dto.authorIds,
+        (ids) => this.employeesRepository.findByIds(ids),
+        'Сотрудники',
+        'authorIds',
+      );
     }
     if (dto.tagIds !== undefined) {
-      article.tags = await this.resolveTags(dto.tagIds);
+      article.tags = await resolveOptionalEntitiesByIds(
+        dto.tagIds,
+        (ids) => this.tagsRepository.findByIds(ids),
+        'Теги',
+      );
     }
     // datePublished — отдельно от общего хелпера ниже: значение нужно конвертировать в Date,
     // а простое присутствие ключа в DTO (в т.ч. null) уже отличает "не трогать" от "обнулить".
@@ -207,46 +226,6 @@ export class ArticlesService {
       throw new NotFoundException(`Статья с ID ${id} не найдена`);
     }
     return article;
-  }
-
-  private async resolveAuthors(authorIds: number[]): Promise<Employee[]> {
-    const uniqueIds = Array.from(new Set(authorIds));
-    if (uniqueIds.length === 0) {
-      throw new BadRequestException('authorIds не должен быть пустым');
-    }
-
-    const authors = await this.employeesRepository.findByIds(uniqueIds);
-    this.assertAllFound(
-      'Сотрудники',
-      uniqueIds,
-      authors.map((author) => author.id),
-    );
-    return authors;
-  }
-
-  private async resolveTags(tagIds?: number[]): Promise<Tag[]> {
-    const uniqueIds = Array.from(new Set(tagIds ?? []));
-    if (uniqueIds.length === 0) return [];
-
-    const tags = await this.tagsRepository.findByIds(uniqueIds);
-    this.assertAllFound(
-      'Теги',
-      uniqueIds,
-      tags.map((tag) => tag.id),
-    );
-    return tags;
-  }
-
-  private assertAllFound(
-    label: string,
-    requested: number[],
-    found: number[],
-  ): void {
-    if (found.length === requested.length) return;
-
-    const foundSet = new Set(found);
-    const missing = requested.filter((id) => !foundSet.has(id));
-    throw new BadRequestException(`${label} не найдены: ${missing.join(', ')}`);
   }
 
   private mapSlugConflict(error: unknown): unknown {

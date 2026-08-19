@@ -29,6 +29,30 @@ services:
     volumes:
       - vals_new_meilisearch_data:/meili_data
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vals_new_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      MEILI_HOST: http://meilisearch:7700
+    ports:
+      - '${APP_PORT}:${APP_PORT}'
+    volumes:
+      - ./src:/app/src
+      - ./test:/app/test
+      - ./uploads:/app/uploads
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+
 volumes:
   vals_new_postgres_data:
   vals_new_meilisearch_data:

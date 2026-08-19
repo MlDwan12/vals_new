@@ -1,18 +1,18 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Employee } from '../../employees/domain/employee.entity';
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import {
+  resolveOptionalEntitiesByIds,
+  resolveRequiredEntitiesByIds,
+} from '../../../core/persistence/resolve-entities-by-ids.util';
 import { SearchIndexService } from '../../search/application/search-index.service';
-import { Service } from '../../services/domain/service.entity';
 import { ServicesRepository } from '../../services/infrastructure/services.repository';
-import { Tag } from '../../tags/domain/tag.entity';
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
 import { CaseFaqService } from './case-faq.service';
 import {
@@ -42,9 +42,23 @@ export class CasesService {
 
   async create(dto: CreateCaseDto): Promise<CaseResponseDto> {
     const [services, authors, tags] = await Promise.all([
-      this.resolveServices(dto.serviceIds),
-      this.resolveAuthors(dto.authorIds),
-      this.resolveTags(dto.tagIds),
+      resolveRequiredEntitiesByIds(
+        dto.serviceIds,
+        (ids) => this.servicesRepository.findByIds(ids),
+        'Услуги',
+        'serviceIds',
+      ),
+      resolveRequiredEntitiesByIds(
+        dto.authorIds,
+        (ids) => this.employeesRepository.findByIds(ids),
+        'Сотрудники',
+        'authorIds',
+      ),
+      resolveOptionalEntitiesByIds(
+        dto.tagIds,
+        (ids) => this.tagsRepository.findByIds(ids),
+        'Теги',
+      ),
     ]);
 
     const caseEntity = this.casesRepository.create({
@@ -81,13 +95,27 @@ export class CasesService {
     const caseEntity = await this.findEntityByIdOrFail(id);
 
     if (dto.serviceIds !== undefined) {
-      caseEntity.services = await this.resolveServices(dto.serviceIds);
+      caseEntity.services = await resolveRequiredEntitiesByIds(
+        dto.serviceIds,
+        (ids) => this.servicesRepository.findByIds(ids),
+        'Услуги',
+        'serviceIds',
+      );
     }
     if (dto.authorIds !== undefined) {
-      caseEntity.authors = await this.resolveAuthors(dto.authorIds);
+      caseEntity.authors = await resolveRequiredEntitiesByIds(
+        dto.authorIds,
+        (ids) => this.employeesRepository.findByIds(ids),
+        'Сотрудники',
+        'authorIds',
+      );
     }
     if (dto.tagIds !== undefined) {
-      caseEntity.tags = await this.resolveTags(dto.tagIds);
+      caseEntity.tags = await resolveOptionalEntitiesByIds(
+        dto.tagIds,
+        (ids) => this.tagsRepository.findByIds(ids),
+        'Теги',
+      );
     }
     // datePublished — отдельно от общего хелпера ниже: значение нужно конвертировать в Date,
     // а простое присутствие ключа в DTO (в т.ч. null) уже отличает "не трогать" от "обнулить".
@@ -235,61 +263,6 @@ export class CasesService {
       throw new NotFoundException(`Кейс с ID ${id} не найден`);
     }
     return caseEntity;
-  }
-
-  private async resolveServices(serviceIds: number[]): Promise<Service[]> {
-    const uniqueIds = Array.from(new Set(serviceIds));
-    if (uniqueIds.length === 0) {
-      throw new BadRequestException('serviceIds не должен быть пустым');
-    }
-
-    const services = await this.servicesRepository.findByIds(uniqueIds);
-    this.assertAllFound(
-      'Услуги',
-      uniqueIds,
-      services.map((service) => service.id),
-    );
-    return services;
-  }
-
-  private async resolveAuthors(authorIds: number[]): Promise<Employee[]> {
-    const uniqueIds = Array.from(new Set(authorIds));
-    if (uniqueIds.length === 0) {
-      throw new BadRequestException('authorIds не должен быть пустым');
-    }
-
-    const authors = await this.employeesRepository.findByIds(uniqueIds);
-    this.assertAllFound(
-      'Сотрудники',
-      uniqueIds,
-      authors.map((author) => author.id),
-    );
-    return authors;
-  }
-
-  private async resolveTags(tagIds?: number[]): Promise<Tag[]> {
-    const uniqueIds = Array.from(new Set(tagIds ?? []));
-    if (uniqueIds.length === 0) return [];
-
-    const tags = await this.tagsRepository.findByIds(uniqueIds);
-    this.assertAllFound(
-      'Теги',
-      uniqueIds,
-      tags.map((tag) => tag.id),
-    );
-    return tags;
-  }
-
-  private assertAllFound(
-    label: string,
-    requested: number[],
-    found: number[],
-  ): void {
-    if (found.length === requested.length) return;
-
-    const foundSet = new Set(found);
-    const missing = requested.filter((id) => !foundSet.has(id));
-    throw new BadRequestException(`${label} не найдены: ${missing.join(', ')}`);
   }
 
   private mapSlugConflict(error: unknown): unknown {
