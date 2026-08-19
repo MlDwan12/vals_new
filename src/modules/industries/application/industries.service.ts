@@ -23,7 +23,7 @@ export class IndustriesService {
       const industry = await this.industriesRepository.create(dto);
       return IndustryResponseDto.fromEntity(industry);
     } catch (error) {
-      throw this.mapNameConflict(error);
+      throw this.mapUniqueConflict(error);
     }
   }
 
@@ -38,7 +38,7 @@ export class IndustriesService {
       }
       return IndustryResponseDto.fromEntity(updated);
     } catch (error) {
-      throw this.mapNameConflict(error);
+      throw this.mapUniqueConflict(error);
     }
   }
 
@@ -67,6 +67,21 @@ export class IndustriesService {
     );
   }
 
+  async findPublishedList(): Promise<IndustryResponseDto[]> {
+    const industries = await this.industriesRepository.findPublishedList();
+    return industries.map((industry) =>
+      IndustryResponseDto.fromEntity(industry),
+    );
+  }
+
+  async findPublishedBySlugOrFail(slug: string): Promise<IndustryResponseDto> {
+    const industry = await this.industriesRepository.findBySlugPublished(slug);
+    if (!industry) {
+      throw new NotFoundException(`Отрасль со slug "${slug}" не найдена`);
+    }
+    return IndustryResponseDto.fromEntity(industry);
+  }
+
   private async findEntityByIdOrFail(id: number): Promise<Industry> {
     const industry = await this.industriesRepository.findById(id);
     if (!industry) {
@@ -75,9 +90,11 @@ export class IndustriesService {
     return industry;
   }
 
-  private mapNameConflict(error: unknown): unknown {
+  private mapUniqueConflict(error: unknown): unknown {
     if (isUniqueViolation(error)) {
-      return new ConflictException('Отрасль с таким названием уже существует');
+      return new ConflictException(
+        'Отрасль с таким названием или slug уже существует',
+      );
     }
     return error;
   }

@@ -20,8 +20,8 @@ import { CreateIndustryDto } from '../dto/create-industry.dto';
 import { IndustryResponseDto } from '../dto/industry-response.dto';
 import { UpdateIndustryDto } from '../dto/update-industry.dto';
 
-// Путь сохранён из старого контракта в единственном числе (admin/industry) — публичных роутов
-// у отраслей нет и не было (ТЗ §4 — контракт воспроизводится один в один).
+// Путь сохранён из старого контракта в единственном числе (admin/industry) — ТЗ §4, контракт
+// админки воспроизводится один в один. Публичные роуты — отдельный IndustriesController (/industries).
 @Controller('admin/industry')
 @Roles(...CONTENT_ROLES)
 export class IndustriesAdminController {
