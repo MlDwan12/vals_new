@@ -24,6 +24,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           ] ?? null,
       ]),
       secretOrKey: configService.get('JWT_SECRET', { infer: true }),
+      // Явно запинено — без этого passport-jwt принимает alg из заголовка самого токена
+      // (alg confusion, если бы когда-нибудь появился второй ключ/алгоритм).
+      algorithms: ['HS256'],
     });
   }
 

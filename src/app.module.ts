@@ -35,6 +35,15 @@ import { UsersModule } from './modules/users/users.module';
     ServeStaticModule.forRoot({
       rootPath: UPLOADS_ROOT,
       serveRoot: '/uploads',
+      serveStaticOptions: {
+        // Файлы именуются случайным UUID и никогда не перезаписываются (переливка — новый UUID) —
+        // безопасно кешировать агрессивно. index/dotfiles — не нужны для чисто файлового каталога
+        // (LOW code review).
+        maxAge: '1y',
+        immutable: true,
+        index: false,
+        dotfiles: 'ignore',
+      },
     }),
     ScheduleModule.forRoot(),
     LoggerModule.forRootAsync({
@@ -42,9 +51,19 @@ import { UsersModule } from './modules/users/users.module';
       useFactory: (configService: ConfigService<EnvConfig, true>) => ({
         pinoHttp: {
           level: configService.get('LOG_LEVEL', { infer: true }),
+          // Клиентский x-request-id принимается без проверки формата/длины — попадает в каждую
+          // лог-строку и в тело ответа (requestId); без ограничения клиент может залить логи
+          // произвольно длинной/управляющими символами строкой (LOW code review). Разрешён только
+          // разумный "трейсинговый" алфавит и длина.
           genReqId: (req: IncomingMessage) => {
             const existing = req.headers['x-request-id'];
-            return typeof existing === 'string' ? existing : randomUUID();
+            if (
+              typeof existing === 'string' &&
+              /^[A-Za-z0-9._-]{1,128}$/.test(existing)
+            ) {
+              return existing;
+            }
+            return randomUUID();
           },
           redact: {
             paths: [

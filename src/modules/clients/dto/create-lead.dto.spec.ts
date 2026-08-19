@@ -106,6 +106,28 @@ describe('CreateLeadDto', () => {
     expect(errors.some((e) => e.property === 'message')).toBe(true);
   });
 
+  it('невалидный email у не-TARIFF_REQUEST не блокирует лид (M5 code review)', async () => {
+    const errors = await validateDto({
+      name: 'Иван',
+      phone: '79991112233',
+      type: ClientLeadType.FREE_CONSULTATION,
+      email: 'ivan@',
+    });
+    expect(errors).toHaveLength(0);
+  });
+
+  it('невалидный email у TARIFF_REQUEST не проходит', async () => {
+    const errors = await validateDto({
+      name: 'Иван',
+      phone: '79991112233',
+      type: ClientLeadType.TARIFF_REQUEST,
+      email: 'ivan@',
+      tariffId: 1,
+      periodId: 2,
+    });
+    expect(errors.some((e) => e.property === 'email')).toBe(true);
+  });
+
   it('honeypot-поле website — валидная опциональная строка, не ломает валидацию', async () => {
     const errors = await validateDto({
       name: 'Bot',

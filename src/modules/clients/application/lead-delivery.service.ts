@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { isAxiosError } from 'axios';
 import { PinoLogger } from 'nestjs-pino';
 import { BitrixClient } from './bitrix-client';
-import { computeNextRetryAt } from './lead-retry-backoff.util';
+import {
+  computeNextRetryAt,
+  isRetryableBitrixStatus,
+} from './lead-retry-backoff.util';
 import { ClientLead } from '../domain/client-lead.entity';
 import { ClientLeadsRepository } from '../infrastructure/client-leads.repository';
 
@@ -30,11 +34,23 @@ export class LeadDeliveryService {
       );
     } catch (error) {
       const retryCount = lead.retryCount + 1;
-      const nextRetryAt = computeNextRetryAt(retryCount);
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      const nextRetryAt = isRetryableBitrixStatus(status)
+        ? computeNextRetryAt(retryCount)
+        : null;
       const message = error instanceof Error ? error.message : 'Unknown error';
 
+      // Не логировать error целиком: для AxiosError это утекает config.url (вебхук с секретным
+      // токеном Bitrix) и config.data (ПД лида) через сериализатор pino. Только безопасные поля.
       this.logger.warn(
-        { leadId: lead.id, retryCount, nextRetryAt, err: error },
+        {
+          leadId: lead.id,
+          retryCount,
+          nextRetryAt,
+          errorMessage: message,
+          errorCode: isAxiosError(error) ? error.code : undefined,
+          responseStatus: status,
+        },
         nextRetryAt
           ? 'Bitrix delivery failed, will retry'
           : 'Bitrix delivery failed, giving up',

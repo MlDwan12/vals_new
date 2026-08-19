@@ -18,6 +18,7 @@ import { isValidWebpSignature } from '../util/webp-signature.util';
 import { MediaRepository } from '../infrastructure/media.repository';
 
 const UPLOAD_DIR = path.join(UPLOADS_ROOT, 'media');
+const MAX_NAME_LENGTH = 255; // media.name — varchar(255)
 
 function decodeOriginalName(file: Express.Multer.File): string {
   // multer/busboy отдают originalname в latin1 независимо от реальной кодировки — переинтерпретация
@@ -62,6 +63,15 @@ export class MediaService implements OnModuleInit {
 
     for (const file of files) {
       const originalName = decodeOriginalName(file);
+
+      // Имя без расширения идёт в media.name (varchar(255)) — без этой проверки слишком длинное
+      // имя файла падает необработанным Postgres-исключением (500) вместо чистого 400
+      // (LOW code review).
+      if (path.parse(originalName).name.length > MAX_NAME_LENGTH) {
+        throw new BadRequestException(
+          `Имя файла "${originalName}" слишком длинное (максимум ${MAX_NAME_LENGTH} символов без расширения)`,
+        );
+      }
 
       if (file.size > maxSize) {
         throw new BadRequestException(

@@ -28,6 +28,11 @@ function baseCookieOptions(
   };
 }
 
+// Refresh-токен читается только на /auth/refresh и /auth/logout (RefreshStrategy) — path: '/auth'
+// сужает куку так, что браузер не шлёт её на каждый обычный запрос (только там, где она реально
+// нужна).
+const REFRESH_COOKIE_PATH = '/auth';
+
 export function setAuthCookies(
   res: Response,
   configService: ConfigService<EnvConfig, true>,
@@ -41,6 +46,7 @@ export function setAuthCookies(
   });
   res.cookie(REFRESH_TOKEN_COOKIE, tokens.refreshToken, {
     ...options,
+    path: REFRESH_COOKIE_PATH,
     maxAge: ttl.refreshMs,
   });
 }
@@ -51,5 +57,8 @@ export function clearAuthCookies(
 ): void {
   const options = baseCookieOptions(configService);
   res.clearCookie(ACCESS_TOKEN_COOKIE, options);
-  res.clearCookie(REFRESH_TOKEN_COOKIE, options);
+  res.clearCookie(REFRESH_TOKEN_COOKIE, {
+    ...options,
+    path: REFRESH_COOKIE_PATH,
+  });
 }

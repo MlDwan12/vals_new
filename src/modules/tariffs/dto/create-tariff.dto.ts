@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateTariffDto {
@@ -25,12 +26,14 @@ export class CreateTariffDto {
   @IsNotEmpty()
   features: string;
 
+  // NOT NULL с дефолтом в БД — @IsOptional() пропустил бы явный null мимо валидации на PATCH
+  // (code review, тот же приём, что у priority/hasToc в статьях/кейсах).
   @IsBoolean()
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   isPopular?: boolean;
 
   @IsInt()
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   orderIndex?: number;
 
   @IsInt()

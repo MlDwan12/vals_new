@@ -7,6 +7,7 @@ import { ArticleFaqAdminController } from './api/article-faq-admin.controller';
 import { ArticlesAdminController } from './api/articles-admin.controller';
 import { ArticlesController } from './api/articles.controller';
 import { ArticleFaqService } from './application/article-faq.service';
+import { ArticlesReindexScheduler } from './application/articles-reindex.scheduler';
 import { ArticlesService } from './application/articles.service';
 import { ArticleFaq } from './domain/article-faq.entity';
 import { Article } from './domain/article.entity';
@@ -30,6 +31,7 @@ import { ArticlesRepository } from './infrastructure/articles.repository';
     ArticlesRepository,
     ArticleFaqService,
     ArticleFaqRepository,
+    ArticlesReindexScheduler,
   ],
   exports: [ArticlesRepository],
 })

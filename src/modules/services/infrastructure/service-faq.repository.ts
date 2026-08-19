@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { ServiceFaq } from '../domain/service-faq.entity';
 
 interface CreateServiceFaqRecord {
@@ -53,7 +54,9 @@ export class ServiceFaqRepository {
     id: number,
     patch: UpdateServiceFaqRecord,
   ): Promise<ServiceFaq | null> {
-    await this.repo.update(id, patch);
+    if (!isEmptyPatch(patch)) {
+      await this.repo.update(id, patch);
+    }
     return this.findById(id);
   }
 

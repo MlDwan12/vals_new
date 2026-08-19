@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { TariffPeriod } from '../domain/tariff-period.entity';
 
 interface CreateTariffPeriodRecord {
@@ -46,7 +47,9 @@ export class TariffPeriodsRepository {
     id: number,
     patch: UpdateTariffPeriodRecord,
   ): Promise<TariffPeriod | null> {
-    await this.repo.update(id, patch);
+    if (!isEmptyPatch(patch)) {
+      await this.repo.update(id, patch);
+    }
     return this.findById(id);
   }
 

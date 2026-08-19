@@ -112,6 +112,13 @@ export class ClientLead {
   @Column({ name: 'bitrix_error', type: 'text', nullable: true })
   bitrixError: string | null;
 
+  // Момент claim-а (PENDING/FAILED -> SENDING). Без него зависший процесс (крэш/kill между claim
+  // и markSent/markFailedAttempt) навсегда застревает в SENDING — findDueForDelivery отбирает
+  // только PENDING, реклейм по устаревшему sendingAt возвращает такую заявку в оборот (altitude
+  // review на H10-фикс).
+  @Column({ name: 'sending_at', type: 'timestamptz', nullable: true })
+  sendingAt: Date | null;
+
   @Index()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

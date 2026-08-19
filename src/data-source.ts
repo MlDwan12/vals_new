@@ -22,7 +22,10 @@ export function buildDataSourceOptions(): DataSourceOptions {
     entities: [join(__dirname, 'modules/**/*.entity{.ts,.js}')],
     migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
     synchronize: false,
-    logging: true,
+    // CLI-инструменты (migration:*/seed) — не рантайм приложения. SQL полезен при отладке миграций,
+    // но не должен литься в stdout безусловно (LOW code review: SQL с ПД, например INSERT сида
+    // с username/паролем-хешем).
+    logging: env.NODE_ENV !== 'production',
   };
 }
 

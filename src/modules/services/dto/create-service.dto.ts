@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { ServiceBackgroundColor } from '../enums/service-background-color.enum';
 
@@ -43,7 +44,9 @@ export class CreateServiceDto {
   @IsNotEmpty()
   icon: string;
 
-  @IsOptional()
+  // NOT NULL с дефолтом в БД — @IsOptional() пропустил бы явный null мимо валидации на PATCH
+  // (code review, тот же приём, что у priority/hasToc в статьях/кейсах).
+  @ValidateIf((_, value) => value !== undefined)
   @IsEnum(ServiceBackgroundColor)
   backgroundColor?: ServiceBackgroundColor;
 }

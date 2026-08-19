@@ -12,7 +12,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { Roles } from '../../../core/decorators/roles.decorator';
-import { CONTENT_ROLES } from '../../../core/enums/role-groups.constant';
+import {
+  ADMIN_ROLES,
+  CONTENT_ROLES,
+} from '../../../core/enums/role-groups.constant';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { ArticlesService } from '../application/articles.service';
 import { ArticleListQueryDto } from '../dto/article-list-query.dto';
@@ -31,7 +34,10 @@ export class ArticlesAdminController {
     return this.articlesService.create(dto);
   }
 
+  // Реиндексация всего контента — дороже обычных CRUD-операций, старый код держал её за
+  // ADMIN_ROLES отдельно от общего CONTENT_ROLES контроллера (M4 code review).
   @Post('reindex')
+  @Roles(...ADMIN_ROLES)
   @HttpCode(HttpStatus.OK)
   reindex(): Promise<void> {
     return this.articlesService.reindexSearch();

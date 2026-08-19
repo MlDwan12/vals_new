@@ -16,6 +16,7 @@ import { ServicesRepository } from '../../services/infrastructure/services.repos
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
 import { CaseFaqService } from './case-faq.service';
 import {
+  buildCaseFaqSearchDocuments,
   buildCaseSearchDocument,
   caseFaqDocumentIds,
   isCasePublished,
@@ -160,7 +161,8 @@ export class CasesService {
     ]);
   }
 
-  // Полная переиндексация (admin) — кейсы + их FAQ одним вызовом.
+  // Полная переиндексация (admin + периодический тик) — кейсы + их FAQ одним вызовом. Дополнительно
+  // чистит stale-документы — upsert сам по себе их не находит (M7 code review).
   async reindexSearch(): Promise<void> {
     const now = new Date();
     const [cases, faqDocs] = await Promise.all([
@@ -178,6 +180,14 @@ export class CasesService {
       ...publishedDocs,
       ...faqDocs,
     ]);
+    await this.searchIndexService.reconcileStaleDocuments(
+      'case',
+      'caseFaq_',
+      new Set([
+        ...publishedDocs.map((doc) => doc.id),
+        ...faqDocs.map((doc) => doc.id),
+      ]),
+    );
   }
 
   async findById(id: number): Promise<CaseResponseDto> {
@@ -272,13 +282,19 @@ export class CasesService {
     return error;
   }
 
+  // FAQ кейса синхронизируется тем же вызовом, что и сам документ — иначе unpublish/публикация/
+  // смена slug кейса рассинхронизирует FAQ с его состоянием в индексе (H6).
   private async indexCase(caseEntity: Case): Promise<void> {
     if (isCasePublished(caseEntity)) {
       await this.searchIndexService.upsertDocuments([
         buildCaseSearchDocument(caseEntity),
+        ...buildCaseFaqSearchDocuments(caseEntity),
       ]);
     } else {
-      await this.searchIndexService.deleteDocuments([`case_${caseEntity.id}`]);
+      await this.searchIndexService.deleteDocuments([
+        `case_${caseEntity.id}`,
+        ...caseFaqDocumentIds(caseEntity),
+      ]);
     }
   }
 }

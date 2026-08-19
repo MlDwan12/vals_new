@@ -18,10 +18,14 @@ export function resolveAuditResource(path: string): {
   return { resource, resourceId };
 }
 
+const IP_MAX_LENGTH = 64; // audit_logs.ip — varchar(64)
+
+// request.ip — не первый элемент X-Forwarded-For руками (клиент полностью контролирует этот
+// заголовок и мог одной ротацией отключить аудит своих же действий — H9). С trust proxy,
+// настроенным в main.ts (H3), Express сам корректно достаёт IP клиента с учётом доверенного
+// числа хопов за nginx, а не берёт значение, которое клиент может подделать.
 export function resolveClientIp(request: Request): string | null {
-  const forwarded = request.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0].trim();
-  }
-  return request.ip ?? null;
+  const ip = request.ip;
+  if (!ip) return null;
+  return ip.length > IP_MAX_LENGTH ? ip.slice(0, IP_MAX_LENGTH) : ip;
 }

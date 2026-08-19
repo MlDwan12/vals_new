@@ -9,6 +9,7 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateEmployeeDto {
@@ -53,8 +54,9 @@ export class CreateEmployeeDto {
   @IsString()
   experience?: string;
 
-  // Ссылки на внешние профили
-  @IsOptional()
+  // Ссылки на внешние профили. NOT NULL с дефолтом '[]' в БД — @IsOptional() пропустил бы явный
+  // null мимо валидации (падал бы not-null violation'ом в БД, code review).
+  @ValidateIf((_, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
@@ -69,14 +71,15 @@ export class CreateEmployeeDto {
   @IsString()
   metaDescription?: string;
 
-  // Порядок на странице «Команда»
-  @IsOptional()
+  // Порядок на странице «Команда». NOT NULL с дефолтом — см. sameAs выше.
+  @ValidateIf((_, value) => value !== undefined)
   @IsInt()
   @Min(0)
   priority?: number;
 
-  // Видимость на сайте (false — скрыт, но авторство в старых материалах сохраняется)
-  @IsOptional()
+  // Видимость на сайте (false — скрыт, но авторство в старых материалах сохраняется). NOT NULL
+  // с дефолтом — см. sameAs выше.
+  @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   isVisible?: boolean;
 }

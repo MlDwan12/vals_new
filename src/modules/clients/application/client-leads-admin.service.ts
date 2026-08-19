@@ -5,7 +5,6 @@ import {
 } from '../../../core/pagination/paginated-result.interface';
 import { ClientLeadListQueryDto } from '../dto/client-lead-list-query.dto';
 import { ClientLeadResponseDto } from '../dto/client-lead-response.dto';
-import { LeadDeliveryStatus } from '../enums/lead-delivery-status.enum';
 import { ClientLeadsRepository } from '../infrastructure/client-leads.repository';
 import { LeadDeliveryService } from './lead-delivery.service';
 
@@ -44,15 +43,17 @@ export class ClientLeadsAdminService {
   }
 
   // Ручная повторная отправка (ТЗ §7 п.3) — синхронная попытка прямо сейчас, не постановка в очередь
-  // до следующего тика планировщика: админ должен сразу увидеть результат. Уже доставленный лид не
-  // отправляется повторно — иначе двойной клик (или retry после того, как планировщик уже успел
-  // доставить) создаёт дубль лида в самом Bitrix CRM.
+  // до следующего тика планировщика: админ должен сразу увидеть результат. claimForDelivery —
+  // атомарный переход PENDING/FAILED -> SENDING: двойной клик или гонка с планировщиком, который
+  // уже забрал этот же лид, получает null и просто возвращает текущее состояние без повторной
+  // отправки (иначе — дубль лида в самом Bitrix CRM).
   async retry(id: number): Promise<ClientLeadResponseDto> {
-    const lead = await this.findEntityByIdOrFail(id);
-    if (lead.status === LeadDeliveryStatus.SENT) {
+    const claimed = await this.clientLeadsRepository.claimForDelivery(id);
+    if (!claimed) {
+      const lead = await this.findEntityByIdOrFail(id);
       return ClientLeadResponseDto.fromEntity(lead);
     }
-    const updated = await this.leadDeliveryService.attemptDelivery(lead);
+    const updated = await this.leadDeliveryService.attemptDelivery(claimed);
     return ClientLeadResponseDto.fromEntity(updated);
   }
 

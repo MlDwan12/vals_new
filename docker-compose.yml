@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - '${DB_PORT}:5432'
+      # Только localhost — Postgres не должен торчать наружу на 0.0.0.0 (M9 code review).
+      - '127.0.0.1:${DB_PORT}:5432'
     volumes:
       - vals_new_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +26,8 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       MEILI_NO_ANALYTICS: 'true'
     ports:
-      - '7700:7700'
+      # Только localhost (M9 code review).
+      - '127.0.0.1:7700:7700'
     volumes:
       - vals_new_meilisearch_data:/meili_data
 
@@ -39,6 +41,11 @@ services:
       - .env
     environment:
       DB_HOST: postgres
+      # Порт postgres внутри docker-сети всегда 5432 — DB_PORT из .env (host-side проброс) сюда не
+      # подходит: если он переопределён (например, 5433, чтобы не конфликтовать с локальным
+      # postgres на хосте), api пытался бы достучаться до postgres:5433, которого внутри сети нет
+      # (M9 code review).
+      DB_PORT: '5432'
       MEILI_HOST: http://meilisearch:7700
     ports:
       - '${APP_PORT}:${APP_PORT}'

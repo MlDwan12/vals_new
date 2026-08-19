@@ -31,6 +31,10 @@ export class CreateLeadDto {
   @MaxLength(5000)
   message?: string;
 
+  // Контракт старого API (M5 code review) — строгий формат email проверяется только для
+  // TARIFF_REQUEST; для остальных типов заявок опечатка вроде "ivan@" не должна ронять весь лид
+  // 400-й — посетитель всё равно становится лидом по телефону.
+  @ValidateIf((o: CreateLeadDto) => o.type === ClientLeadType.TARIFF_REQUEST)
   @IsOptional()
   @IsEmail()
   @MaxLength(255)

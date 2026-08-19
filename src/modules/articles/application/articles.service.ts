@@ -16,6 +16,7 @@ import { TagsRepository } from '../../tags/infrastructure/tags.repository';
 import { ArticleFaqService } from './article-faq.service';
 import {
   articleFaqDocumentIds,
+  buildArticleFaqSearchDocuments,
   buildArticleSearchDocument,
   isArticlePublished,
 } from './article-search-document.util';
@@ -141,8 +142,10 @@ export class ArticlesService {
     ]);
   }
 
-  // Полная переиндексация (admin) — статьи + их FAQ одним вызовом, без отдельного эндпоинта
-  // на FAQ (в новой схеме это часть переиндексации статей, не самостоятельный раздел поиска).
+  // Полная переиндексация (admin + периодический тик) — статьи + их FAQ одним вызовом, без
+  // отдельного эндпоинта на FAQ (в новой схеме это часть переиндексации статей, не самостоятельный
+  // раздел поиска). Дополнительно чистит stale-документы — upsert сам по себе их не находит
+  // (M7 code review).
   async reindexSearch(): Promise<void> {
     const now = new Date();
     const [articles, faqDocs] = await Promise.all([
@@ -160,6 +163,14 @@ export class ArticlesService {
       ...publishedDocs,
       ...faqDocs,
     ]);
+    await this.searchIndexService.reconcileStaleDocuments(
+      'article',
+      'articleFaq_',
+      new Set([
+        ...publishedDocs.map((doc) => doc.id),
+        ...faqDocs.map((doc) => doc.id),
+      ]),
+    );
   }
 
   async findById(id: number): Promise<ArticleResponseDto> {
@@ -236,14 +247,20 @@ export class ArticlesService {
   }
 
   // Черновик/отложенная статья не должна утекать в публичный поиск (ТЗ §2 — только опубликованный
-  // контент виден на сайте; старый код индексировал вообще без проверки публикации).
+  // контент виден на сайте; старый код индексировал вообще без проверки публикации). FAQ статьи
+  // синхронизируется тем же вызовом (не только сам документ статьи) — иначе unpublish/публикация/
+  // смена slug рассинхронизирует FAQ с состоянием статьи в индексе (H6).
   private async indexArticle(article: Article): Promise<void> {
     if (isArticlePublished(article)) {
       await this.searchIndexService.upsertDocuments([
         buildArticleSearchDocument(article),
+        ...buildArticleFaqSearchDocuments(article),
       ]);
     } else {
-      await this.searchIndexService.deleteDocuments([`article_${article.id}`]);
+      await this.searchIndexService.deleteDocuments([
+        `article_${article.id}`,
+        ...articleFaqDocumentIds(article),
+      ]);
     }
   }
 }

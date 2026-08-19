@@ -10,6 +10,7 @@ import { ServicesAdminController } from './api/services-admin.controller';
 import { ServicesController } from './api/services.controller';
 import { ServiceCategoriesService } from './application/service-categories.service';
 import { ServiceFaqService } from './application/service-faq.service';
+import { ServicesReindexScheduler } from './application/services-reindex.scheduler';
 import { ServiceStepsService } from './application/service-steps.service';
 import { ServicesService } from './application/services.service';
 import { ServiceCategory } from './domain/service-category.entity';
@@ -49,6 +50,7 @@ import { ServicesRepository } from './infrastructure/services.repository';
     ServiceStepsRepository,
     ServiceFaqService,
     ServiceFaqRepository,
+    ServicesReindexScheduler,
   ],
   exports: [ServicesRepository],
 })

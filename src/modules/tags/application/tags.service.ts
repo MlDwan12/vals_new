@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import {
   isForeignKeyViolation,
   isUniqueViolation,
@@ -14,23 +15,64 @@ import { TagWithCountsResponseDto } from '../dto/tag-with-counts-response.dto';
 import { UpdateTagDto } from '../dto/update-tag.dto';
 import { Tag } from '../domain/tag.entity';
 import { TagsRepository } from '../infrastructure/tags.repository';
+import { transliterate } from '../util/transliterate.util';
 
 @Injectable()
 export class TagsService {
   constructor(private readonly tagsRepository: TagsRepository) {}
 
+  // Идемпотентно по имени (creatable-комбобокс в форме статьи/кейса не должен плодить дубли тега
+  // с тем же названием при повторном сабмите) + slug генерируется на бэке, не принимается извне
+  // (контракт старого API — CreateTagDto не содержал slug вовсе). Проверка "существует ли уже" —
+  // check-then-act, не атомарно сама по себе: настоящую идемпотентность под гонкой (два
+  // конкурентных сабмита с одним именем) даёт unique-индекс на tags.name в БД (как в старом
+  // vals_api) — при его нарушении просто отдаём тег, который успел создать конкурент, вместо 409
+  // (code review).
   async create(dto: CreateTagDto): Promise<TagResponseDto> {
+    const name = dto.name.trim();
+    const existing = await this.tagsRepository.findByNameCI(name);
+    if (existing) {
+      return TagResponseDto.fromEntity(existing);
+    }
+
     try {
-      const tag = await this.tagsRepository.create(dto);
+      const slug = await this.generateUniqueSlug(name);
+      const tag = await this.tagsRepository.create({
+        name,
+        slug,
+        priority: dto.priority ?? 0,
+      });
       return TagResponseDto.fromEntity(tag);
     } catch (error) {
+      if (isUniqueViolation(error)) {
+        const raceWinner = await this.tagsRepository.findByNameCI(name);
+        if (raceWinner) {
+          return TagResponseDto.fromEntity(raceWinner);
+        }
+      }
       throw this.mapSlugConflict(error);
     }
   }
 
   async update(id: number, dto: UpdateTagDto): Promise<TagResponseDto> {
+    const tag = await this.findEntityByIdOrFail(id);
+    const patch: { name?: string; slug?: string; priority?: number } = {};
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (name !== tag.name) {
+        patch.name = name;
+        patch.slug = await this.generateUniqueSlug(name, tag.id);
+      }
+    }
+    if (dto.priority !== undefined) {
+      patch.priority = dto.priority;
+    }
+
     try {
-      const updated = await this.tagsRepository.update(id, dto);
+      const updated = isEmptyPatch(patch)
+        ? tag
+        : await this.tagsRepository.update(id, patch);
       if (!updated) {
         throw new NotFoundException(`Тег с ID ${id} не найден`);
       }
@@ -38,6 +80,21 @@ export class TagsService {
     } catch (error) {
       throw this.mapSlugConflict(error);
     }
+  }
+
+  private async generateUniqueSlug(
+    name: string,
+    excludeId?: number,
+  ): Promise<string> {
+    const base = transliterate(name) || 'tag';
+    let candidate = base;
+    let suffix = 2;
+
+    while (await this.tagsRepository.existsBySlug(candidate, excludeId)) {
+      candidate = `${base}-${suffix++}`;
+    }
+
+    return candidate;
   }
 
   // tag_id в article_tags/case_tags — ON DELETE NO ACTION (проверено на реальной миграции), удаление

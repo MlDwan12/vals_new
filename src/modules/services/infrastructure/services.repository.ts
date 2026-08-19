@@ -47,6 +47,9 @@ const FULL_RELATIONS = {
 const FULL_ORDER = {
   id: 'ASC' as const,
   steps: { step: 'ASC' as const },
+  // M3 code review: старый код дополнительно сортировал tariffs.order_index ASC — без этого
+  // порядок тарифов на публичной странице услуги не определён (зависит от порядка вставки в БД).
+  tariffs: { orderIndex: 'ASC' as const },
 };
 
 @Injectable()

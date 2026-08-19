@@ -19,7 +19,9 @@ export class ServiceInfoDto {
   icon: string;
   backgroundColor: ServiceBackgroundColor;
   category: ServiceCategoryShortDto;
-  steps: ServiceStepResponseDto[];
+  // Контракт старого API — публичное поле называется stages, внутреннее имя сущности/таблицы
+  // (service_steps) не меняем.
+  stages: ServiceStepResponseDto[];
   tariffs: TariffEmbeddedDto[];
   faq: ServiceFaqResponseDto[];
   cases: CaseMainInfoDto[];
@@ -38,7 +40,7 @@ export class ServiceInfoDto {
     dto.icon = service.icon;
     dto.backgroundColor = service.backgroundColor;
     dto.category = ServiceCategoryShortDto.fromEntity(service.category);
-    dto.steps = service.steps
+    dto.stages = service.steps
       .slice()
       .sort((a, b) => a.step - b.step)
       .map((step) => ServiceStepResponseDto.fromEntity(step));

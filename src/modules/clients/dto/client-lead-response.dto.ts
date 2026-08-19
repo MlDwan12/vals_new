@@ -36,7 +36,13 @@ export class ClientLeadResponseDto {
     dto.comment = lead.comment;
     dto.utm = lead.utm;
     dto.payload = lead.payload;
-    dto.status = lead.status;
+    // SENDING — внутреннее переходное состояние claim-а (H10 code review), контракт ответа
+    // (admin_front) построен под старые 3 значения статуса — наружу оно неотличимо от PENDING
+    // (доставка ещё не подтверждена), а не отдельное значение, под которое фронт не готов.
+    dto.status =
+      lead.status === LeadDeliveryStatus.SENDING
+        ? LeadDeliveryStatus.PENDING
+        : lead.status;
     dto.retryCount = lead.retryCount;
     dto.nextRetryAt = lead.nextRetryAt;
     dto.bitrixLeadId = lead.bitrixLeadId;

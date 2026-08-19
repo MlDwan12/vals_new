@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { ILike, In, Not, Repository } from 'typeorm';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { TagWithCountsRow } from '../dto/tag-with-counts-response.dto';
 import { Tag } from '../domain/tag.entity';
 
@@ -25,12 +26,26 @@ export class TagsRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  // Идемпотентность create по имени (без учёта регистра) — creatable-комбобокс в админке не
+  // должен плодить дубли тега с тем же названием.
+  findByNameCI(name: string): Promise<Tag | null> {
+    return this.repo.findOne({ where: { name: ILike(name) } });
+  }
+
+  existsBySlug(slug: string, excludeId?: number): Promise<boolean> {
+    return this.repo.exists({
+      where: excludeId !== undefined ? { slug, id: Not(excludeId) } : { slug },
+    });
+  }
+
   create(data: CreateTagRecord): Promise<Tag> {
     return this.repo.save(this.repo.create(data));
   }
 
   async update(id: number, patch: UpdateTagRecord): Promise<Tag | null> {
-    await this.repo.update(id, patch);
+    if (!isEmptyPatch(patch)) {
+      await this.repo.update(id, patch);
+    }
     return this.findById(id);
   }
 

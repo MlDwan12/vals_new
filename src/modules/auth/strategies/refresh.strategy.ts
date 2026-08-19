@@ -22,6 +22,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
           ] ?? null,
       ]),
       secretOrKey: configService.get('JWT_REFRESH_SECRET', { infer: true }),
+      algorithms: ['HS256'],
     });
   }
 

@@ -27,6 +27,12 @@ export class CaseResponseDto {
   authors: EmployeeShortDto[];
   tags: TagShortDto[];
   faq: CaseFaqResponseDto[];
+  // Контракт старого API — плоские id рядом с полными объектами (vals_api cases.service.ts
+  // fetchCaseRow): карточка кейса в админке предзаполняет мультиселекты этими массивами, а не
+  // мэппингом объектов обратно в id.
+  serviceIds: number[];
+  authorIds: number[];
+  tagIds: number[];
 
   static fromEntity(caseEntity: Case): CaseResponseDto {
     const dto = new CaseResponseDto();
@@ -55,6 +61,9 @@ export class CaseResponseDto {
     );
     dto.tags = caseEntity.tags.map((tag) => TagShortDto.fromEntity(tag));
     dto.faq = caseEntity.faq.map((item) => CaseFaqResponseDto.fromEntity(item));
+    dto.serviceIds = caseEntity.services.map((service) => service.id);
+    dto.authorIds = caseEntity.authors.map((author) => author.id);
+    dto.tagIds = caseEntity.tags.map((tag) => tag.id);
     return dto;
   }
 }

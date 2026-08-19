@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -9,14 +10,30 @@ import { AppModule } from './app.module';
 import { EnvConfig } from './config/env.validation';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(Logger));
 
   const configService = app.get<ConfigService<EnvConfig, true>>(ConfigService);
 
-  app.use(helmet());
+  // За nginx: без этого req.ip у ThrottlerGuard/аудита = IP nginx, а не клиента (весь rate
+  // limit/аудит превращается в один общий бакет). nginx обязан переписывать X-Forwarded-For,
+  // не дописывать к клиентскому.
+  app.set('trust proxy', 1);
+
+  // cross-origin — иначе Cross-Origin-Resource-Policy: same-origin (дефолт helmet) блокирует
+  // загрузку /uploads с другого origin (фронт на отдельном домене).
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cookieParser());
   app.use(compression());
+  // TipTap JSON контент статей/кейсов легко превышает дефолтный лимит body-parser'а (100kb).
+  // Регистрируется до app.listen() — значит до того, как Nest сам навесит дефолтные парсеры
+  // (NestApplication.init() -> registerParserMiddleware(), вызывается только из listen()), эти
+  // парсеры первыми встают в стек и реально ограничивают лимит; дефолтные, добавленные позже,
+  // видят body-parser'овский onFinished(req) === true и молча пропускают повторный парсинг.
+  app.useBodyParser('json', { limit: '1mb' });
+  app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
 
   app.enableCors({
     origin: configService

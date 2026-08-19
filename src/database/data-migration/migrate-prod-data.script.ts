@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { DataSource, EntityManager } from 'typeorm';
+import { UPLOADS_ROOT } from '../../core/uploads.constants';
 
 loadEnv({ quiet: true });
 
@@ -397,6 +400,54 @@ async function migrateMedia(
   ];
   await bulkInsert(target, 'media', columns, values);
   return values.length;
+}
+
+async function fetchImageLibFileNames(source: Queryable): Promise<string[]> {
+  const rows = (await source.query(
+    `SELECT link FROM image_lib ORDER BY id`,
+  )) as Row[];
+  return rows
+    .map((r) => String(r.link).split('/').pop())
+    .filter((name): name is string => Boolean(name));
+}
+
+// Физическое копирование файлов image-lib → media (решение принято осознанно, не move и не
+// symlink): опубликованные статьи/кейсы держат путь /uploads/image-lib/... зашитым текстом в
+// content/contentHtml, поэтому оригиналы остаются на месте нетронутыми, а под новые media-записи
+// (basename сохранён в migrateMedia) кладётся копия того же файла в /uploads/media/, откуда его
+// строит media-response.dto.ts. Требует локального доступа к каталогу старого прода
+// (SOURCE_IMAGE_LIB_ROOT) — SOURCE_DB_HOST может быть удалённым, файлы — нет; обычно это заранее
+// синхронизированная копия uploads/image-lib/ с боевого сервера.
+const COPY_CONCURRENCY = 20;
+
+async function copyImageLibFiles(
+  fileNames: string[],
+): Promise<{ copied: number; missing: string[] }> {
+  const sourceRoot = requireEnv('SOURCE_IMAGE_LIB_ROOT');
+  const targetDir = path.join(UPLOADS_ROOT, 'media');
+  await fs.mkdir(targetDir, { recursive: true });
+
+  const missing: string[] = [];
+  let copied = 0;
+
+  for (let i = 0; i < fileNames.length; i += COPY_CONCURRENCY) {
+    const chunk = fileNames.slice(i, i + COPY_CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (fileName) => {
+        try {
+          await fs.copyFile(
+            path.join(sourceRoot, fileName),
+            path.join(targetDir, fileName),
+          );
+          copied += 1;
+        } catch {
+          missing.push(fileName);
+        }
+      }),
+    );
+  }
+
+  return { copied, missing };
 }
 
 async function migrateArticles(
@@ -798,6 +849,21 @@ async function run(): Promise<void> {
     });
 
     console.log('Миграция данных завершена успешно.');
+
+    // Отдельно от DB-транзакции: копирование файлов не откатываемо и не обязано быть атомарным
+    // с ней — если что-то не скопируется, БД-перенос всё равно уже успешен, а список missing
+    // ниже — явный список, что доразобрать руками, а не тихая деградация.
+    const imageLibFileNames = await fetchImageLibFileNames(source);
+    const { copied, missing } = await copyImageLibFiles(imageLibFileNames);
+    console.log(
+      `Файлы image-lib: скопировано ${copied}/${imageLibFileNames.length} в uploads/media/.`,
+    );
+    if (missing.length > 0) {
+      console.warn(
+        `Не найдены на диске в SOURCE_IMAGE_LIB_ROOT (не скопированы, будут 404 в медиатеке):`,
+        missing,
+      );
+    }
   } finally {
     await source.destroy();
     await target.destroy();

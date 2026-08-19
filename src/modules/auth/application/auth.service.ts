@@ -79,8 +79,19 @@ export class AuthService {
       throw new UnauthorizedException('Пользователь недоступен');
     }
 
-    // Ротация: старая сессия гасится, новая пара токенов привязана к новой сессии.
-    await this.refreshSessionsRepository.revoke(session.id);
+    // Ротация: старая сессия гасится атомарно (WHERE revoked_at IS NULL). Если гасить было
+    // нечего (affected === 0) — значит параллельный запрос тем же токеном уже успел это сделать
+    // между нашим SELECT выше и этим UPDATE: тот же кейс компрометации, что и явный реюз
+    // отозванного токена — гасим все сессии пользователя вместо выдачи новой пары.
+    const revoked = await this.refreshSessionsRepository.revoke(session.id);
+    if (!revoked) {
+      this.logger.warn(
+        { userId: session.userId },
+        'Гонка ротации refresh-токена — все сессии пользователя отозваны',
+      );
+      await this.refreshSessionsRepository.revokeAllForUser(session.userId);
+      throw new UnauthorizedException('Токен обновления недействителен');
+    }
     return this.issueTokens(user, fingerprint);
   }
 

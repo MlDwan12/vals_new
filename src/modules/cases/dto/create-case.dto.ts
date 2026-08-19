@@ -12,6 +12,7 @@ import {
   IsString,
   Min,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { MaxKeywords } from '../../../core/validators/max-keywords.validator';
 
@@ -72,12 +73,14 @@ export class CreateCaseDto {
   @IsDateString()
   datePublished?: string | null;
 
-  @IsOptional()
+  // NOT NULL с дефолтом в БД — @IsOptional() пропустил бы явный null мимо валидации на PATCH
+  // (см. update-article.dto.ts/create-article.dto.ts — тот же приём, code review).
+  @ValidateIf((_, value) => value !== undefined)
   @IsInt()
   @Min(0)
   priority?: number;
 
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   hasToc?: boolean;
 

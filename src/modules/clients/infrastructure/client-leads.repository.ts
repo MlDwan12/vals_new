@@ -310,7 +310,15 @@ export class ClientLeadsRepository {
 
   // --- Доставка в Bitrix (планировщик + ручной retry) ---
 
+  // Заявка, зависшая в SENDING дольше этого порога (крэш/kill процесса между claim и
+  // markSent/markFailedAttempt — сам HTTP-вызов к Bitrix ограничен 10с таймаутом в
+  // BitrixClient), считается брошенной и доступна для повторного claim.
+  private static readonly STUCK_SENDING_TIMEOUT_MS = 2 * 60 * 1000;
+
   findDueForDelivery(limit: number): Promise<ClientLead[]> {
+    const staleSendingBefore = new Date(
+      Date.now() - ClientLeadsRepository.STUCK_SENDING_TIMEOUT_MS,
+    );
     return this.dataSource.getRepository(ClientLead).find({
       where: [
         { status: LeadDeliveryStatus.PENDING, nextRetryAt: IsNull() },
@@ -318,10 +326,42 @@ export class ClientLeadsRepository {
           status: LeadDeliveryStatus.PENDING,
           nextRetryAt: LessThanOrEqual(new Date()),
         },
+        {
+          status: LeadDeliveryStatus.SENDING,
+          sendingAt: LessThanOrEqual(staleSendingBefore),
+        },
       ],
       order: { id: 'ASC' },
       take: limit,
     });
+  }
+
+  // Атомарный claim: PENDING/FAILED -> SENDING одним UPDATE (плюс реклейм зависшего SENDING —
+  // см. STUCK_SENDING_TIMEOUT_MS). Только вызывающий, чью строку реально задело (affected > 0),
+  // имеет право отправлять лид в Bitrix — второй параллельный вызов (двойной клик по ручному
+  // retry, или тот же лид подобран другим инстансом планировщика) получает null и ничего не
+  // делает. Без этого доставка не атомарна (H10).
+  async claimForDelivery(id: number): Promise<ClientLead | null> {
+    const staleSendingBefore = new Date(
+      Date.now() - ClientLeadsRepository.STUCK_SENDING_TIMEOUT_MS,
+    );
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(ClientLead)
+      .set({ status: LeadDeliveryStatus.SENDING, sendingAt: new Date() })
+      .where('id = :id', { id })
+      .andWhere(
+        '(status IN (:...statuses) OR (status = :sending AND sending_at <= :staleSendingBefore))',
+        {
+          statuses: [LeadDeliveryStatus.PENDING, LeadDeliveryStatus.FAILED],
+          sending: LeadDeliveryStatus.SENDING,
+          staleSendingBefore,
+        },
+      )
+      .execute();
+
+    if ((result.affected ?? 0) === 0) return null;
+    return this.dataSource.getRepository(ClientLead).findOne({ where: { id } });
   }
 
   // Принимают уже загруженную entity (вызывающий — LeadDeliveryService.attemptDelivery — её и так

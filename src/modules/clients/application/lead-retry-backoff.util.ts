@@ -16,3 +16,13 @@ export function computeNextRetryAt(retryCount: number): Date | null {
   const delay = RETRY_DELAYS_MS[retryCount - 1];
   return delay === undefined ? null : new Date(Date.now() + delay);
 }
+
+// 4xx (кроме 429 — это rate limit, транзиентная ошибка) от Bitrix означает постоянную проблему
+// (отозванный вебхук, невалидный payload) — она не самоисправится через 6 попыток backoff'а,
+// только сожжёт их впустую (M13 code review). Сетевые ошибки/таймауты/5xx — транзиентные, ретраятся
+// как обычно.
+export function isRetryableBitrixStatus(status: number | undefined): boolean {
+  if (status === undefined) return true;
+  if (status === 429) return true;
+  return status < 400 || status >= 500;
+}

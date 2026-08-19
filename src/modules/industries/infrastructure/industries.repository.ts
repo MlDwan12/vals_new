@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { Industry } from '../domain/industry.entity';
 
 interface CreateIndustryRecord {
@@ -36,7 +37,9 @@ export class IndustriesRepository {
     id: number,
     patch: UpdateIndustryRecord,
   ): Promise<Industry | null> {
-    await this.repo.update(id, patch);
+    if (!isEmptyPatch(patch)) {
+      await this.repo.update(id, patch);
+    }
     return this.findById(id);
   }
 

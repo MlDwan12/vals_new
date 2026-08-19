@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { Role } from '../../../core/enums/role.enum';
 import { User } from '../domain/user.entity';
 
@@ -56,7 +57,9 @@ export class UsersRepository {
   }
 
   async update(id: number, patch: UpdateUserRecord): Promise<User | null> {
-    await this.repo.update(id, patch);
+    if (!isEmptyPatch(patch)) {
+      await this.repo.update(id, patch);
+    }
     return this.findById(id);
   }
 

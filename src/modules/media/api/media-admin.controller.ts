@@ -43,6 +43,9 @@ export class MediaAdminController {
       limits: {
         fileSize: MAX_SINGLE_FILE_BYTES,
         files: MAX_FILES_PER_UPLOAD,
+        // Без явного лимита Multer/busy по умолчанию не ограничивает число non-file полей формы
+        // (LOW code review) — UploadMediaDto реально использует одно (alt).
+        fields: 5,
       },
       fileFilter: (_req, file, cb) => {
         if (file.mimetype !== 'image/webp') {

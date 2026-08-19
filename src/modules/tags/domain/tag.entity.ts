@@ -19,6 +19,7 @@ export class Tag {
   @Column({ type: 'varchar', length: 255 })
   slug: string;
 
+  @Index({ unique: true })
   @Column({ type: 'varchar', length: 100 })
   name: string;
 

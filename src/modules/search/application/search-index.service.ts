@@ -7,7 +7,10 @@ import { ConfigService } from '@nestjs/config';
 import { Meilisearch } from 'meilisearch';
 import { PinoLogger } from 'nestjs-pino';
 import { EnvConfig } from '../../../config/env.validation';
-import { GlobalSearchDocument } from './global-search-document.interface';
+import {
+  GlobalSearchDocument,
+  SearchEntityType,
+} from './global-search-document.interface';
 
 const INDEX_NAME = 'global_search';
 
@@ -22,6 +25,15 @@ export interface SearchPage {
 export class SearchIndexService implements OnModuleInit {
   private readonly adminClient: Meilisearch;
   private readonly searchClient: Meilisearch;
+  // Дедуп конкурентных getDocumentIds(entityType) — три reindex-шедулера (articles/cases/services)
+  // с одинаковым EVERY_5_MINUTES тиком независимо запрашивают 'faq' (общий для всех трёх доменов
+  // entityType), проваливаясь в 3x одинаковый полный скан индекса на каждый тик без этого
+  // (efficiency review). Один in-flight запрос на entityType — конкурентные вызовы ждут тот же
+  // промис вместо нового похода в Meilisearch.
+  private readonly inFlightGetDocumentIds = new Map<
+    SearchEntityType,
+    Promise<string[]>
+  >();
 
   constructor(
     configService: ConfigService<EnvConfig, true>,
@@ -42,12 +54,21 @@ export class SearchIndexService implements OnModuleInit {
   // Недоступность Meilisearch на старте не должна ронять приложение (ТЗ §7 п.2) — старый код падал
   // здесь без обработки (`ensureIndex()` в `onModuleInit` без try/catch вокруг сетевых вызовов).
   async onModuleInit(): Promise<void> {
+    await this.tryEnsureIndex();
+  }
+
+  // Публичный self-heal: если Meilisearch был недоступен на старте, onModuleInit молча пропустил
+  // настройку индекса — без повторных попыток индекс так и остаётся ненастроенным всю жизнь
+  // процесса (LOW code review). Периодические reindex-тики (H7/M7) вызывают это перед каждым
+  // прогоном — ensureIndex() идемпотентен, self-heal происходит в течение 5 минут после того, как
+  // Meilisearch снова станет доступен.
+  async tryEnsureIndex(): Promise<void> {
     try {
       await this.ensureIndex();
     } catch (error) {
       this.logger.warn(
         { err: error },
-        'Meilisearch недоступен при старте — индекс не настроен, поиск деградирован',
+        'Meilisearch недоступен — индекс не настроен, поиск деградирован',
       );
     }
   }
@@ -64,6 +85,52 @@ export class SearchIndexService implements OnModuleInit {
     }
   }
 
+  // Все id документов данного entityType, реально лежащих в индексе сейчас — нужно для
+  // reindexSearch(), чтобы находить и чистить "осиротевшие" документы (например, unpublish/delete
+  // не долетел до Meilisearch из-за временной недоступности — upsert-only reindex сам их никогда
+  // не находит, M7 code review). Пустой массив при ошибке — reindex просто пропустит очистку
+  // stale-документов на этом тике, не должен упасть целиком.
+  getDocumentIds(entityType: SearchEntityType): Promise<string[]> {
+    const inFlight = this.inFlightGetDocumentIds.get(entityType);
+    if (inFlight) return inFlight;
+
+    const promise = this.fetchDocumentIds(entityType).finally(() => {
+      this.inFlightGetDocumentIds.delete(entityType);
+    });
+    this.inFlightGetDocumentIds.set(entityType, promise);
+    return promise;
+  }
+
+  private async fetchDocumentIds(
+    entityType: SearchEntityType,
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    const limit = 1000;
+    let offset = 0;
+
+    try {
+      for (;;) {
+        const page = await this.adminClient
+          .index<GlobalSearchDocument>(INDEX_NAME)
+          .getDocuments({
+            filter: `entityType = ${entityType}`,
+            limit,
+            offset,
+          });
+        ids.push(...page.results.map((doc) => doc.id));
+        if (page.results.length < limit) break;
+        offset += limit;
+      }
+      return ids;
+    } catch (error) {
+      this.logger.warn(
+        { err: error, entityType },
+        'Не удалось прочитать список документов индекса для очистки stale-записей',
+      );
+      return [];
+    }
+  }
+
   async deleteDocuments(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     try {
@@ -73,6 +140,31 @@ export class SearchIndexService implements OnModuleInit {
         { err: error, count: ids.length },
         'Не удалось удалить документы из индекса поиска',
       );
+    }
+  }
+
+  // Единая логика очистки "осиротевших" документов для articles/cases/services reindexSearch()
+  // (было 3 копии одного и того же — simplification/altitude review). entityType — сущность
+  // домена ('article'/'case'/'service'), faqIdPrefix — префикс id её FAQ-документов
+  // ('articleFaq_'/'caseFaq_'/'serviceFaq_'), т.к. все FAQ трёх доменов делят один общий
+  // entityType='faq' в индексе (getDocumentIds('faq') дедуплицируется между тремя вызовами через
+  // inFlightGetDocumentIds выше).
+  async reconcileStaleDocuments(
+    entityType: SearchEntityType,
+    faqIdPrefix: string,
+    currentIds: ReadonlySet<string>,
+  ): Promise<void> {
+    const [existingEntityIds, existingFaqIds] = await Promise.all([
+      this.getDocumentIds(entityType),
+      this.getDocumentIds('faq'),
+    ]);
+    const staleIds = [
+      ...existingEntityIds,
+      ...existingFaqIds.filter((id) => id.startsWith(faqIdPrefix)),
+    ].filter((id) => !currentIds.has(id));
+
+    if (staleIds.length > 0) {
+      await this.deleteDocuments(staleIds);
     }
   }
 

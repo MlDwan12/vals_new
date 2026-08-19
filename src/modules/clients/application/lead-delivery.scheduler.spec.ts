@@ -14,6 +14,7 @@ describe('LeadDeliveryScheduler', () => {
 
     const clientLeadsRepository = {
       findDueForDelivery: jest.fn().mockResolvedValue([{ id: 1 }]),
+      claimForDelivery: jest.fn((id: number) => Promise.resolve({ id })),
     };
     const leadDeliveryService = {
       attemptDelivery: jest.fn(async () => {

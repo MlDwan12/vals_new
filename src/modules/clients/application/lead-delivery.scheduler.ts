@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PinoLogger } from 'nestjs-pino';
+import { SingleFlightGuard } from '../../../core/scheduling/single-flight-guard';
 import { LeadDeliveryService } from './lead-delivery.service';
 import { ClientLeadsRepository } from '../infrastructure/client-leads.repository';
 
@@ -14,47 +15,49 @@ const CONCURRENCY = 5;
 // подошло время следующей попытки (или это первая попытка вообще), и доставляет их пачками.
 @Injectable()
 export class LeadDeliveryScheduler {
-  // Тик может растянуться дольше минуты при деградировавшем Bitrix (до 10с на попытку) — без этого
-  // флага следующий тик по расписанию подхватил бы те же лиды (status меняется только после того,
+  // Тик может растянуться дольше минуты при деградировавшем Bitrix (до 10с на попытку) — без
+  // этого следующий тик по расписанию подхватил бы те же лиды (status меняется только после того,
   // как HTTP-вызов реально завершится) и отправил бы их в Bitrix второй раз параллельно.
-  private isRunning = false;
+  private readonly guard: SingleFlightGuard;
 
   constructor(
     private readonly clientLeadsRepository: ClientLeadsRepository,
     private readonly leadDeliveryService: LeadDeliveryService,
     private readonly logger: PinoLogger,
   ) {
-    this.logger.setContext(LeadDeliveryScheduler.name);
+    logger.setContext(LeadDeliveryScheduler.name);
+    this.guard = new SingleFlightGuard(logger, 'delivery');
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
-  async run(): Promise<void> {
-    if (this.isRunning) {
-      this.logger.warn(
-        'Previous delivery tick is still running, skipping this one',
+  run(): Promise<void> {
+    return this.guard.run(() => this.deliverDueLeads());
+  }
+
+  private async deliverDueLeads(): Promise<void> {
+    const dueLeads =
+      await this.clientLeadsRepository.findDueForDelivery(BATCH_SIZE);
+    if (dueLeads.length === 0) return;
+
+    this.logger.info(
+      { count: dueLeads.length },
+      'Attempting Bitrix delivery for due leads',
+    );
+
+    for (let i = 0; i < dueLeads.length; i += CONCURRENCY) {
+      const chunk = dueLeads.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (lead) => {
+          // Claim перед отправкой: при перекрывающемся деплое (несколько живых инстансов)
+          // каждый инстанс сам находит одни и те же due-лиды через find(), но заберёт лид
+          // только один — остальные получат null и пропустят его (H10).
+          const claimed = await this.clientLeadsRepository.claimForDelivery(
+            lead.id,
+          );
+          if (!claimed) return;
+          await this.leadDeliveryService.attemptDelivery(claimed);
+        }),
       );
-      return;
-    }
-
-    this.isRunning = true;
-    try {
-      const dueLeads =
-        await this.clientLeadsRepository.findDueForDelivery(BATCH_SIZE);
-      if (dueLeads.length === 0) return;
-
-      this.logger.info(
-        { count: dueLeads.length },
-        'Attempting Bitrix delivery for due leads',
-      );
-
-      for (let i = 0; i < dueLeads.length; i += CONCURRENCY) {
-        const chunk = dueLeads.slice(i, i + CONCURRENCY);
-        await Promise.all(
-          chunk.map((lead) => this.leadDeliveryService.attemptDelivery(lead)),
-        );
-      }
-    } finally {
-      this.isRunning = false;
     }
   }
 }

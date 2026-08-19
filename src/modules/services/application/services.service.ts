@@ -101,17 +101,26 @@ export class ServicesService {
     ]);
   }
 
-  // Полная переиндексация (admin) — услуги + их FAQ одним вызовом.
+  // Полная переиндексация (admin + периодический тик) — услуги + их FAQ одним вызовом.
+  // Дополнительно чистит stale-документы — upsert сам по себе их не находит (M7 code review).
   async reindexSearch(): Promise<void> {
     const [services, faqDocs] = await Promise.all([
       this.servicesRepository.findAllForSearchIndex(),
       this.serviceFaqService.buildAllSearchDocuments(),
     ]);
+    const serviceDocs = services.map((service) =>
+      buildServiceSearchDocument(service),
+    );
 
-    await this.searchIndexService.upsertDocuments([
-      ...services.map((service) => buildServiceSearchDocument(service)),
-      ...faqDocs,
-    ]);
+    await this.searchIndexService.upsertDocuments([...serviceDocs, ...faqDocs]);
+    await this.searchIndexService.reconcileStaleDocuments(
+      'service',
+      'serviceFaq_',
+      new Set([
+        ...serviceDocs.map((doc) => doc.id),
+        ...faqDocs.map((doc) => doc.id),
+      ]),
+    );
   }
 
   async findById(id: number): Promise<ServiceFullInfoDto> {

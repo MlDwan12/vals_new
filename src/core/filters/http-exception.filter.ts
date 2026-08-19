@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import { AuditService } from '../../modules/audit/application/audit.service';
 import { AuditAction } from '../../modules/audit/enums/audit-action.enum';
+import { BoundedTtlMap } from '../collections/bounded-ttl-map';
 import {
   MUTATION_METHODS,
   resolveAuditResource,
@@ -22,6 +23,9 @@ import { ErrorCode } from '../exceptions/error-code.enum';
 // AuditService.log(): это политика конкретно ACCESS_DENIED-ветки этого фильтра (единственного
 // источника ACCESS_DENIED), а не общего механизма записи, которым пользуются и другие вызывающие.
 const ANONYMOUS_ACCESS_DENIED_WINDOW_MS = 60_000;
+// Ключ — IP из запроса, не подтверждённая учётка — при MAX_TRACKED записях сметаем протухшие
+// (LOW code review: без этого много уникальных IP/бот со сменой IP растит Map неограниченно).
+const MAX_TRACKED_IPS = 5000;
 
 interface ApiErrorResponse {
   success: false;
@@ -56,7 +60,10 @@ const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly lastAnonymousAccessDeniedAt = new Map<string, number>();
+  private readonly lastAnonymousAccessDeniedAt = new BoundedTtlMap<number>(
+    MAX_TRACKED_IPS,
+    (lastAt) => Date.now() - lastAt >= ANONYMOUS_ACCESS_DENIED_WINDOW_MS,
+  );
 
   constructor(
     private readonly logger: PinoLogger,

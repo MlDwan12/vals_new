@@ -12,6 +12,7 @@ import {
   IsString,
   Min,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { MaxKeywords } from '../../../core/validators/max-keywords.validator';
 
@@ -57,7 +58,10 @@ export class CreateArticleDto {
   @IsDateString()
   datePublished?: string | null;
 
-  @IsOptional()
+  // NOT NULL с дефолтом в БД — @IsOptional() пропустил бы явный null мимо валидации на PATCH
+  // (он трактует null как "не задано", независимо от skipNullProperties у PartialType в
+  // update-article.dto.ts), и тот падал бы в БД not-null violation'ом (code review).
+  @ValidateIf((_, value) => value !== undefined)
   @IsInt()
   @Min(0)
   priority?: number;
@@ -68,7 +72,8 @@ export class CreateArticleDto {
   @Min(1)
   readingTime?: number | null;
 
-  @IsOptional()
+  // NOT NULL с дефолтом — см. priority выше.
+  @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   hasToc?: boolean;
 
