@@ -13,6 +13,11 @@ import {
 } from './global-search-document.interface';
 
 const INDEX_NAME = 'global_search';
+// Сколько подряд идущих подозрительных тиков (см. reconcileStaleDocuments) нужно, прежде чем
+// доверять «currentIds пуст» и выполнить очистку — не 1 (разовый сбой конфигурации/гонка с
+// миграцией не должны стирать индекс) и не бесконечность (N-6, round-3 review: легитимная массовая
+// расчистка публикаций иначе блокирует очистку навсегда). При EVERY_5_MINUTES это 15 минут.
+const SUSPICIOUS_EMPTY_STREAK_THRESHOLD = 3;
 
 export interface SearchPage {
   items: GlobalSearchDocument[];
@@ -34,6 +39,9 @@ export class SearchIndexService implements OnModuleInit {
     SearchEntityType,
     Promise<string[]>
   >();
+  // Число подряд идущих подозрительных тиков reconcileStaleDocuments на домен (N-6, round-3
+  // review) — см. SUSPICIOUS_EMPTY_STREAK_THRESHOLD.
+  private readonly suspiciousEmptyStreak = new Map<SearchEntityType, number>();
 
   constructor(
     configService: ConfigService<EnvConfig, true>,
@@ -158,24 +166,45 @@ export class SearchIndexService implements OnModuleInit {
       this.getDocumentIds(entityType),
       this.getDocumentIds('faq'),
     ]);
+    const existingDomainFaqIds = existingFaqIds.filter((id) =>
+      id.startsWith(faqIdPrefix),
+    );
+    // Подозрительность считаем и по FAQ-документам домена, не только по entity (N-6, round-3
+    // review) — staleIds ниже удаляет оба вида, а раньше guard смотрел только на entity: пустая
+    // таблица сущности при осиротевших FAQ-документах проходила без всякой защиты.
+    const indexedCount = existingEntityIds.length + existingDomainFaqIds.length;
 
     // currentIds пуст, а в индексе уже есть документы этого домена — подозрительно (не та БД в
     // конфиге, откатившая миграция, случайный прогон против тестовой базы), не обязательно
     // «домен реально опустел». Полное удаление по такому сигналу опаснее, чем оставить индекс
-    // временно неактуальным до следующего тика — пропускаем очистку, а не чистим вслепую (R7,
-    // round-2 review: без этого guard'а такой баг стирал бы весь домен из поиска 288 раз в сутки).
-    if (currentIds.size === 0 && existingEntityIds.length > 0) {
-      this.logger.error(
-        { entityType, indexedCount: existingEntityIds.length },
-        'reconcileStaleDocuments: currentIds пуст, а в индексе есть документы — очистка пропущена',
+    // временно неактуальным — но пропуск не может быть бессрочным: легитимная массовая расчистка
+    // публикаций (сняли с публикации все статьи/кейсы/услуги домена разом) даёт то же самое
+    // «currentIds пуст» на каждом тике, и без порога чистка была бы недостижима НИКОГДА (N-6,
+    // round-3 review — регрессия собственного фикса R7 из round-2). Порог по числу подряд идущих
+    // тиков: разовый сбой не проходит, легитимная расчистка проходит с ограниченной задержкой.
+    if (currentIds.size === 0 && indexedCount > 0) {
+      const streak = (this.suspiciousEmptyStreak.get(entityType) ?? 0) + 1;
+      this.suspiciousEmptyStreak.set(entityType, streak);
+
+      if (streak < SUSPICIOUS_EMPTY_STREAK_THRESHOLD) {
+        this.logger.error(
+          { entityType, indexedCount, streak },
+          'reconcileStaleDocuments: currentIds пуст, а в индексе есть документы — очистка отложена',
+        );
+        return;
+      }
+
+      this.logger.warn(
+        { entityType, indexedCount, streak },
+        'reconcileStaleDocuments: подозрительное состояние подтвердилось несколько тиков подряд — выполняем очистку',
       );
-      return;
+    } else {
+      this.suspiciousEmptyStreak.delete(entityType);
     }
 
-    const staleIds = [
-      ...existingEntityIds,
-      ...existingFaqIds.filter((id) => id.startsWith(faqIdPrefix)),
-    ].filter((id) => !currentIds.has(id));
+    const staleIds = [...existingEntityIds, ...existingDomainFaqIds].filter(
+      (id) => !currentIds.has(id),
+    );
 
     if (staleIds.length > 0) {
       await this.deleteDocuments(staleIds);
