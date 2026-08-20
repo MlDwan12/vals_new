@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
 import { EnvConfig, validate } from './config/env.validation';
 import { CoreModule } from './core/core.module';
+import { safeErrSerializer } from './core/logging/safe-err-serializer';
 import { UPLOADS_ROOT } from './core/uploads.constants';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -75,20 +76,17 @@ import { UsersModule } from './modules/users/users.module';
               // /code-review high на этом же батче).
               'req.headers["x-internal-key"]',
               'res.headers["set-cookie"]',
-              // TypeORM QueryFailedError.parameters — реальные значения биндов SQL-запроса (ПД
-              // лида при сбое записи); AxiosError.config — вебхук Bitrix с секретным токеном в
-              // url и ПД лида в data (R4/C1, round-2 review — механизм, а не только дисциплина
-              // вызывающего кода не логировать error целиком). err.raw.* — обязательно тоже:
-              // pino-std-serializers копирует ВЕСЬ исходный объект ошибки целиком под err.raw в
-              // конце errSerializer (node_modules/pino-std-serializers/lib/err.js), в обход
-              // редактирования плоских полей выше — без этих путей защита обходится тем же самым
-              // полем вторым каналом (найдено /code-review high на этом же батче).
-              'err.parameters',
-              'err.config',
-              'err.raw.parameters',
-              'err.raw.config',
             ],
             remove: true,
+          },
+          // Allowlist вместо denylist для err (N-4, round-3 review): денилист по одному полю
+          // (parameters → detail/driverError → config) неполон по построению — набор полей
+          // ошибки задаёт pg/TypeORM/axios, не мы. safeErrSerializer явно перечисляет, что
+          // безопасно (type/message/stack + code/constraint/table/column/schema/severity),
+          // всё остальное (err.detail — значения нарушенного constraint, ПД лида; err.config —
+          // вебхук Bitrix с секретным токеном) в лог не попадает по умолчанию.
+          serializers: {
+            err: safeErrSerializer,
           },
           // Успешные запросы не логируются построчно (ТЗ §4) — только 4xx/5xx.
           customLogLevel: (

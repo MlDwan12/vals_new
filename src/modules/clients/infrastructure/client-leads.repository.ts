@@ -315,6 +315,13 @@ export class ClientLeadsRepository {
   // BitrixClient), считается брошенной и доступна для повторного claim.
   private static readonly STUCK_SENDING_TIMEOUT_MS = 2 * 60 * 1000;
 
+  // Верхняя граница числа реклеймов одного зависшего SENDING (N-2, round-3 review): без неё
+  // детерминированный (не транзиентный) сбой markSent даёт бесконечный цикл claim → POST в
+  // Bitrix → сбой записи → claim по таймауту → новый POST — дубли лида в CRM без предела. Значение
+  // то же, что MARK_SENT_RETRY_ATTEMPTS в LeadDeliveryService — тот же порядок "мы дожали
+  // разумное число раз, дальше — ручной разбор".
+  private static readonly MAX_SENDING_RECLAIMS = 3;
+
   findDueForDelivery(limit: number): Promise<ClientLead[]> {
     const staleSendingBefore = new Date(
       Date.now() - ClientLeadsRepository.STUCK_SENDING_TIMEOUT_MS,
@@ -348,20 +355,63 @@ export class ClientLeadsRepository {
     const result = await this.dataSource
       .createQueryBuilder()
       .update(ClientLead)
-      .set({ status: LeadDeliveryStatus.SENDING, sendingAt: new Date() })
+      .set({
+        status: LeadDeliveryStatus.SENDING,
+        sendingAt: new Date(),
+        // SET-выражения UPDATE в Postgres видят значения ДО этого же UPDATE — "status" здесь
+        // всегда старый статус, поэтому счётчик растёт только когда забираем именно зависший
+        // SENDING (реклейм), а не при свежем claim из PENDING/FAILED, который не должен
+        // наследовать чужой счётчик реклеймов.
+        sendingReclaimCount: () =>
+          `CASE WHEN "status" = :sending THEN "sending_reclaim_count" + 1 ELSE "sending_reclaim_count" END`,
+      })
       .where('id = :id', { id })
       .andWhere(
-        '(status IN (:...statuses) OR (status = :sending AND sending_at <= :staleSendingBefore))',
+        `(status IN (:...statuses)
+          OR (status = :sending
+              AND sending_at <= :staleSendingBefore
+              AND sending_reclaim_count < :maxReclaims))`,
         {
           statuses: [LeadDeliveryStatus.PENDING, LeadDeliveryStatus.FAILED],
           sending: LeadDeliveryStatus.SENDING,
           staleSendingBefore,
+          maxReclaims: ClientLeadsRepository.MAX_SENDING_RECLAIMS,
         },
       )
       .execute();
 
     if ((result.affected ?? 0) === 0) return null;
     return this.dataSource.getRepository(ClientLead).findOne({ where: { id } });
+  }
+
+  // Зависший SENDING, реклеймленный уже MAX_SENDING_RECLAIMS раз (claimForDelivery выше
+  // перестаёт его подбирать), переводится в видимый в админке терминальный FAILED — без этого
+  // такая заявка молча остаётся в SENDING (наружу выглядит как pending, N-2, round-3 review) и
+  // занимает место в батче findDueForDelivery навсегда. Вызывается шедулером до
+  // findDueForDelivery, чтобы такие лиды не попадали в очередной батч уже в статусе FAILED.
+  // Ручной retry из админки (claimForDelivery с id) по-прежнему может забрать такой лид из FAILED
+  // и попробовать снова — гвард выше касается только автоматического реклейма по таймауту.
+  async failStuckDeliveries(): Promise<number> {
+    const staleSendingBefore = new Date(
+      Date.now() - ClientLeadsRepository.STUCK_SENDING_TIMEOUT_MS,
+    );
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(ClientLead)
+      .set({
+        status: LeadDeliveryStatus.FAILED,
+        bitrixError:
+          'Доставлено в Bitrix не подтверждено: заявка зависла в SENDING и была реклеймлена ' +
+          `${ClientLeadsRepository.MAX_SENDING_RECLAIMS} раз(а) без ответа — требуется ручная проверка перед повторной отправкой.`,
+      })
+      .where('status = :sending', { sending: LeadDeliveryStatus.SENDING })
+      .andWhere('sending_at <= :staleSendingBefore', { staleSendingBefore })
+      .andWhere('sending_reclaim_count >= :maxReclaims', {
+        maxReclaims: ClientLeadsRepository.MAX_SENDING_RECLAIMS,
+      })
+      .execute();
+
+    return result.affected ?? 0;
   }
 
   // Принимают уже загруженную entity (вызывающий — LeadDeliveryService.attemptDelivery — её и так

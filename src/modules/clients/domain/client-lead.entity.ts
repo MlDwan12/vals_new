@@ -119,6 +119,12 @@ export class ClientLead {
   @Column({ name: 'sending_at', type: 'timestamptz', nullable: true })
   sendingAt: Date | null;
 
+  // Сколько раз зависший SENDING был реклеймлен по таймауту (не считает обычные Bitrix-ретраи —
+  // те двигают retryCount). Верхняя граница на число повторных POST в Bitrix для одной заявки
+  // (N-2, round-3 review) — см. ClientLeadsRepository.MAX_SENDING_RECLAIMS/failStuckDeliveries.
+  @Column({ name: 'sending_reclaim_count', type: 'int', default: 0 })
+  sendingReclaimCount: number;
+
   @Index()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

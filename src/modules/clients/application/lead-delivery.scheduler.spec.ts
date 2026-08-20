@@ -7,6 +7,16 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   return { promise, resolve };
 }
 
+// deliverDueLeads — цепочка из нескольких await до attemptDelivery (failStuckDeliveries →
+// findDueForDelivery → claimForDelivery → attemptDelivery); один await Promise.resolve() ловит
+// только следующий microtask, не всю цепочку — flush с запасом устойчив к тому, что шагов
+// прибавится ещё (не завязан на точное число).
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
+}
+
 function buildLogger(): { logger: PinoLogger; errorMock: jest.Mock } {
   const errorMock = jest.fn();
   const logger = {
@@ -24,6 +34,7 @@ describe('LeadDeliveryScheduler', () => {
     let attemptCalls = 0;
 
     const clientLeadsRepository = {
+      failStuckDeliveries: jest.fn().mockResolvedValue(0),
       findDueForDelivery: jest.fn().mockResolvedValue([{ id: 1 }]),
       claimForDelivery: jest.fn((id: number) => Promise.resolve({ id })),
     };
@@ -42,7 +53,7 @@ describe('LeadDeliveryScheduler', () => {
     );
 
     const firstTick = scheduler.run(); // не await — имитируем зависший тик
-    await Promise.resolve(); // даём microtask-очереди продвинуться до attemptDelivery
+    await flushMicrotasks(); // даём microtask-очереди продвинуться до attemptDelivery
 
     await scheduler.run(); // второй тик по расписанию, пока первый ещё не завершился
 
@@ -62,6 +73,7 @@ describe('LeadDeliveryScheduler', () => {
   // сырой console.error библиотеки cron (второй, незащищённый канал утечки ПД лида).
   it('attemptDelivery бросает — тик не падает, ошибка залогирована через injected logger', async () => {
     const clientLeadsRepository = {
+      failStuckDeliveries: jest.fn().mockResolvedValue(0),
       findDueForDelivery: jest.fn().mockResolvedValue([{ id: 1 }]),
       claimForDelivery: jest.fn((id: number) => Promise.resolve({ id })),
     };
@@ -82,5 +94,36 @@ describe('LeadDeliveryScheduler', () => {
       expect.objectContaining({ leadId: 1 }),
       expect.any(String),
     );
+  });
+
+  // N-2 (round-3 review): failStuckDeliveries вызывается ДО findDueForDelivery и его результат
+  // виден в логе — иначе лиды, которым claimForDelivery уже отказал (счётчик реклеймов на
+  // пределе), молча занимали бы место в каждом батче не продвигаясь никуда.
+  it('лиды, сданные по лимиту реклеймов, логируются и не блокируют обычную доставку', async () => {
+    const clientLeadsRepository = {
+      failStuckDeliveries: jest.fn().mockResolvedValue(2),
+      findDueForDelivery: jest.fn().mockResolvedValue([{ id: 5 }]),
+      claimForDelivery: jest.fn((id: number) => Promise.resolve({ id })),
+    };
+    const leadDeliveryService = {
+      attemptDelivery: jest.fn().mockResolvedValue({ id: 5, status: 'sent' }),
+    };
+    const { logger, errorMock } = buildLogger();
+
+    const scheduler = new LeadDeliveryScheduler(
+      clientLeadsRepository as never,
+      leadDeliveryService as never,
+      logger,
+    );
+
+    await scheduler.run();
+
+    expect(clientLeadsRepository.failStuckDeliveries).toHaveBeenCalledTimes(1);
+    expect(errorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ count: 2 }),
+      expect.any(String),
+    );
+    // Обычная доставка due-лидов из этого же тика не пострадала.
+    expect(leadDeliveryService.attemptDelivery).toHaveBeenCalledTimes(1);
   });
 });

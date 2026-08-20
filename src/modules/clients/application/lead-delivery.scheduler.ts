@@ -35,6 +35,18 @@ export class LeadDeliveryScheduler {
   }
 
   private async deliverDueLeads(): Promise<void> {
+    // До findDueForDelivery: без этого лиды, для которых claimForDelivery уже отказался
+    // реклеймить (счётчик на пределе), продолжали бы попадать в батч SENDING-веткой запроса и
+    // просто тратить место (BATCH_SIZE=20) впустую каждый тик, не продвигаясь никуда (N-2,
+    // round-3 review).
+    const givenUpCount = await this.clientLeadsRepository.failStuckDeliveries();
+    if (givenUpCount > 0) {
+      this.logger.error(
+        { count: givenUpCount },
+        'Лиды, зависшие в SENDING сверх лимита реклеймов, переведены в FAILED — требуется ручная проверка',
+      );
+    }
+
     const dueLeads =
       await this.clientLeadsRepository.findDueForDelivery(BATCH_SIZE);
     if (dueLeads.length === 0) return;
