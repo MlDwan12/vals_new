@@ -56,6 +56,29 @@ export const envSchema = z
         value && value.trim().length > 0 ? value : undefined,
       ),
 
+    // Секретный заголовок X-Internal-Key для internal-трафика (SSR публичного сайта, ходит в API
+    // напрямую по docker-сети, минуя nginx и его rate-limit) — освобождает от глобального
+    // троттлера, но не убирает потолок целиком (см. INTERNAL_API_RATE_LIMIT), только поднимает
+    // его. Не задан — bypass выключен полностью, не "пустой ключ совпал с пустым заголовком" (R8,
+    // round-2 review). nginx на стороне инфры стирает этот заголовок на всех внешних запросах —
+    // подделать снаружи нельзя.
+    INTERNAL_API_KEY: z
+      .string()
+      .optional()
+      .refine(
+        (value) =>
+          !value || value.trim().length === 0 || value.trim().length >= 16,
+        'INTERNAL_API_KEY должен быть не короче 16 символов (как MEILI_MASTER_KEY) — слабый ключ' +
+          ' проще подобрать/угадать тому, кто уже добрался до заголовка (/code-review high)',
+      )
+      .transform((value) =>
+        value && value.trim().length > 0 ? value : undefined,
+      ),
+    // Предохранитель, не "нет лимита": если фронт зациклится или ключ утечёт, бэк не должен
+    // молотить БД без ограничения. Реальный SSR-поток штатно далеко ниже (nginx кеширует
+    // SSR-страницы), высокое число — только страховка.
+    INTERNAL_API_RATE_LIMIT: z.coerce.number().int().positive().default(3000),
+
     MEILI_HOST: z.string().min(1),
     // Мастер-ключ — только для админских операций (индексация/reindex), приложение выпускает его
     // сам при разворачивании Meilisearch (не сторонний секрет вроде BITRIX_WEBHOOK), обязателен.

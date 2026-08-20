@@ -69,6 +69,11 @@ import { UsersModule } from './modules/users/users.module';
             paths: [
               'req.headers.authorization',
               'req.headers.cookie',
+              // X-Internal-Key — секретный ключ SSR-обхода глобального rate limit (R8, round-2
+              // review): pino-http по умолчанию логирует весь req.headers, без этого пути ключ
+              // уходит в логи в открытом виде на каждом 4xx/5xx от internal-трафика (найдено
+              // /code-review high на этом же батче).
+              'req.headers["x-internal-key"]',
               'res.headers["set-cookie"]',
               // TypeORM QueryFailedError.parameters — реальные значения биндов SQL-запроса (ПД
               // лида при сбое записи); AxiosError.config — вебхук Bitrix с секретным токеном в

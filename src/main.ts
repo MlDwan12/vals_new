@@ -13,13 +13,17 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
   });
-  app.useLogger(app.get(Logger));
+  const logger = app.get(Logger);
+  app.useLogger(logger);
 
   const configService = app.get<ConfigService<EnvConfig, true>>(ConfigService);
 
   // За nginx: без этого req.ip у ThrottlerGuard/аудита = IP nginx, а не клиента (весь rate
-  // limit/аудит превращается в один общий бакет). nginx обязан переписывать X-Forwarded-For,
-  // не дописывать к клиентскому.
+  // limit/аудит превращается в один общий бакет). trust proxy: 1 берёт ПРАВЫЙ элемент
+  // X-Forwarded-For — работает и с $proxy_add_x_forwarded_for (дописывает к цепочке), не только с
+  // перезаписывающим вариантом: подделанное клиентом значение остаётся левее реального IP,
+  // добавленного nginx, и Express его игнорирует (уточнено внешней инфра-командой при деплое —
+  // предыдущая формулировка требовала перезаписи, что не так).
   app.set('trust proxy', 1);
 
   // cross-origin — иначе Cross-Origin-Resource-Policy: same-origin (дефолт helmet) блокирует
@@ -35,13 +39,15 @@ async function bootstrap(): Promise<void> {
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
 
-  app.enableCors({
-    origin: configService
-      .get('CORS_ORIGINS', { infer: true })
-      .split(',')
-      .map((origin) => origin.trim()),
-    credentials: true,
-  });
+  const corsOrigins = configService
+    .get('CORS_ORIGINS', { infer: true })
+    .split(',')
+    .map((origin) => origin.trim());
+  app.enableCors({ origin: corsOrigins, credentials: true });
+  // Забытый/неполный CORS_ORIGINS на проде — тихий 403 от CsrfOriginGuard на все формы заявок с
+  // реальных доменов (симптом виден только на фронте, не в логах бэка) — печатаем фактический
+  // список сразу на старте, чтобы это было видно в первом же деплое (просьба внешней инфра-команды).
+  logger.log(`CORS разрешён для: ${corsOrigins.join(', ')}`, 'Bootstrap');
 
   if (configService.get('ENABLE_SWAGGER', { infer: true })) {
     const document = SwaggerModule.createDocument(
