@@ -48,7 +48,9 @@ services:
       DB_PORT: '5432'
       MEILI_HOST: http://meilisearch:7700
     ports:
-      - '${APP_PORT}:${APP_PORT}'
+      # Только localhost — иначе после trust proxy:1 (H3) кто угодно, дотянувшийся до порта в обход
+      # nginx, ротацией X-Forwarded-For обходит rate-limit и подделывает IP в аудите (R3 code review).
+      - '127.0.0.1:${APP_PORT}:${APP_PORT}'
     volumes:
       - ./src:/app/src
       - ./test:/app/test

@@ -39,15 +39,14 @@ export class BitrixClient {
     const bitrixLeadId =
       typeof result === 'string' || typeof result === 'number'
         ? String(result)
-        : '';
+        : null;
 
     if (!bitrixLeadId) {
-      // 2xx без числового/строкового result — Bitrix принял запрос, но не вернул id лида.
-      // Отметится как SENT (успешная доставка была), но без него найти лид в CRM руками нельзя —
-      // должно быть заметно в логах, не тихой деградацией.
-      this.logger.warn(
-        { response: response.data },
-        'Bitrix ответил 2xx без числового result — bitrixLeadId не определён',
+      // Bitrix отвечает ошибками HTTP-статусом 200 с телом {error, error_description} (N1,
+      // round-2 review) — если бы мы вернули пустой bitrixLeadId как успех, лид отмечался бы SENT
+      // без реальной доставки. Бросаем — уходит в тот же retry/классификацию, что сетевые ошибки.
+      throw new Error(
+        `Bitrix ответил 2xx без result: ${JSON.stringify(response.data)}`,
       );
     }
 
