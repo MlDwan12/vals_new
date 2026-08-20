@@ -55,7 +55,20 @@ export class LeadDeliveryScheduler {
             lead.id,
           );
           if (!claimed) return;
-          await this.leadDeliveryService.attemptDelivery(claimed);
+          try {
+            await this.leadDeliveryService.attemptDelivery(claimed);
+          } catch (error) {
+            // Без catch исключение уходит из cron-тика мимо HttpExceptionFilter (тот работает
+            // только в HTTP-контексте) в сырой console.error библиотеки cron — второй канал
+            // утечки ПД/секретов в обход redact из app.module.ts. LeadDeliveryService и так уже
+            // безопасно логирует причину перед тем, как бросить (markSentWithRetry) — это
+            // подстраховка на случай будущих throw-путей, не дублирование (найдено при полном
+            // аудите проекта).
+            this.logger.error(
+              { leadId: claimed.id, err: error },
+              'attemptDelivery завершился необработанной ошибкой в шедулере',
+            );
+          }
         }),
       );
     }

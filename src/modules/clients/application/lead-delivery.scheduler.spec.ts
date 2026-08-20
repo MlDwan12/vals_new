@@ -7,6 +7,15 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   return { promise, resolve };
 }
 
+function buildLogger(): PinoLogger {
+  return {
+    setContext: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  } as unknown as PinoLogger;
+}
+
 describe('LeadDeliveryScheduler', () => {
   it('не запускает второй тик, пока первый ещё выполняется (медленный Bitrix)', async () => {
     const gate = deferred<void>();
@@ -22,11 +31,7 @@ describe('LeadDeliveryScheduler', () => {
         await gate.promise; // держим первый тик "в полёте", пока не отпустим явно
       }),
     };
-    const logger = {
-      setContext: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-    } as unknown as PinoLogger;
+    const logger = buildLogger();
 
     const scheduler = new LeadDeliveryScheduler(
       clientLeadsRepository as never,
@@ -48,5 +53,32 @@ describe('LeadDeliveryScheduler', () => {
     // После завершения первого тика планировщик снова готов работать.
     await scheduler.run();
     expect(clientLeadsRepository.findDueForDelivery).toHaveBeenCalledTimes(2);
+  });
+
+  // Найдено при полном аудите проекта: markSentWithRetry (LeadDeliveryService) бросает после
+  // исчерпания попыток — без catch здесь это исключение уходит из cron-тика мимо pino/redact в
+  // сырой console.error библиотеки cron (второй, незащищённый канал утечки ПД лида).
+  it('attemptDelivery бросает — тик не падает, ошибка залогирована через injected logger', async () => {
+    const clientLeadsRepository = {
+      findDueForDelivery: jest.fn().mockResolvedValue([{ id: 1 }]),
+      claimForDelivery: jest.fn((id: number) => Promise.resolve({ id })),
+    };
+    const leadDeliveryService = {
+      attemptDelivery: jest.fn().mockRejectedValue(new Error('db unavailable')),
+    };
+    const logger = buildLogger();
+
+    const scheduler = new LeadDeliveryScheduler(
+      clientLeadsRepository as never,
+      leadDeliveryService as never,
+      logger,
+    );
+
+    await expect(scheduler.run()).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ leadId: 1 }),
+      expect.any(String),
+    );
   });
 });
