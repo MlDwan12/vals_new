@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
+import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { TagWithCountsRow } from '../dto/tag-with-counts-response.dto';
 import { Tag } from '../domain/tag.entity';
@@ -27,9 +28,15 @@ export class TagsRepository {
   }
 
   // Идемпотентность create по имени (без учёта регистра) — creatable-комбобокс в админке не
-  // должен плодить дубли тега с тем же названием.
+  // должен плодить дубли тега с тем же названием. escapeLikePattern обязателен: без него имя со
+  // спецсимволом ILIKE ('%'/'_') матчилось бы как wildcard, а не литерал — «Скидка 50%» создания
+  // тега возвращал бы чужой существующий тег «Скидка 50...» вместо создания нового (N4, round-2
+  // review). Старый бек сравнивал точным LOWER(name) = LOWER(:name), не ILIKE — этот вариант
+  // сохраняет текущее поведение (частичное совпадение регистронезависимо не нужно, только защита).
   findByNameCI(name: string): Promise<Tag | null> {
-    return this.repo.findOne({ where: { name: ILike(name) } });
+    return this.repo.findOne({
+      where: { name: ILike(escapeLikePattern(name)) },
+    });
   }
 
   existsBySlug(slug: string, excludeId?: number): Promise<boolean> {

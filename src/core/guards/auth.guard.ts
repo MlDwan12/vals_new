@@ -52,6 +52,10 @@ export class AuthGuard implements CanActivate {
       const payload =
         await this.jwtService.verifyAsync<AuthenticatedRequestUser>(token, {
           secret: this.configService.get('JWT_SECRET', { infer: true }),
+          // Явно запинено — без этого jsonwebtoken принимает alg из заголовка самого токена
+          // (alg confusion). Это реальный путь верификации access-токена (JwtStrategy с тем же
+          // alg-пином — мёртвый код, ни одного AuthGuard('jwt') в проекте, N7 round-2 review).
+          algorithms: ['HS256'],
         });
       (request as Request & { user: AuthenticatedRequestUser }).user = payload;
       return true;

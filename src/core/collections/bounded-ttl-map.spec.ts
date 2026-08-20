@@ -53,4 +53,43 @@ describe('BoundedTtlMap', () => {
     expect(map.get('fresh')).toEqual({ expired: false });
     expect(map.get('new')).toEqual({ expired: false });
   });
+
+  // R5 (round-2 review): защищённая (isProtected) запись не должна вытесняться вперемешку с
+  // обычными — иначе заливка Map уникальными "мусорными" ключами быстрее TTL-окна сбрасывает
+  // счётчик уже заблокированной жертвы (LoginUsernameThrottleGuard).
+  it('вытесняет защищённую запись только когда все остальные уже вытеснены', () => {
+    const map = new BoundedTtlMap<{ blocked: boolean }>(
+      2,
+      () => false,
+      (v) => v.blocked,
+    );
+
+    map.set('victim', { blocked: true });
+    map.set('garbage1', { blocked: false });
+    map.set('garbage2', { blocked: false }); // вытесняет garbage1, не victim
+    map.set('garbage3', { blocked: false }); // вытесняет garbage2, не victim
+
+    expect(map.get('victim')).toEqual({ blocked: true });
+    expect(map.get('garbage1')).toBeUndefined();
+    expect(map.get('garbage2')).toBeUndefined();
+    expect(map.get('garbage3')).toEqual({ blocked: false });
+  });
+
+  it('верхняя граница гарантирована даже если все записи защищены', () => {
+    const map = new BoundedTtlMap<{ blocked: boolean }>(
+      2,
+      () => false,
+      () => true,
+    );
+
+    map.set('a', { blocked: true });
+    map.set('b', { blocked: true });
+    map.set('c', { blocked: true });
+
+    let size = 0;
+    for (const key of ['a', 'b', 'c']) {
+      if (map.get(key) !== undefined) size += 1;
+    }
+    expect(size).toBeLessThanOrEqual(2);
+  });
 });

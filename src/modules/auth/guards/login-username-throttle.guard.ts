@@ -30,6 +30,10 @@ export class LoginUsernameThrottleGuard implements CanActivate {
   private readonly attempts = new BoundedTtlMap<Attempt>(
     MAX_TRACKED_USERNAMES,
     (attempt) => attempt.resetAt <= Date.now(),
+    // Заблокированная запись (уже достигла MAX_ATTEMPTS) не должна вытесняться вперемешку с
+    // обычными при заливке Map мусорными логинами быстрее TTL-окна (R5, round-2 review) — иначе
+    // распределённый подбор пароля с большим числом IP обходит username-лимит вытеснением жертвы.
+    (attempt) => attempt.count >= MAX_ATTEMPTS,
   );
 
   canActivate(context: ExecutionContext): boolean {

@@ -16,6 +16,13 @@ export class BoundedTtlMap<V> {
   constructor(
     private readonly maxSize: number,
     private readonly isExpired: (value: V) => boolean,
+    // Опционально: записи, для которых это истинно, вытесняются последними, не вперемешку с
+    // обычными (R5, round-2 review). Пример — LoginUsernameThrottleGuard: заблокированная жертва
+    // (count >= MAX_ATTEMPTS) не должна вытесняться раньше случайных "мусорных" логинов при
+    // заливке Map уникальными ключами быстрее TTL-окна — иначе злоумышленник ботнетом с большим
+    // числом IP обходит username-лимит вытеснением записи жертвы. По умолчанию — обычный FIFO
+    // без защищённых записей (текущее поведение всех остальных потребителей).
+    private readonly isProtected: (value: V) => boolean = () => false,
   ) {}
 
   get(key: string): V | undefined {
@@ -34,17 +41,24 @@ export class BoundedTtlMap<V> {
   }
 
   private evictOverflow(): void {
+    // Проход 1: протухшие — можно чистить всегда, включая защищённые (протухшая запись по
+    // определению больше не нуждается в защите).
+    this.deleteWhile((value) => this.isExpired(value));
+    // Проход 2: обычный FIFO, но защищённые записи пропускаются — вытесняются в последнюю очередь.
+    this.deleteWhile((value) => !this.isProtected(value));
+    // Проход 3: верхняя граница гарантируется безусловно (LOW code review) — если после первых
+    // двух проходов всё ещё переполнено (например, все оставшиеся записи защищены), защита от
+    // вытеснения уступает гарантии размера, не наоборот.
+    this.deleteWhile(() => true);
+  }
+
+  // Map сохраняет порядок вставки — обход с начала и есть корректный FIFO без отдельной структуры.
+  private deleteWhile(shouldDelete: (value: V) => boolean): void {
     for (const [key, value] of this.store) {
       if (this.store.size <= this.maxSize) return;
-      if (this.isExpired(value)) {
+      if (shouldDelete(value)) {
         this.store.delete(key);
       }
-    }
-
-    while (this.store.size > this.maxSize) {
-      const oldestKey = this.store.keys().next().value;
-      if (oldestKey === undefined) return;
-      this.store.delete(oldestKey);
     }
   }
 }

@@ -70,6 +70,18 @@ import { UsersModule } from './modules/users/users.module';
               'req.headers.authorization',
               'req.headers.cookie',
               'res.headers["set-cookie"]',
+              // TypeORM QueryFailedError.parameters — реальные значения биндов SQL-запроса (ПД
+              // лида при сбое записи); AxiosError.config — вебхук Bitrix с секретным токеном в
+              // url и ПД лида в data (R4/C1, round-2 review — механизм, а не только дисциплина
+              // вызывающего кода не логировать error целиком). err.raw.* — обязательно тоже:
+              // pino-std-serializers копирует ВЕСЬ исходный объект ошибки целиком под err.raw в
+              // конце errSerializer (node_modules/pino-std-serializers/lib/err.js), в обход
+              // редактирования плоских полей выше — без этих путей защита обходится тем же самым
+              // полем вторым каналом (найдено /code-review high на этом же батче).
+              'err.parameters',
+              'err.config',
+              'err.raw.parameters',
+              'err.raw.config',
             ],
             remove: true,
           },

@@ -6,6 +6,15 @@ import { buildBitrixPayload, parseUtm } from './bitrix-payload.util';
 import { CreateLeadDto } from '../dto/create-lead.dto';
 import { TariffSnapshotResolverService } from './tariff-snapshot-resolver.service';
 
+// Оставляет достаточно для ручного поиска лида человеком (последние 4 символа телефона/email),
+// не полное значение — контакт целиком в логах не должен оказаться ни при каких обстоятельствах
+// (R4, round-2 review). Для value.length <= 4 старая версия возвращала value как есть — то есть
+// значение целиком, ровно то, что должно быть невозможно (найдено /code-review high на этом же
+// батче: phone у CreateLeadDto не имеет MinLength, короткий ввод — не гипотетика).
+function maskTail(value: string): string {
+  return value.length > 4 ? `…${value.slice(-4)}` : '****';
+}
+
 @Injectable()
 export class LeadsService {
   constructor(
@@ -70,9 +79,24 @@ export class LeadsService {
       });
     } catch (error) {
       // Падение БД на приёме — клиенту неизбежен 500 (ТЗ защищает только от недоступности CRM,
-      // не БД), но тело заявки без этого лога терялось бы без следа. Дешёвая страховка на ручное
-      // восстановление лида (M12 code review).
-      this.logger.error({ err: error, dto }, 'Не удалось сохранить заявку');
+      // не БД), но лид без этого лога терялся бы без следа — дешёвая страховка на ручное
+      // восстановление (M12 code review). Логируется маскированная сводка, не весь dto: сырые
+      // имя/телефон/email/сообщение — ПД, им не место в логах целиком (R4, round-2 review).
+      // err.parameters (TypeORM QueryFailedError — реальные значения биндов, та же ПД вторым
+      // каналом через сериализатор pino) вырезается redact-путём в app.module.ts, не дисциплиной
+      // здесь — на случай, если error когда-нибудь начнут логировать где-то ещё без этой обёртки.
+      this.logger.error(
+        {
+          err: error,
+          lead: {
+            type: dto.type,
+            phoneTail: maskTail(dto.phone),
+            emailTail: dto.email ? maskTail(dto.email) : null,
+            utm,
+          },
+        },
+        'Не удалось сохранить заявку',
+      );
       throw error;
     }
   }

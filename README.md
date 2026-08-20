@@ -46,6 +46,22 @@
    - `GET http://localhost:3000/health` — живость приложения + подключение к БД.
    - `http://localhost:3000/docs` — Swagger (только если `ENABLE_SWAGGER=true`, в проде выключать).
 
+## Прод-деплой
+
+`Dockerfile` (в `docker-compose.yml`) — dev-режим: `yarn start:dev`, root-пользователь, live-reload
+через volume-mounted `src/`. Для реального деплоя — отдельный `Dockerfile.prod` (multi-stage,
+non-root, `node dist/main`, встроенный `HEALTHCHECK` на `/health`):
+
+```bash
+docker build -f Dockerfile.prod -t vals_new:prod .
+```
+
+**`NODE_ENV=production` обязателен в артефактах деплоя** — от него зависят Swagger
+(`ENABLE_SWAGGER` fail-open без него не имеет значения, дефолт для non-production — включён),
+`Secure` на auth-куках и включённое SQL-логирование CLI (M1, round-2 review §5). `Dockerfile.prod`
+задаёт его сам (`ENV NODE_ENV=production`), но если запуск идёт не через этот образ (другой
+Dockerfile/оркестратор) — задать явно в его окружении, не полагаться на дефолт.
+
 ## Домены
 
 `articles`, `cases`, `services` (+категории/шаги/тарифы), `tags`, `industries`, `employees`,

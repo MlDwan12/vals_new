@@ -9,6 +9,7 @@ import { User } from '../../users/domain/user.entity';
 import { UsersService } from '../../users/application/users.service';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
+  REFRESH_RACE_GRACE_MS,
   REFRESH_TOKEN_TTL_SECONDS,
 } from '../auth.constants';
 import { RefreshSessionsRepository } from '../infrastructure/refresh-sessions.repository';
@@ -57,13 +58,26 @@ export class AuthService {
     }
 
     if (session.revokedAt) {
-      // Повторное использование уже отозванного refresh — вероятная компрометация токена,
-      // гасим все сессии пользователя (ТЗ §5.2).
-      this.logger.warn(
-        { userId: session.userId },
-        'Повторное использование отозванного refresh-токена — все сессии пользователя отозваны',
-      );
-      await this.refreshSessionsRepository.revokeAllForUser(session.userId);
+      // Повторное использование уже отозванного refresh — вероятная компрометация токена, гасим
+      // все сессии пользователя (ТЗ §5.2). Но это тот же SELECT, что видит гонку двух вкладок
+      // (R6, round-2 review) — если проигравшая вкладка успевает дойти до СВОЕГО первого SELECT
+      // уже после того, как выигравшая вкладка полностью завершила ротацию (не только тесная гонка
+      // вокруг atomic revoke() ниже, обычный сетевой джиттер тоже так может), она обязана попасть
+      // сюда же, а не только в ветку failed revoke() — иначе grace-период защищает только один из
+      // двух возможных интерливингов (найдено /code-review high на этом же батче).
+      if (
+        !this.isLikelyRefreshRace(
+          session.revokedAt,
+          session.fingerprint,
+          fingerprint,
+        )
+      ) {
+        this.logger.warn(
+          { userId: session.userId },
+          'Повторное использование отозванного refresh-токена — все сессии пользователя отозваны',
+        );
+        await this.refreshSessionsRepository.revokeAllForUser(session.userId);
+      }
       throw new UnauthorizedException('Токен обновления недействителен');
     }
 
@@ -81,18 +95,53 @@ export class AuthService {
 
     // Ротация: старая сессия гасится атомарно (WHERE revoked_at IS NULL). Если гасить было
     // нечего (affected === 0) — значит параллельный запрос тем же токеном уже успел это сделать
-    // между нашим SELECT выше и этим UPDATE: тот же кейс компрометации, что и явный реюз
-    // отозванного токена — гасим все сессии пользователя вместо выдачи новой пары.
+    // между нашим SELECT выше и этим UPDATE.
     const revoked = await this.refreshSessionsRepository.revoke(session.id);
     if (!revoked) {
-      this.logger.warn(
-        { userId: session.userId },
-        'Гонка ротации refresh-токена — все сессии пользователя отозваны',
+      // Дедуп на фронте защищает только запросы внутри одной вкладки — две вкладки одного
+      // браузера, простаивавшие до истечения access-токена, гоняют refresh независимо и здесь
+      // сталкиваются лбами (R6, round-2 review). Если сессию отозвали только что и тем же
+      // fingerprint (IP+UA, тот же браузер/устройство) — это гонка, не реюз украденного токена:
+      // проигравший получает 401 сам по себе, без массового разлогина легитимных устройств.
+      const current = await this.refreshSessionsRepository.findByJti(
+        payload.jti,
       );
-      await this.refreshSessionsRepository.revokeAllForUser(session.userId);
+      const isLikelyRace = this.isLikelyRefreshRace(
+        current?.revokedAt ?? null,
+        current?.fingerprint ?? null,
+        fingerprint,
+      );
+
+      if (!isLikelyRace) {
+        this.logger.warn(
+          { userId: session.userId },
+          'Гонка ротации refresh-токена — все сессии пользователя отозваны',
+        );
+        await this.refreshSessionsRepository.revokeAllForUser(session.userId);
+      }
       throw new UnauthorizedException('Токен обновления недействителен');
     }
     return this.issueTokens(user, fingerprint);
+  }
+
+  // Общая проверка для обеих точек, где сессия уже отозвана к моменту refresh (session.revokedAt
+  // из первого SELECT и current.revokedAt из повторного SELECT после проигранного atomic revoke)
+  // — вынесено, чтобы grace-период не защищал только один из двух интерливингов гонки (R6,
+  // round-2 review; найдено /code-review high на этом же батче: изначально было только во втором
+  // месте). fingerprint !== null обязателен в обеих частях — иначе null === null ложно засчитался
+  // бы как "тот же браузер" (сегодня fingerprintOf() всегда возвращает строку, но тип допускает
+  // null, полагаться на текущее поведение вызывающего кода не стоит).
+  private isLikelyRefreshRace(
+    revokedAt: Date | null,
+    sessionFingerprint: string | null,
+    requestFingerprint: string | null,
+  ): boolean {
+    return Boolean(
+      revokedAt &&
+      Date.now() - revokedAt.getTime() <= REFRESH_RACE_GRACE_MS &&
+      requestFingerprint !== null &&
+      sessionFingerprint === requestFingerprint,
+    );
   }
 
   async logout(payload: RefreshTokenPayload): Promise<void> {

@@ -19,7 +19,10 @@ export class Tag {
   @Column({ type: 'varchar', length: 255 })
   slug: string;
 
-  @Index({ unique: true })
+  // Имя совпадает с индексом, созданным вручную в AddTagNameUnique (не сгенерировано TypeORM) —
+  // без явного имени TypeORM дал бы хешевое, и следующий migration:generate предлагал бы
+  // пересоздать индекс (мелочь из round-2 review, §3).
+  @Index('IDX_tags_name_unique', { unique: true })
   @Column({ type: 'varchar', length: 100 })
   name: string;
 

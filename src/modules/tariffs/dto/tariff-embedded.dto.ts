@@ -1,6 +1,6 @@
 import { Tariff } from '../domain/tariff.entity';
 
-// Минимальная проекция тарифа — embed в ответах об услуге. Полный CRUD тарифов — отдельный подэтап.
+// Минимальная проекция тарифа — embed в ответах об услуге. Полный CRUD тарифов — /admin/tariffs.
 export class TariffEmbeddedDto {
   id: number;
   name: string;
