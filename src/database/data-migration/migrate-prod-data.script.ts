@@ -446,7 +446,13 @@ async function copyImageLibFiles(
             path.join(targetDir, fileName),
           );
           copied += 1;
-        } catch {
+        } catch (error) {
+          // Только ENOENT (файла реально нет на source) — не критично само по себе, см.
+          // findCriticalMissingFiles ниже (round-3 review: раньше любая ошибка, включая EACCES/
+          // ENOSPC, молча классифицировалась как "файла нет" — при ENOSPC на приёмнике мог остаться
+          // обрезанный файл, а скрипт вместо явного сбоя писал бы про несуществующий source).
+          // Остальное — реальная операционная проблема, не "нет файла": роняем весь перенос сразу.
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
           missing.push(fileName);
         }
       }),
@@ -495,10 +501,14 @@ async function findCriticalMissingFiles(
   missing: string[],
 ): Promise<string[]> {
   if (missing.length === 0) return [];
+  // COALESCE и на content — не только на contentHtml (round-3 review): articles.content NOT NULL,
+  // но cases.content jsonb nullable (в отличие от articles). Без COALESCE конкатенация с NULL даёт
+  // NULL на всю строку, string_agg такую строку молча пропускает — кейс с картинкой только в
+  // content_html (content ещё не заполнен) выпадал бы из проверки критичности целиком.
   const rows = (await source.query(`
     SELECT
-      string_agg(content::text || ' ' || COALESCE("contentHtml", ''), ' ') AS articles_text,
-      (SELECT string_agg(content::text || ' ' || COALESCE("contentHtml", ''), ' ') FROM cases) AS cases_text
+      string_agg(COALESCE(content::text, '') || ' ' || COALESCE("contentHtml", ''), ' ') AS articles_text,
+      (SELECT string_agg(COALESCE(content::text, '') || ' ' || COALESCE("contentHtml", ''), ' ') FROM cases) AS cases_text
     FROM articles
   `)) as { articles_text: string | null; cases_text: string | null }[];
   const combined = `${rows[0]?.articles_text ?? ''} ${rows[0]?.cases_text ?? ''}`;
@@ -815,12 +825,14 @@ async function migrateClientLeads(
     r.bitrix_lead_id,
     r.bitrix_response,
     r.created_at,
-    r.bitrix_lead_id ? 'sent' : 'pending',
+    // != null, не truthy-проверка (round-3 review): bitrix_lead_id — строка id из Bitrix, falsy-
+    // проверка ошибочно дала бы 'pending' для гипотетического (пусть и маловероятного) id '0'.
+    r.bitrix_lead_id != null ? 'sent' : 'pending',
     0,
   ]);
   await bulkInsert(target, 'client_leads', columns, values);
 
-  const pendingCount = rows.filter((r) => !r.bitrix_lead_id).length;
+  const pendingCount = rows.filter((r) => r.bitrix_lead_id == null).length;
   if (pendingCount > 0) {
     console.warn(
       `${pendingCount}/${rows.length} лидов без bitrix_lead_id перенесены как 'pending' — ` +
