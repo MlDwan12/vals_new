@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { ServiceFaq } from '../domain/service-faq.entity';
 
@@ -12,6 +13,13 @@ interface CreateServiceFaqRecord {
 
 type UpdateServiceFaqRecord = Partial<CreateServiceFaqRecord>;
 
+interface ServiceFaqSearchIndexRow {
+  id: number;
+  question: string;
+  answer: string;
+  serviceSlug: string;
+}
+
 @Injectable()
 export class ServiceFaqRepository {
   constructor(
@@ -21,17 +29,29 @@ export class ServiceFaqRepository {
 
   // Для reindex поиска — вопрос/ответ + slug родительской услуги (услуги всегда опубликованы,
   // гейта по датам нет).
-  findAllForSearchIndex(): Promise<
-    { id: number; question: string; answer: string; serviceSlug: string }[]
-  > {
-    return this.repo
+  async findAllForSearchIndex(): Promise<ServiceFaqSearchIndexRow[]> {
+    const rows = await this.repo
       .createQueryBuilder('faq')
       .innerJoin('faq.service', 'service')
       .select('faq.id', 'id')
       .addSelect('faq.question', 'question')
       .addSelect('faq.answer', 'answer')
       .addSelect('service.slug', 'serviceSlug')
-      .getRawMany();
+      .getRawMany<ServiceFaqSearchIndexRow>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        {
+          id: 'number',
+          question: 'string',
+          answer: 'string',
+          serviceSlug: 'string',
+        },
+        'findAllForSearchIndex',
+      ),
+    );
+    return rows;
   }
 
   findAndCount(page: number, limit: number): Promise<[ServiceFaq[], number]> {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { ArticleFaq } from '../domain/article-faq.entity';
 
@@ -12,6 +13,14 @@ interface CreateArticleFaqRecord {
 
 type UpdateArticleFaqRecord = Partial<CreateArticleFaqRecord>;
 
+interface ArticleFaqSearchIndexRow {
+  id: number;
+  question: string;
+  answer: string;
+  articleSlug: string;
+  articleDatePublished: Date | null;
+}
+
 @Injectable()
 export class ArticleFaqRepository {
   constructor(
@@ -20,16 +29,8 @@ export class ArticleFaqRepository {
 
   // Для reindex поиска — вопрос/ответ + slug и статус публикации родительской статьи одним JOIN,
   // без N+1 (нужно решить, попадает ли каждый FAQ в индекс, ещё до формирования документов).
-  findAllForSearchIndex(): Promise<
-    {
-      id: number;
-      question: string;
-      answer: string;
-      articleSlug: string;
-      articleDatePublished: Date | null;
-    }[]
-  > {
-    return this.repo
+  async findAllForSearchIndex(): Promise<ArticleFaqSearchIndexRow[]> {
+    const rows = await this.repo
       .createQueryBuilder('faq')
       .innerJoin('faq.article', 'article')
       .select('faq.id', 'id')
@@ -37,7 +38,21 @@ export class ArticleFaqRepository {
       .addSelect('faq.answer', 'answer')
       .addSelect('article.slug', 'articleSlug')
       .addSelect('article.datePublished', 'articleDatePublished')
-      .getRawMany();
+      .getRawMany<ArticleFaqSearchIndexRow>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        {
+          id: 'number',
+          question: 'string',
+          answer: 'string',
+          articleSlug: 'string',
+        },
+        'findAllForSearchIndex',
+      ),
+    );
+    return rows;
   }
 
   findAndCount(page: number, limit: number): Promise<[ArticleFaq[], number]> {

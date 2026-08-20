@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { CaseFaq } from '../domain/case-faq.entity';
 
@@ -12,6 +13,14 @@ interface CreateCaseFaqRecord {
 
 type UpdateCaseFaqRecord = Partial<CreateCaseFaqRecord>;
 
+interface CaseFaqSearchIndexRow {
+  id: number;
+  question: string;
+  answer: string;
+  caseSlug: string;
+  caseDatePublished: Date | null;
+}
+
 @Injectable()
 export class CaseFaqRepository {
   constructor(
@@ -19,16 +28,8 @@ export class CaseFaqRepository {
   ) {}
 
   // Для reindex поиска — вопрос/ответ + slug и статус публикации родительского кейса одним JOIN.
-  findAllForSearchIndex(): Promise<
-    {
-      id: number;
-      question: string;
-      answer: string;
-      caseSlug: string;
-      caseDatePublished: Date | null;
-    }[]
-  > {
-    return this.repo
+  async findAllForSearchIndex(): Promise<CaseFaqSearchIndexRow[]> {
+    const rows = await this.repo
       .createQueryBuilder('faq')
       .innerJoin('faq.case', 'caseEntity')
       .select('faq.id', 'id')
@@ -36,7 +37,21 @@ export class CaseFaqRepository {
       .addSelect('faq.answer', 'answer')
       .addSelect('caseEntity.slug', 'caseSlug')
       .addSelect('caseEntity.datePublished', 'caseDatePublished')
-      .getRawMany();
+      .getRawMany<CaseFaqSearchIndexRow>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        {
+          id: 'number',
+          question: 'string',
+          answer: 'string',
+          caseSlug: 'string',
+        },
+        'findAllForSearchIndex',
+      ),
+    );
+    return rows;
   }
 
   findAndCount(page: number, limit: number): Promise<[CaseFaq[], number]> {
