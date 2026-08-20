@@ -5,6 +5,7 @@ import {
   countPublicationStats,
   PublicationStats,
 } from '../../../core/persistence/count-publication-stats.util';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import {
   applyAuthorSlugFilter,
@@ -120,8 +121,8 @@ export class ArticlesRepository {
   }
 
   // Все опубликованные статьи без пагинации — sitemap.xml и человекочитаемая карта сайта.
-  findAllPublishedSitemapItems(): Promise<ArticleSitemapItemDto[]> {
-    return this.repo
+  async findAllPublishedSitemapItems(): Promise<ArticleSitemapItemDto[]> {
+    const rows = await this.repo
       .createQueryBuilder('article')
       .select('article.slug', 'slug')
       .addSelect('article.title', 'title')
@@ -130,6 +131,15 @@ export class ArticlesRepository {
       .andWhere('article.datePublished <= :now', { now: new Date() })
       .orderBy('article.datePublished', 'DESC')
       .getRawMany<ArticleSitemapItemDto>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        { slug: 'string', title: 'string' },
+        'findAllPublishedSitemapItems',
+      ),
+    );
+    return rows;
   }
 
   findBySlug(slug: string): Promise<Article | null> {
@@ -193,6 +203,9 @@ export class ArticlesRepository {
     }
 
     const rows = await qb.getRawMany<{ id: number; matched: string }>();
+    rows.forEach((row) =>
+      assertRawRowShape(row, { id: 'number' }, 'findSimilarRankedIds'),
+    );
     return rows.map((row) => row.id);
   }
 

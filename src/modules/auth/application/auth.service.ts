@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { EnvConfig } from '../../../config/env.validation';
 import { User } from '../../users/domain/user.entity';
 import { UsersService } from '../../users/application/users.service';
+import { UserResponseDto } from '../../users/dto/user-response.dto';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_RACE_GRACE_MS,
@@ -20,6 +21,10 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
+
+// issueTokens нужны только id/username/role — UserResponseDto (без password) годится так же, как
+// полная User-сущность (refresh() после N3/users-refactor работает с DTO из UsersService.findById).
+type TokenSubject = Pick<User, 'id' | 'username' | 'role'>;
 
 @Injectable()
 export class AuthService {
@@ -43,7 +48,7 @@ export class AuthService {
     return passwordMatches ? user : null;
   }
 
-  login(user: User, fingerprint: string | null): Promise<AuthTokens> {
+  login(user: TokenSubject, fingerprint: string | null): Promise<AuthTokens> {
     return this.issueTokens(user, fingerprint);
   }
 
@@ -143,12 +148,12 @@ export class AuthService {
     }
   }
 
-  getMe(userId: number): Promise<User> {
+  getMe(userId: number): Promise<UserResponseDto> {
     return this.usersService.findById(userId);
   }
 
   private async issueTokens(
-    user: User,
+    user: TokenSubject,
     fingerprint: string | null,
   ): Promise<AuthTokens> {
     const jti = randomUUID();

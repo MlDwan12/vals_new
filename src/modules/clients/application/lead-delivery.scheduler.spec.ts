@@ -7,13 +7,15 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   return { promise, resolve };
 }
 
-function buildLogger(): PinoLogger {
-  return {
+function buildLogger(): { logger: PinoLogger; errorMock: jest.Mock } {
+  const errorMock = jest.fn();
+  const logger = {
     setContext: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
-    error: jest.fn(),
+    error: errorMock,
   } as unknown as PinoLogger;
+  return { logger, errorMock };
 }
 
 describe('LeadDeliveryScheduler', () => {
@@ -31,7 +33,7 @@ describe('LeadDeliveryScheduler', () => {
         await gate.promise; // держим первый тик "в полёте", пока не отпустим явно
       }),
     };
-    const logger = buildLogger();
+    const { logger } = buildLogger();
 
     const scheduler = new LeadDeliveryScheduler(
       clientLeadsRepository as never,
@@ -66,7 +68,7 @@ describe('LeadDeliveryScheduler', () => {
     const leadDeliveryService = {
       attemptDelivery: jest.fn().mockRejectedValue(new Error('db unavailable')),
     };
-    const logger = buildLogger();
+    const { logger, errorMock } = buildLogger();
 
     const scheduler = new LeadDeliveryScheduler(
       clientLeadsRepository as never,
@@ -76,7 +78,7 @@ describe('LeadDeliveryScheduler', () => {
 
     await expect(scheduler.run()).resolves.toBeUndefined();
 
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(errorMock).toHaveBeenCalledWith(
       expect.objectContaining({ leadId: 1 }),
       expect.any(String),
     );

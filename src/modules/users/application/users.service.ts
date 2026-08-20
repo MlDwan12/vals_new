@@ -13,6 +13,7 @@ import {
 } from '../../../core/pagination/paginated-result.interface';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { UserResponseDto } from '../dto/user-response.dto';
 import { User } from '../domain/user.entity';
 import { UsersRepository } from '../infrastructure/users.repository';
 
@@ -33,17 +34,33 @@ export class UsersService {
     );
   }
 
-  async findById(id: number): Promise<User> {
+  // Единственный источник маппинга в DTO — контроллер раньше вызывал UserResponseDto.fromEntity()
+  // сам (единственное исключение из паттерна проекта среди ~18 admin/public контроллеров, где DTO
+  // всегда собирает сервис). AuthService.getMe переиспользует этот метод для /auth/me — там нужны
+  // только username/role, которые есть и в DTO, отдельного метода на "сырую" сущность не требуется.
+  async findById(id: number): Promise<UserResponseDto> {
+    return UserResponseDto.fromEntity(await this.findEntityById(id));
+  }
+
+  async paginate(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<UserResponseDto>> {
+    const [items, total] = await this.usersRepository.findAndCount(page, limit);
+    return buildPaginatedResult(
+      items.map((user) => UserResponseDto.fromEntity(user)),
+      total,
+      page,
+      limit,
+    );
+  }
+
+  private async findEntityById(id: number): Promise<User> {
     const user = await this.usersRepository.findById(id);
     if (!user) {
       throw new NotFoundException('Пользователь не найден');
     }
     return user;
-  }
-
-  async paginate(page: number, limit: number): Promise<PaginatedResult<User>> {
-    const [items, total] = await this.usersRepository.findAndCount(page, limit);
-    return buildPaginatedResult(items, total, page, limit);
   }
 
   async createWithRole(
@@ -81,8 +98,8 @@ export class UsersService {
     }
   }
 
-  async update(id: number, dto: UpdateUserDto): Promise<User> {
-    await this.findById(id);
+  async update(id: number, dto: UpdateUserDto): Promise<UserResponseDto> {
+    await this.findEntityById(id);
 
     const patch: { username?: string; password?: string; isActive?: boolean } =
       {};
@@ -102,7 +119,7 @@ export class UsersService {
       if (!updated) {
         throw new NotFoundException('Пользователь не найден');
       }
-      return updated;
+      return UserResponseDto.fromEntity(updated);
     } catch (error: unknown) {
       if (isUniqueViolation(error)) {
         throw new ConflictException(
@@ -114,7 +131,7 @@ export class UsersService {
   }
 
   async remove(id: number): Promise<void> {
-    await this.findById(id);
+    await this.findEntityById(id);
     await this.usersRepository.remove(id);
   }
 

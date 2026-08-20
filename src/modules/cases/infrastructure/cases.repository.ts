@@ -5,6 +5,7 @@ import {
   countPublicationStats,
   PublicationStats,
 } from '../../../core/persistence/count-publication-stats.util';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import {
   applyAuthorSlugFilter,
@@ -120,8 +121,8 @@ export class CasesRepository {
   }
 
   // Все опубликованные кейсы без пагинации — sitemap.xml и человекочитаемая карта сайта.
-  findAllPublishedSitemapItems(): Promise<CaseSitemapItemDto[]> {
-    return this.repo
+  async findAllPublishedSitemapItems(): Promise<CaseSitemapItemDto[]> {
+    const rows = await this.repo
       .createQueryBuilder('cases')
       .select('cases.slug', 'slug')
       .addSelect('cases.title', 'title')
@@ -130,6 +131,15 @@ export class CasesRepository {
       .andWhere('cases.datePublished <= :now', { now: new Date() })
       .orderBy('cases.datePublished', 'DESC')
       .getRawMany<CaseSitemapItemDto>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        { slug: 'string', title: 'string' },
+        'findAllPublishedSitemapItems',
+      ),
+    );
+    return rows;
   }
 
   findBySlug(slug: string): Promise<Case | null> {
@@ -196,6 +206,9 @@ export class CasesRepository {
     }
 
     const rows = await qb.getRawMany<{ id: number; matched: string }>();
+    rows.forEach((row) =>
+      assertRawRowShape(row, { id: 'number' }, 'findSimilarRankedIds'),
+    );
     return rows.map((row) => row.id);
   }
 

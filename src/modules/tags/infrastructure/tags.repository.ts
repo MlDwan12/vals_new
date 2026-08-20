@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
+import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { TagWithCountsRow } from '../dto/tag-with-counts-response.dto';
@@ -84,6 +85,14 @@ export class TagsRepository {
         articlesCount: string;
         casesCount: string;
       }>();
+
+    rows.forEach((row) =>
+      assertRawRowShape(
+        row,
+        { id: 'number', slug: 'string', name: 'string', priority: 'number' },
+        'findAllWithCounts',
+      ),
+    );
 
     return rows.map((row) => ({
       id: row.id,

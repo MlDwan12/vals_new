@@ -57,33 +57,25 @@ export class UsersAdminController {
 
   @Get()
   @Roles(...ADMIN_ROLES)
-  async paginate(
+  paginate(
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<UserResponseDto>> {
-    const result = await this.usersService.paginate(query.page, query.limit);
-    return {
-      ...result,
-      items: result.items.map((user) => UserResponseDto.fromEntity(user)),
-    };
+    return this.usersService.paginate(query.page, query.limit);
   }
 
   @Get(':id')
   @Roles(...ADMIN_ROLES)
-  async findById(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(id);
-    return UserResponseDto.fromEntity(user);
+  findById(@Param('id', ParseIntPipe) id: number): Promise<UserResponseDto> {
+    return this.usersService.findById(id);
   }
 
   @Patch(':id')
   @Roles(Role.DEVELOPER)
-  async update(
+  update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.update(id, dto);
-    return UserResponseDto.fromEntity(user);
+    return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
