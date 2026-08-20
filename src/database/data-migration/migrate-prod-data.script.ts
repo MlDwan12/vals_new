@@ -3,6 +3,7 @@ import { config as loadEnv } from 'dotenv';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { DataSource, EntityManager } from 'typeorm';
+import { LeadDeliveryStatus } from '../../modules/clients/enums/lead-delivery-status.enum';
 import { UPLOADS_ROOT } from '../../core/uploads.constants';
 
 loadEnv({ quiet: true });
@@ -411,6 +412,39 @@ async function fetchImageLibFileNames(source: Queryable): Promise<string[]> {
     .filter((name): name is string => Boolean(name));
 }
 
+// Две записи image_lib с разными путями, но одинаковым именем файла иначе тихо перезаписывают друг
+// друга на диске в copyImageLibFiles (N-3, round-3 review, "смежное" — Promise.all внутри чанка не
+// гарантирует, какая копия победит), а UNIQUE(media.file_name) в целевой БД поймает это только
+// после того, как один из файлов уже испорчен. Проверяется до единого fs.copyFile.
+function findDuplicateBasenames(fileNames: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const name of fileNames) {
+    if (seen.has(name)) duplicates.add(name);
+    seen.add(name);
+  }
+  return [...duplicates];
+}
+
+// Pre-flight вместо fs.copyFile(..., COPYFILE_EXCL) (N-3, round-3 review): COPYFILE_EXCL в лоб
+// ломает документированный повтор ETL (README — при сбое поправить SOURCE_IMAGE_LIB_ROOT/права и
+// перезапустить `yarn migrate:prod-data` целиком; после первого успешного прогона файлы уже лежат в
+// uploads/media/, EEXIST на повторе выглядел бы как "файла нет" и ушёл бы в missing с ложной
+// диагностикой). Пересечение с уже существующими media.file_name в ЦЕЛЕВОЙ БД проверяется явно, до
+// того как что-либо тронуто на диске — на пустой целевой БД (нормальный случай, включая повтор
+// после отката транзакции) пересечение всегда пусто, и повтор безопасен.
+async function findCollidingMediaFileNames(
+  target: Queryable,
+  fileNames: string[],
+): Promise<string[]> {
+  if (fileNames.length === 0) return [];
+  const rows = (await target.query(
+    `SELECT file_name FROM media WHERE file_name = ANY($1)`,
+    [fileNames],
+  )) as { file_name: string }[];
+  return rows.map((r) => r.file_name);
+}
+
 // Физическое копирование файлов image-lib → media (решение принято осознанно, не move и не
 // symlink: оригиналы на старом сервере не наши, чтобы трогать). basename сохранён (см.
 // migrateMedia) — под новые media-записи кладётся копия того же файла в /uploads/media/, откуда
@@ -775,6 +809,16 @@ async function migrateClientContacts(
 // и безусловный 'sent' навсегда скрыл бы её от LeadDeliveryScheduler. С другой стороны, 'sent' для
 // реально доставленных остаётся обязательным: дефолт 'pending' для них заставил бы шедулер
 // повторно отправить уже доставленные лиды в Bitrix и задвоить их в CRM.
+//
+// bitrix_lead_id IS NULL → FAILED, не 'pending' (N-8, round-3 review). По коду старого бека
+// (backend/src/modules/client/services/client-lead.service.ts) NULL означает, что лид реально НЕ
+// дошёл до Bitrix (HTTP 200 с телом {"error":...} не бросает axios-исключение — строка сохраняется,
+// bitrix_lead_id просто не заполняется) — но статус FAILED корректен при любом прочтении NULL:
+// 'pending' с next_retry_at = NULL подхватывается первой же веткой findDueForDelivery без отсечения
+// по created_at и улетает в Bitrix в первую же минуту после старта приложения — полугодовая заявка
+// появляется в CRM как новая, независимо от того, что на самом деле означает NULL. FAILED не
+// подбирается findDueForDelivery, но виден в админке и ручной retry работает — решение отправлять
+// такие лиды принимает человек, не автоматика сразу после ETL.
 async function migrateClientLeads(
   source: Queryable,
   target: Queryable,
@@ -826,19 +870,29 @@ async function migrateClientLeads(
     r.bitrix_response,
     r.created_at,
     // != null, не truthy-проверка (round-3 review): bitrix_lead_id — строка id из Bitrix, falsy-
-    // проверка ошибочно дала бы 'pending' для гипотетического (пусть и маловероятного) id '0'.
-    r.bitrix_lead_id != null ? 'sent' : 'pending',
+    // проверка ошибочно дала бы FAILED для гипотетического (пусть и маловероятного) id '0'.
+    r.bitrix_lead_id != null
+      ? LeadDeliveryStatus.SENT
+      : LeadDeliveryStatus.FAILED,
     0,
   ]);
   await bulkInsert(target, 'client_leads', columns, values);
 
-  const pendingCount = rows.filter((r) => r.bitrix_lead_id == null).length;
-  if (pendingCount > 0) {
+  // Печатаем id и bitrix_response каждого такого лида (N-8, round-3 review) — по наличию в нём
+  // "error" видно, какая из интерпретаций NULL верна для конкретной строки, и человек, а не
+  // LeadDeliveryScheduler, решает, отправлять ли её в Bitrix вручную из админки.
+  const failedRows = rows.filter((r) => r.bitrix_lead_id == null);
+  if (failedRows.length > 0) {
     console.warn(
-      `${pendingCount}/${rows.length} лидов без bitrix_lead_id перенесены как 'pending' — ` +
-        `LeadDeliveryScheduler отправит их в Bitrix после переключения (ожидаемо, если это ` +
-        `реально недоставленные заявки; убедиться, что это не расхождение с дампом).`,
+      `${failedRows.length}/${rows.length} лидов без bitrix_lead_id перенесены как 'failed' — ` +
+        `LeadDeliveryScheduler их НЕ подхватит автоматически, ручной retry из админки доступен. ` +
+        `Разобрать вручную по bitrix_response, действительно ли не доставлены:`,
     );
+    for (const r of failedRows) {
+      console.warn(
+        `  id=${String(r.id)}: bitrix_response=${JSON.stringify(r.bitrix_response)}`,
+      );
+    }
   }
 
   return rows.length;
@@ -856,6 +910,26 @@ async function run(): Promise<void> {
     // переписывают ссылки в контенте на /uploads/media/..., значит копия должна долететь раньше,
     // чем БД получит переписанный текст, иначе опубликованные статьи получат 404 на картинки.
     const imageLibFileNames = await fetchImageLibFileNames(source);
+
+    const duplicateBasenames = findDuplicateBasenames(imageLibFileNames);
+    if (duplicateBasenames.length > 0) {
+      throw new Error(
+        `image_lib содержит записи с разными путями, но одинаковым именем файла — перенос ` +
+          `остановлен до копирования, диск и БД не тронуты: ${duplicateBasenames.join(', ')}`,
+      );
+    }
+
+    const collidingFileNames = await findCollidingMediaFileNames(
+      target,
+      imageLibFileNames,
+    );
+    if (collidingFileNames.length > 0) {
+      throw new Error(
+        `В целевой media уже есть файлы с такими же именами — перенос остановлен до копирования, ` +
+          `чтобы не перезаписать существующие: ${collidingFileNames.join(', ')}`,
+      );
+    }
+
     const { copied, missing } = await copyImageLibFiles(imageLibFileNames);
     console.log(
       `Файлы image-lib: скопировано ${copied}/${imageLibFileNames.length} в uploads/media/.`,
