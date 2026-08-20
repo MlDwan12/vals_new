@@ -40,22 +40,41 @@ function readableErrorType(err: Error): string {
   return err.name || 'Error';
 }
 
+// pino-http оборачивает наш сериализатор через wrapErrorSerializer
+// (node_modules/pino-std-serializers/index.js): внутри HTTP-запроса (nestjs-pino логирует через
+// req.log/pino-http, не через outOfContext-логгер) сюда приходит НЕ оригинальная ошибка, а уже
+// готовый объект от штатного pino errSerializer — Object.create(pinoErrProto), НЕ instanceof Error,
+// со ВСЕМИ enumerable-полями ошибки, скопированными как есть (err.js: `for (const key in err)`).
+// Без разворачивания ниже `instanceof Error` не срабатывал и весь allowlist обходился — найдено
+// построчной сверкой N-4, живой сценарий: unique-violation на client_contacts внутри HTTP-запроса
+// утекал err.parameters/err.detail целиком, несмотря на allowlist. pino специально кладёт
+// оригинальную ошибку в неenumerable err.raw (err-proto.js: accessor, enumerable:false) для таких
+// случаев — разворачиваем через него. Вне HTTP-контекста (outOfContext-логгер, юнит-тесты) обёртки
+// нет, err.raw отсутствует, работаем с самим err, как раньше.
+function unwrapRawError(err: unknown): unknown {
+  if (err && typeof err === 'object' && 'raw' in err) {
+    return (err as { raw?: unknown }).raw;
+  }
+  return err;
+}
+
 // message для QueryFailedError (unique violation и т.п.) собирается TypeORM из
 // driverError.toString() — обобщённый текст без конкретных значений (сами значения только в
 // driverError.detail, который сюда не попадает). Для остальных ошибок — обычный err.message.
 export function safeErrSerializer(err: unknown): unknown {
-  if (!(err instanceof Error)) {
+  const source = unwrapRawError(err);
+  if (!(source instanceof Error)) {
     return err;
   }
 
   const safe: Record<string, unknown> = {
-    type: readableErrorType(err),
-    message: err.message,
-    stack: err.stack,
-    ...pickSafeFields(err as unknown as Record<string, unknown>),
+    type: readableErrorType(source),
+    message: source.message,
+    stack: source.stack,
+    ...pickSafeFields(source as unknown as Record<string, unknown>),
   };
 
-  const driverError = (err as { driverError?: unknown }).driverError;
+  const driverError = (source as { driverError?: unknown }).driverError;
   if (driverError && typeof driverError === 'object') {
     const safeDriverError = pickSafeFields(
       driverError as Record<string, unknown>,

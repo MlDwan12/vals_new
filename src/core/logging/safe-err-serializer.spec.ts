@@ -1,3 +1,5 @@
+import { Writable } from 'node:stream';
+import { pinoHttp } from 'pino-http';
 import { QueryFailedError } from 'typeorm';
 import { AxiosError } from 'axios';
 import { safeErrSerializer } from './safe-err-serializer';
@@ -101,5 +103,55 @@ describe('safeErrSerializer', () => {
     const notAnError = { foo: 'bar' };
 
     expect(safeErrSerializer(notAnError)).toBe(notAnError);
+  });
+
+  // Регресс-тест на находку при построчной сверке N-4: pino-http оборачивает наш сериализатор
+  // через wrapErrorSerializer (см. комментарий в safe-err-serializer.ts) — прямой вызов
+  // safeErrSerializer(err) выше эту обёртку не проверяет и был зелёным даже тогда, когда в реальном
+  // HTTP-запросе allowlist полностью обходился. Гоняем через настоящий pino-http с той же
+  // конфигурацией serializers.err, что и в app.module.ts.
+  it('через pino-http (реальный HTTP-контекст, wrapErrorSerializer) — ПД не утекает', () => {
+    const chunks: Buffer[] = [];
+    const destination = new Writable({
+      write(chunk: Buffer, _enc, cb) {
+        chunks.push(chunk);
+        cb();
+      },
+    });
+    const httpLogger = pinoHttp(
+      { serializers: { err: safeErrSerializer } },
+      destination,
+    );
+
+    const driverError = new FakeDriverError(
+      'duplicate key value violates unique constraint "client_contacts_type_value_key"',
+    );
+    Object.assign(driverError, {
+      code: '23505',
+      detail:
+        'Key (type, value)=(EMAIL, ivan.petrov@example.com) already exists.',
+      table: 'client_contacts',
+      constraint: 'client_contacts_type_value_key',
+      schema: 'public',
+      severity: 'ERROR',
+    });
+    const err = new QueryFailedError(
+      'INSERT INTO "client_contacts" ("type", "value") VALUES ($1, $2)',
+      ['EMAIL', 'ivan.petrov@example.com'],
+      driverError,
+    );
+
+    httpLogger.logger.error({ err }, 'boom');
+
+    const logged = JSON.parse(Buffer.concat(chunks).toString()) as {
+      err: Record<string, unknown>;
+    };
+    const serialized = JSON.stringify(logged.err);
+
+    expect(serialized).not.toContain('ivan.petrov@example.com');
+    expect(logged.err.parameters).toBeUndefined();
+    expect(logged.err.detail).toBeUndefined();
+    expect(logged.err.code).toBe('23505');
+    expect(logged.err.constraint).toBe('client_contacts_type_value_key');
   });
 });
