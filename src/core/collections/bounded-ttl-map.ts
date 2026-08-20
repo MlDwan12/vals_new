@@ -36,26 +36,38 @@ export class BoundedTtlMap<V> {
     this.store.set(key, value);
 
     if (this.store.size > this.maxSize) {
-      this.evictOverflow();
+      this.evictOverflow(key);
     }
   }
 
-  private evictOverflow(): void {
+  // insertedKey исключён из всех проходов (N-1, round-3 review): запись, которую set() только что
+  // записал, физически всегда последняя в порядке вставки — при карте, насыщенной ИСКЛЮЧИТЕЛЬНО
+  // защищёнными записями, она оставалась единственным незащищённым кандидатом в проходе 2 и
+  // вытесняла сама себя (LoginUsernameThrottleGuard: свежий логин никогда не набирал count, лимит
+  // по username отключался). Явное исключение "самого себя" не меняет исход ни для одного другого
+  // сценария — раньше эта запись и так вытеснялась только "по остаточному принципу", когда все
+  // остальные кандидаты уже отфильтрованы; теперь в такой ситуации вместо неё уходит старейшая
+  // запись в проходе 3 (штатное поведение — "защита уступает гарантии размера").
+  private evictOverflow(insertedKey: string): void {
     // Проход 1: протухшие — можно чистить всегда, включая защищённые (протухшая запись по
     // определению больше не нуждается в защите).
-    this.deleteWhile((value) => this.isExpired(value));
+    this.deleteWhile((value) => this.isExpired(value), insertedKey);
     // Проход 2: обычный FIFO, но защищённые записи пропускаются — вытесняются в последнюю очередь.
-    this.deleteWhile((value) => !this.isProtected(value));
+    this.deleteWhile((value) => !this.isProtected(value), insertedKey);
     // Проход 3: верхняя граница гарантируется безусловно (LOW code review) — если после первых
     // двух проходов всё ещё переполнено (например, все оставшиеся записи защищены), защита от
     // вытеснения уступает гарантии размера, не наоборот.
-    this.deleteWhile(() => true);
+    this.deleteWhile(() => true, insertedKey);
   }
 
   // Map сохраняет порядок вставки — обход с начала и есть корректный FIFO без отдельной структуры.
-  private deleteWhile(shouldDelete: (value: V) => boolean): void {
+  private deleteWhile(
+    shouldDelete: (value: V) => boolean,
+    excludeKey: string,
+  ): void {
     for (const [key, value] of this.store) {
       if (this.store.size <= this.maxSize) return;
+      if (key === excludeKey) continue;
       if (shouldDelete(value)) {
         this.store.delete(key);
       }

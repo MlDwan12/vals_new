@@ -75,6 +75,27 @@ describe('BoundedTtlMap', () => {
     expect(map.get('garbage3')).toEqual({ blocked: false });
   });
 
+  // N-1 (round-3 review): при карте, насыщенной ИСКЛЮЧИТЕЛЬНО защищёнными записями, свежевставленная
+  // запись (единственная незащищённая) раньше вытесняла сама себя в проходе 2 — get() сразу после
+  // set() возвращал undefined, счётчик попыток по username никогда не набирался.
+  it('не вытесняет только что вставленную запись, даже когда все остальные защищены', () => {
+    const map = new BoundedTtlMap<{ blocked: boolean }>(
+      2,
+      () => false,
+      (v) => v.blocked,
+    );
+
+    map.set('old-victim', { blocked: true });
+    map.set('other-victim', { blocked: true }); // карта полностью насыщена защищёнными
+
+    map.set('fresh', { blocked: false }); // не должна вытеснить сама себя
+
+    expect(map.get('fresh')).toEqual({ blocked: false });
+    // Вместо неё, по проходу 3, ушла старейшая запись — гарантия размера всё равно соблюдена.
+    expect(map.get('old-victim')).toBeUndefined();
+    expect(map.get('other-victim')).toEqual({ blocked: true });
+  });
+
   it('верхняя граница гарантирована даже если все записи защищены', () => {
     const map = new BoundedTtlMap<{ blocked: boolean }>(
       2,
