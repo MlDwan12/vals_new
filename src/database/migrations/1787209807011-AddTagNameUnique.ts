@@ -5,8 +5,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 // имени (creatable-комбобокс не должен плодить дубли), но без constraint'а в БД это только
 // check-then-act в приложении — конкурентный двойной сабмит с одним и тем же именем всё равно
 // создаёт два тега (code review).
-export class AddTagNameUnique1787200000200 implements MigrationInterface {
-  name = 'AddTagNameUnique1787200000200';
+export class AddTagNameUnique1787209807011 implements MigrationInterface {
+  name = 'AddTagNameUnique1787209807011';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

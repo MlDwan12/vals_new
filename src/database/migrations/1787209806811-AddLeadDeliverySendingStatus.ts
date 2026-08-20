@@ -3,8 +3,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 // Промежуточный статус для claim-апдейта доставки лидов (H10 code review): без него ручной retry
 // и планировщик читают status в память и решают отправлять ли не атомарно — двойной клик или
 // гонка с параллельным инстансом даёт дубль лида в Bitrix CRM.
-export class AddLeadDeliverySendingStatus1787200000000 implements MigrationInterface {
-  name = 'AddLeadDeliverySendingStatus1787200000000';
+export class AddLeadDeliverySendingStatus1787209806811 implements MigrationInterface {
+  name = 'AddLeadDeliverySendingStatus1787209806811';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

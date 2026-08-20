@@ -412,10 +412,16 @@ async function fetchImageLibFileNames(source: Queryable): Promise<string[]> {
 }
 
 // Физическое копирование файлов image-lib → media (решение принято осознанно, не move и не
-// symlink): опубликованные статьи/кейсы держат путь /uploads/image-lib/... зашитым текстом в
-// content/contentHtml, поэтому оригиналы остаются на месте нетронутыми, а под новые media-записи
-// (basename сохранён в migrateMedia) кладётся копия того же файла в /uploads/media/, откуда его
-// строит media-response.dto.ts. Требует локального доступа к каталогу старого прода
+// symlink: оригиналы на старом сервере не наши, чтобы трогать). basename сохранён (см.
+// migrateMedia) — под новые media-записи кладётся копия того же файла в /uploads/media/, откуда
+// его строит media-response.dto.ts. migrateArticles/migrateCases переписывают ссылки
+// /uploads/image-lib/... на /uploads/media/... в content/contentHtml тем же basename'ом (N2,
+// round-2 review — ТЗ §2 требует ОДНУ подсистему медиа, не два постоянно живых каталога), поэтому
+// эта копия обязана быть полной ДО записи переписанного контента: вызывается до транзакции в
+// run(), падает жёстко, если недостающий файл реально упомянут в опубликованном контенте (см.
+// findCriticalMissingFiles ниже — image_lib целиком шире, чем то, что попало в content/contentHtml,
+// пропавший неиспользуемый файл не должен блокировать весь перенос). Старый /uploads/image-lib/ на
+// новом сервере сознательно не понадобится. Требует локального доступа к каталогу старого прода
 // (SOURCE_IMAGE_LIB_ROOT) — SOURCE_DB_HOST может быть удалённым, файлы — нет; обычно это заранее
 // синхронизированная копия uploads/image-lib/ с боевого сервера.
 const COPY_CONCURRENCY = 20;
@@ -448,6 +454,55 @@ async function copyImageLibFiles(
   }
 
   return { copied, missing };
+}
+
+const IMAGE_LIB_URL_PREFIX = '/uploads/image-lib/';
+const MEDIA_URL_PREFIX = '/uploads/media/';
+
+// basename не меняется при копировании (см. copyImageLibFiles выше) — прямая замена префикса пути
+// корректна для любого файла оттуда, без карты старое/новое имя. Работает и на объектах (Tiptap
+// JSON в content — сериализуем/десериализуем вокруг replace, не обходим дерево вручную, не завязано
+// на схему Tiptap), и на HTML-строке (content_html) через одну и ту же функцию.
+function rewriteImageLibRefs<T>(value: T): T {
+  if (value === null || value === undefined) return value;
+  const isString = typeof value === 'string';
+  const text = isString ? (value as string) : JSON.stringify(value);
+  if (!text.includes(IMAGE_LIB_URL_PREFIX)) return value;
+  const rewritten = text.replaceAll(IMAGE_LIB_URL_PREFIX, MEDIA_URL_PREFIX);
+  return (isString ? rewritten : JSON.parse(rewritten)) as T;
+}
+
+async function countImageLibReferences(target: Queryable): Promise<number> {
+  const rows = (await target.query(
+    `
+    SELECT
+      (SELECT count(*) FROM articles WHERE content::text LIKE $1 OR content_html LIKE $1)
+      + (SELECT count(*) FROM cases WHERE content::text LIKE $1 OR content_html LIKE $1)
+      AS count
+  `,
+    [`%${IMAGE_LIB_URL_PREFIX}%`],
+  )) as { count: string }[];
+  return Number(rows[0]?.count ?? 0);
+}
+
+// Только файлы, реально упомянутые в опубликованном контенте, критичны для переноса (N2, round-2
+// review: fetchImageLibFileNames тянет ВСЮ таблицу image_lib, включая записи, на которые ни одна
+// статья/кейс не ссылается — такой файл, если пропал на диске, портит только карточку в медиатеке,
+// не паблик). Дешёвая проверка post-hoc: если что-то не скопировалось, смотрим, встречается ли
+// имя файла хоть где-то в контенте источника, и останавливаем перенос только из-за таких.
+async function findCriticalMissingFiles(
+  source: Queryable,
+  missing: string[],
+): Promise<string[]> {
+  if (missing.length === 0) return [];
+  const rows = (await source.query(`
+    SELECT
+      string_agg(content::text || ' ' || COALESCE("contentHtml", ''), ' ') AS articles_text,
+      (SELECT string_agg(content::text || ' ' || COALESCE("contentHtml", ''), ' ') FROM cases) AS cases_text
+    FROM articles
+  `)) as { articles_text: string | null; cases_text: string | null }[];
+  const combined = `${rows[0]?.articles_text ?? ''} ${rows[0]?.cases_text ?? ''}`;
+  return missing.filter((fileName) => combined.includes(fileName));
 }
 
 async function migrateArticles(
@@ -483,8 +538,8 @@ async function migrateArticles(
     r.slug,
     r.title,
     r.description,
-    r.content,
-    r.contentHtml,
+    rewriteImageLibRefs(r.content),
+    rewriteImageLibRefs(r.contentHtml),
     r.metaTitle,
     r.metaDescription,
     r.keywords,
@@ -539,8 +594,8 @@ async function migrateCases(
     r.description,
     r.problem,
     r.result,
-    r.content,
-    r.contentHtml,
+    rewriteImageLibRefs(r.content),
+    rewriteImageLibRefs(r.contentHtml),
     r.metaTitle,
     r.metaDescription,
     r.keywords,
@@ -704,10 +759,12 @@ async function migrateClientContacts(
   return rows.length;
 }
 
-// Все исторические лиды в проде имеют bitrix_lead_id (реально доставлены) — проверено запросом
-// перед написанием скрипта (49 из 49). Ставим status='sent' всем без исключения: дефолт 'pending'
-// заставил бы LeadDeliveryScheduler после переключения повторно отправить их все в Bitrix и
-// задвоить реальные лиды в CRM.
+// Статус по факту наличия bitrix_lead_id, не безусловный 'sent' (N5, round-2 review): на дампе от
+// 18.07 у всех 49 лидов он был (реально доставлены), но это инвариант конкретного дампа на
+// конкретную дату, не гарантия — к моменту боевого прогона могла появиться недоставленная заявка,
+// и безусловный 'sent' навсегда скрыл бы её от LeadDeliveryScheduler. С другой стороны, 'sent' для
+// реально доставленных остаётся обязательным: дефолт 'pending' для них заставил бы шедулер
+// повторно отправить уже доставленные лиды в Bitrix и задвоить их в CRM.
 async function migrateClientLeads(
   source: Queryable,
   target: Queryable,
@@ -758,10 +815,20 @@ async function migrateClientLeads(
     r.bitrix_lead_id,
     r.bitrix_response,
     r.created_at,
-    'sent',
+    r.bitrix_lead_id ? 'sent' : 'pending',
     0,
   ]);
   await bulkInsert(target, 'client_leads', columns, values);
+
+  const pendingCount = rows.filter((r) => !r.bitrix_lead_id).length;
+  if (pendingCount > 0) {
+    console.warn(
+      `${pendingCount}/${rows.length} лидов без bitrix_lead_id перенесены как 'pending' — ` +
+        `LeadDeliveryScheduler отправит их в Bitrix после переключения (ожидаемо, если это ` +
+        `реально недоставленные заявки; убедиться, что это не расхождение с дампом).`,
+    );
+  }
+
   return rows.length;
 }
 
@@ -773,6 +840,28 @@ async function run(): Promise<void> {
   await target.initialize();
 
   try {
+    // До транзакции и обязательно успешное (N2, round-2 review): migrateArticles/migrateCases
+    // переписывают ссылки в контенте на /uploads/media/..., значит копия должна долететь раньше,
+    // чем БД получит переписанный текст, иначе опубликованные статьи получат 404 на картинки.
+    const imageLibFileNames = await fetchImageLibFileNames(source);
+    const { copied, missing } = await copyImageLibFiles(imageLibFileNames);
+    console.log(
+      `Файлы image-lib: скопировано ${copied}/${imageLibFileNames.length} в uploads/media/.`,
+    );
+    if (missing.length > 0) {
+      const critical = await findCriticalMissingFiles(source, missing);
+      if (critical.length > 0) {
+        throw new Error(
+          `Не найдены файлы, на которые ссылается опубликованный контент (перенос остановлен, ` +
+            `БД не тронута): ${critical.join(', ')}`,
+        );
+      }
+      console.warn(
+        `Не найдены на диске в SOURCE_IMAGE_LIB_ROOT (в контенте не используются, только ` +
+          `медиатека — не критично, продолжаю): ${missing.join(', ')}`,
+      );
+    }
+
     await target.transaction(async (manager: EntityManager) => {
       const report: Record<string, number> = {};
 
@@ -850,18 +939,11 @@ async function run(): Promise<void> {
 
     console.log('Миграция данных завершена успешно.');
 
-    // Отдельно от DB-транзакции: копирование файлов не откатываемо и не обязано быть атомарным
-    // с ней — если что-то не скопируется, БД-перенос всё равно уже успешен, а список missing
-    // ниже — явный список, что доразобрать руками, а не тихая деградация.
-    const imageLibFileNames = await fetchImageLibFileNames(source);
-    const { copied, missing } = await copyImageLibFiles(imageLibFileNames);
-    console.log(
-      `Файлы image-lib: скопировано ${copied}/${imageLibFileNames.length} в uploads/media/.`,
-    );
-    if (missing.length > 0) {
+    const leftoverRefs = await countImageLibReferences(target);
+    if (leftoverRefs > 0) {
       console.warn(
-        `Не найдены на диске в SOURCE_IMAGE_LIB_ROOT (не скопированы, будут 404 в медиатеке):`,
-        missing,
+        `${leftoverRefs} строк в articles/cases всё ещё ссылаются на /uploads/image-lib/ после ` +
+          `rewrite — проверить вручную (ожидается 0).`,
       );
     }
   } finally {

@@ -158,6 +158,20 @@ export class SearchIndexService implements OnModuleInit {
       this.getDocumentIds(entityType),
       this.getDocumentIds('faq'),
     ]);
+
+    // currentIds пуст, а в индексе уже есть документы этого домена — подозрительно (не та БД в
+    // конфиге, откатившая миграция, случайный прогон против тестовой базы), не обязательно
+    // «домен реально опустел». Полное удаление по такому сигналу опаснее, чем оставить индекс
+    // временно неактуальным до следующего тика — пропускаем очистку, а не чистим вслепую (R7,
+    // round-2 review: без этого guard'а такой баг стирал бы весь домен из поиска 288 раз в сутки).
+    if (currentIds.size === 0 && existingEntityIds.length > 0) {
+      this.logger.error(
+        { entityType, indexedCount: existingEntityIds.length },
+        'reconcileStaleDocuments: currentIds пуст, а в индексе есть документы — очистка пропущена',
+      );
+      return;
+    }
+
     const staleIds = [
       ...existingEntityIds,
       ...existingFaqIds.filter((id) => id.startsWith(faqIdPrefix)),

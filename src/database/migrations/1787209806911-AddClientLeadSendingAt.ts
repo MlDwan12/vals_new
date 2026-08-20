@@ -3,8 +3,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 // Реклейм зависшей доставки (altitude review на H10-фикс, AddLeadDeliverySendingStatus): без
 // отметки момента claim-а зависший процесс (крэш/kill между claim и markSent/markFailedAttempt)
 // навсегда оставляет заявку в статусе SENDING — её никто больше не подбирает.
-export class AddClientLeadSendingAt1787200000100 implements MigrationInterface {
-  name = 'AddClientLeadSendingAt1787200000100';
+export class AddClientLeadSendingAt1787209806911 implements MigrationInterface {
+  name = 'AddClientLeadSendingAt1787209806911';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
