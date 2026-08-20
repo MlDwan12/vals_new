@@ -18,3 +18,12 @@ export function isUniqueViolation(error: unknown): boolean {
 export function isForeignKeyViolation(error: unknown): boolean {
   return hasPostgresErrorCode(error, FOREIGN_KEY_VIOLATION);
 }
+
+// Для доменов с более чем одним unique-индексом (round-3 review, tags: slug + name) одного
+// isUniqueViolation недостаточно, чтобы сформировать верное сообщение — нужно знать, какой именно
+// индекс/constraint нарушен. pg-protocol кладёт его имя в driverError.constraint.
+export function getViolatedConstraint(error: unknown): string | undefined {
+  if (!(error instanceof QueryFailedError)) return undefined;
+  return (error as QueryFailedError & { driverError?: { constraint?: string } })
+    .driverError?.constraint;
+}

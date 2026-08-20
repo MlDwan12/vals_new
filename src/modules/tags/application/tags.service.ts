@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import {
+  getViolatedConstraint,
   isForeignKeyViolation,
   isUniqueViolation,
 } from '../../../core/persistence/postgres-error.util';
@@ -16,6 +17,10 @@ import { UpdateTagDto } from '../dto/update-tag.dto';
 import { Tag } from '../domain/tag.entity';
 import { TagsRepository } from '../infrastructure/tags.repository';
 import { transliterate } from '../util/transliterate.util';
+
+// Имя индекса из миграции AddTagNameUnique1787209807011 — используется, чтобы отличить нарушение
+// уникальности name от slug в mapSlugConflict ниже.
+const TAG_NAME_UNIQUE_INDEX = 'IDX_tags_name_unique';
 
 @Injectable()
 export class TagsService {
@@ -61,6 +66,19 @@ export class TagsService {
     if (dto.name !== undefined) {
       const name = dto.name.trim();
       if (name !== tag.name) {
+        // create() идемпотентен по имени через findByNameCI (регистронезависимо) — update() эту
+        // проверку не наследовал (round-3 review): переименование в имя, отличающееся только
+        // регистром от существующего тега, проходило молча, БД-индекс IDX_tags_name_unique
+        // регистрозависимый и не ловит. duplicate.id !== tag.id разрешает смену регистра
+        // собственного имени (например «Скидка» → «скидка»), не только чужого. Как и в create(),
+        // это check-then-act, не атомарно самому по себе — под гонкой двух конкурентных
+        // переименований в один и тот же регистронезависимый вариант спасает только БД-индекс, и
+        // только если итоговые имена совпадают байт-в-байт (тот же принятый разменный компромисс,
+        // что и в create()).
+        const duplicate = await this.tagsRepository.findByNameCI(name);
+        if (duplicate && duplicate.id !== tag.id) {
+          throw new ConflictException('Тег с таким именем уже существует');
+        }
         patch.name = name;
         patch.slug = await this.generateUniqueSlug(name, tag.id);
       }
@@ -136,8 +154,16 @@ export class TagsService {
     return tag;
   }
 
+  // У tags, в отличие от articles/cases/services/employees, ДВА unique-индекса (slug и name, см.
+  // AddTagNameUnique1787209807011) — единственное сообщение "slug уже существует" стало враньём
+  // при нарушении по имени (round-3 review). getViolatedConstraint различает по имени
+  // нарушенного индекса; остальные 4 домена с этим же паттерном mapSlugConflict не трогаю — у них
+  // ровно один unique-индекс, сообщение всегда верно.
   private mapSlugConflict(error: unknown): unknown {
     if (isUniqueViolation(error)) {
+      if (getViolatedConstraint(error) === TAG_NAME_UNIQUE_INDEX) {
+        return new ConflictException('Тег с таким именем уже существует');
+      }
       return new ConflictException('Тег с таким slug уже существует');
     }
     return error;
