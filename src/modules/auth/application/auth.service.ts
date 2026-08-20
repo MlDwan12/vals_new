@@ -58,26 +58,18 @@ export class AuthService {
     }
 
     if (session.revokedAt) {
-      // Повторное использование уже отозванного refresh — вероятная компрометация токена, гасим
-      // все сессии пользователя (ТЗ §5.2). Но это тот же SELECT, что видит гонку двух вкладок
-      // (R6, round-2 review) — если проигравшая вкладка успевает дойти до СВОЕГО первого SELECT
-      // уже после того, как выигравшая вкладка полностью завершила ротацию (не только тесная гонка
-      // вокруг atomic revoke() ниже, обычный сетевой джиттер тоже так может), она обязана попасть
-      // сюда же, а не только в ветку failed revoke() — иначе grace-период защищает только один из
-      // двух возможных интерливингов (найдено /code-review high на этом же батче).
-      if (
-        !this.isLikelyRefreshRace(
-          session.revokedAt,
-          session.fingerprint,
-          fingerprint,
-        )
-      ) {
-        this.logger.warn(
-          { userId: session.userId },
-          'Повторное использование отозванного refresh-токена — все сессии пользователя отозваны',
-        );
-        await this.refreshSessionsRepository.revokeAllForUser(session.userId);
-      }
+      // Безусловно — без grace-исключения (ТЗ §5.2). Эта ветка достижима, только если НАШ SELECT
+      // прочитал уже полностью завершённую чужую ротацию — то есть по определению НЕ одновременно
+      // с ней: настоящая гонка двух вкладок физически не может сюда попасть (оба SELECT идут раньше
+      // любого UPDATE, проигравший обнаруживает конфликт через failed revoke() ниже, не через уже
+      // отозванный session.revokedAt на собственном чтении). Grace здесь — не сужение окна гонки, а
+      // дыра в детекции реального реюза: подтверждено падением e2e (`auth.e2e-spec.ts`) и живым
+      // security-review — исключение сюда добавлялось ошибочно (round-2 review batch), убрано.
+      this.logger.warn(
+        { userId: session.userId },
+        'Повторное использование отозванного refresh-токена — все сессии пользователя отозваны',
+      );
+      await this.refreshSessionsRepository.revokeAllForUser(session.userId);
       throw new UnauthorizedException('Токен обновления недействителен');
     }
 

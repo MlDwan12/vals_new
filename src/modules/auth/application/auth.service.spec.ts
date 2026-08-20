@@ -149,10 +149,10 @@ describe('AuthService.refresh — гонка ротации токена', () =>
     expect(refreshSessionsRepository.revokeAllForUser).toHaveBeenCalledWith(1);
   });
 
-  it('явный реюз уже отозванной сессии, отозвана давно — гасит все сессии как раньше', async () => {
+  it('явный реюз уже отозванной сессии, отозвана давно — гасит все сессии', async () => {
     const { service, refreshSessionsRepository } = createService({
       findByJti: jest.fn().mockResolvedValue(
-        buildSession({ revokedAt: new Date(Date.now() - 60_000) }), // 60с назад — вне grace-окна
+        buildSession({ revokedAt: new Date(Date.now() - 60_000) }), // 60с назад
       ),
     });
 
@@ -162,12 +162,12 @@ describe('AuthService.refresh — гонка ротации токена', () =>
     expect(refreshSessionsRepository.revokeAllForUser).toHaveBeenCalledWith(1);
   });
 
-  // /code-review high на этом же батче: grace-период изначально проверялся только в ветке
-  // проигранного atomic revoke() — если проигравшая вкладка доходит до СВОЕГО первого findByJti
-  // уже после того, как выигравшая полностью завершила ротацию (не только тесная гонка вокруг
-  // revoke(), обычный сетевой джиттер тоже так может), она видит session.revokedAt уже здесь и
-  // раньше уходила в безусловный массовый отзыв, минуя grace-логику целиком.
-  it('гонка замечена уже на первом SELECT (session.revokedAt), тот же fingerprint — без массового отзыва', async () => {
+  // Живой e2e (auth.e2e-spec.ts) поймал регрессию: grace в этой ветке ошибочно распространили на
+  // случай, когда НАШ SELECT уже видит чужую завершённую ротацию — это по определению не может
+  // быть настоящей гонкой (обе стороны гонки читают ДО завершения любого UPDATE, проигравший
+  // определяется через failed revoke() ниже, не через уже отозванный revokedAt на своём чтении).
+  // Никакого grace здесь быть не должно — убрано после независимого приёмочного аудита.
+  it('session.revokedAt виден уже на первом SELECT (даже недавно и с тем же fingerprint) — всё равно массовый отзыв', async () => {
     const raceRevokedAt = new Date(Date.now() - 1_000);
     const { service, refreshSessionsRepository } = createService({
       findByJti: jest
@@ -180,6 +180,6 @@ describe('AuthService.refresh — гонка ротации токена', () =>
     await expect(service.refresh(PAYLOAD, FINGERPRINT)).rejects.toThrow(
       UnauthorizedException,
     );
-    expect(refreshSessionsRepository.revokeAllForUser).not.toHaveBeenCalled();
+    expect(refreshSessionsRepository.revokeAllForUser).toHaveBeenCalledWith(1);
   });
 });
