@@ -22,6 +22,15 @@ RUN yarn install --frozen-lockfile --production && yarn cache clean
 
 COPY --from=build /app/dist ./dist
 
+# uploads.constants.ts: UPLOADS_ROOT = process.cwd()/uploads = /app/uploads — процесс под USER node
+# ниже должен иметь право туда писать (первая же загрузка медиа иначе падает EACCES, N-7, round-3
+# review). chown -R по всему /app раздул бы образ новым слоем с копией production-node_modules —
+# создаём и chown'им только сам каталог uploads, ничего больше не копируем поверх уже готовых слоёв.
+# Если в проде uploads монтируется томом/bind-mount'ом с хоста — права ВНУТРИ образа не решают
+# ничего, владелец берётся с хоста: каталог на хосте должен принадлежать uid 1000 (это отдельная
+# операционная настройка деплоя, не часть образа).
+RUN mkdir -p /app/uploads/media && chown -R node:node /app/uploads
+
 # Образ node:22-alpine уже содержит непривилегированного пользователя "node" (uid 1000) — не root.
 USER node
 
