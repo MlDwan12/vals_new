@@ -13,6 +13,12 @@ import {
 } from './global-search-document.interface';
 
 const INDEX_NAME = 'global_search';
+// Meilisearch-клиент без timeout не оборачивает запрос в AbortController вообще (проверено по
+// node_modules/meilisearch/dist/index.js) — при зависшем (не «недоступен», а именно не отвечающем)
+// Meilisearch onModuleInit/reindex-тик может повиснуть бессрочно, SingleFlightGuard держит
+// isRunning=true вечно и блокирует все следующие тики. Тот же порядок величины, что у Bitrix
+// (bitrix-client.ts).
+const MEILISEARCH_TIMEOUT_MS = 10_000;
 // Сколько подряд идущих подозрительных тиков (см. reconcileStaleDocuments) нужно, прежде чем
 // доверять «currentIds пуст» и выполнить очистку — не 1 (разовый сбой конфигурации/гонка с
 // миграцией не должны стирать индекс) и не бесконечность (N-6, round-3 review: легитимная массовая
@@ -52,10 +58,12 @@ export class SearchIndexService implements OnModuleInit {
     this.adminClient = new Meilisearch({
       host,
       apiKey: configService.get('MEILI_MASTER_KEY', { infer: true }),
+      timeout: MEILISEARCH_TIMEOUT_MS,
     });
     this.searchClient = new Meilisearch({
       host,
       apiKey: configService.get('MEILI_SEARCH_KEY', { infer: true }),
+      timeout: MEILISEARCH_TIMEOUT_MS,
     });
   }
 

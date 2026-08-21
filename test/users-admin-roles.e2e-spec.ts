@@ -89,8 +89,39 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     return `${prefix}-${uniqueSuffix}-${Date.now()}`;
   }
 
-  it('POST /admin/users/admins — только DEVELOPER, остальные 403', async () => {
+  // Проверяем не только HTTP-статус, но и реально сохранённую роль в БД — иначе регрессия вида
+  // «createContentManager по ошибке вызвал createWithRole(..., Role.CLIENT_MANAGER)» (перепутаны
+  // соседние почти одинаковые хендлеры в users-admin.controller.ts) осталась бы незамеченной:
+  // 201/403 были бы теми же, что и при правильной реализации.
+  async function expectCreatedWithRole(
+    path: string,
+    role: Role,
+    usernamePrefix: string,
+    expectedAssignedRole: Role,
+  ): Promise<void> {
+    const username = uniqueUsername(usernamePrefix);
+    const response = await request(app.getHttpServer())
+      .post(path)
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookiesByRole.get(role)!)
+      .send({ username, password: 'NewPass123!' });
+    expect({ role, status: response.status }).toEqual({ role, status: 201 });
+
+    const created = await users.findOneByOrFail({ username });
+    expect(created.role).toBe(expectedAssignedRole);
+  }
+
+  it('POST /admin/users/admins — только DEVELOPER, остальные 403, роль сохраняется верно', async () => {
     for (const role of ALL_TEST_ROLES) {
+      if (role === Role.DEVELOPER) {
+        await expectCreatedWithRole(
+          '/admin/users/admins',
+          role,
+          'new-admin',
+          Role.ADMIN,
+        );
+        continue;
+      }
       const response = await request(app.getHttpServer())
         .post('/admin/users/admins')
         .set('Origin', ORIGIN)
@@ -99,17 +130,22 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
           username: uniqueUsername('new-admin'),
           password: 'NewPass123!',
         });
-      const expectedStatus = role === Role.DEVELOPER ? 201 : 403;
-      expect({ role, status: response.status }).toEqual({
-        role,
-        status: expectedStatus,
-      });
+      expect({ role, status: response.status }).toEqual({ role, status: 403 });
     }
   });
 
-  it('POST /admin/users/content-managers — DEVELOPER и ADMIN, остальные 403', async () => {
+  it('POST /admin/users/content-managers — DEVELOPER и ADMIN, остальные 403, роль сохраняется верно', async () => {
     const allowed = [Role.DEVELOPER, Role.ADMIN];
     for (const role of ALL_TEST_ROLES) {
+      if (allowed.includes(role)) {
+        await expectCreatedWithRole(
+          '/admin/users/content-managers',
+          role,
+          'new-content-manager',
+          Role.CONTENT_MANAGER,
+        );
+        continue;
+      }
       const response = await request(app.getHttpServer())
         .post('/admin/users/content-managers')
         .set('Origin', ORIGIN)
@@ -118,17 +154,22 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
           username: uniqueUsername('new-content-manager'),
           password: 'NewPass123!',
         });
-      const expectedStatus = allowed.includes(role) ? 201 : 403;
-      expect({ role, status: response.status }).toEqual({
-        role,
-        status: expectedStatus,
-      });
+      expect({ role, status: response.status }).toEqual({ role, status: 403 });
     }
   });
 
-  it('POST /admin/users/client-managers — DEVELOPER и ADMIN, остальные 403', async () => {
+  it('POST /admin/users/client-managers — DEVELOPER и ADMIN, остальные 403, роль сохраняется верно', async () => {
     const allowed = [Role.DEVELOPER, Role.ADMIN];
     for (const role of ALL_TEST_ROLES) {
+      if (allowed.includes(role)) {
+        await expectCreatedWithRole(
+          '/admin/users/client-managers',
+          role,
+          'new-client-manager',
+          Role.CLIENT_MANAGER,
+        );
+        continue;
+      }
       const response = await request(app.getHttpServer())
         .post('/admin/users/client-managers')
         .set('Origin', ORIGIN)
@@ -137,11 +178,7 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
           username: uniqueUsername('new-client-manager'),
           password: 'NewPass123!',
         });
-      const expectedStatus = allowed.includes(role) ? 201 : 403;
-      expect({ role, status: response.status }).toEqual({
-        role,
-        status: expectedStatus,
-      });
+      expect({ role, status: response.status }).toEqual({ role, status: 403 });
     }
   });
 
