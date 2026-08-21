@@ -66,6 +66,7 @@ describe('Матрица ролей: каждая роль против кажд
         path: '/admin/clients',
         allowed: [Role.DEVELOPER, Role.ADMIN, Role.CLIENT_MANAGER],
       },
+      { path: '/audit-logs', allowed: [Role.DEVELOPER, Role.ADMIN] },
       {
         path: '/dashboard/stats',
         allowed: [
