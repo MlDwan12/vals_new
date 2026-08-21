@@ -5,8 +5,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 // самого первого зависания теряется, и отличить "процесс упал между claim и записью" от
 // "детерминированный сбой записи, реклейм не поможет" нечем. Счётчик даёт то, чего не даёт время:
 // прямую границу на число повторных POST в Bitrix для одной заявки.
-export class AddClientLeadSendingReclaimCount1787300000000 implements MigrationInterface {
-  name = 'AddClientLeadSendingReclaimCount1787300000000';
+export class AddClientLeadSendingReclaimCount1787230000000 implements MigrationInterface {
+  name = 'AddClientLeadSendingReclaimCount1787230000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
