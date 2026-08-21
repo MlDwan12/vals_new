@@ -27,6 +27,10 @@ const MAX_FILES_PER_UPLOAD = 10;
 // UploadMediaDto шлёт alt одним non-file полем на файл, не JSON-массивом (upload-media.dto.ts,
 // media.service.ts) — отсюда множитель ниже, не magic number совпадение с MAX_FILES_PER_UPLOAD.
 const PER_FILE_FORM_FIELDS = 1;
+// Запас сверх alt-полей (round-3 review, «помельче»): busboy считает fields === fieldsLimit ДО
+// инкремента, то есть при точном совпадении лимита с числом alt-полей любое одно дополнительное
+// non-file поле в форме (например, будущее общее метаданное на всю загрузку) даст LIMIT_FIELD_COUNT.
+const EXTRA_FORM_FIELDS_MARGIN = 2;
 
 @Controller('admin/media')
 @Roles(...CONTENT_ROLES)
@@ -49,7 +53,9 @@ export class MediaAdminController {
         // Без явного лимита Multer по умолчанию не ограничивает число non-file полей формы (LOW
         // code review). R2 (round-2 review): fields: 5 резал загрузку 6+ файлов с alt-текстами —
         // граница должна расти вместе с MAX_FILES_PER_UPLOAD, не быть независимой константой.
-        fields: MAX_FILES_PER_UPLOAD * PER_FILE_FORM_FIELDS,
+        fields:
+          MAX_FILES_PER_UPLOAD * PER_FILE_FORM_FIELDS +
+          EXTRA_FORM_FIELDS_MARGIN,
       },
       fileFilter: (_req, file, cb) => {
         if (file.mimetype !== 'image/webp') {
