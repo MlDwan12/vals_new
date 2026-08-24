@@ -1,10 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Старый vals_api держал уникальный индекс на tags.name (не только slug) — при переносе схемы в
-// этап 1 колонка перенесена как обычная, без уникальности. TagsService.create() идемпотентен по
-// имени (creatable-комбобокс не должен плодить дубли), но без constraint'а в БД это только
-// check-then-act в приложении — конкурентный двойной сабмит с одним и тем же именем всё равно
-// создаёт два тега (code review).
+// В старом vals_api уникальным был только slug, name — обычная колонка. Уникальность на name
+// вводится здесь впервые: TagsService.create() идемпотентен по имени (creatable-комбобокс не
+// должен плодить дубли), но без constraint'а в БД это только check-then-act в приложении —
+// конкурентный двойной сабмит с одним и тем же именем всё равно создаёт два тега (code review).
 export class AddTagNameUnique1787209807011 implements MigrationInterface {
   name = 'AddTagNameUnique1787209807011';
 

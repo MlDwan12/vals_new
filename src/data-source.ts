@@ -29,6 +29,4 @@ export function buildDataSourceOptions(): DataSourceOptions {
   };
 }
 
-export const dataSourceOptions: DataSourceOptions = buildDataSourceOptions();
-
-export default new DataSource(dataSourceOptions);
+export default new DataSource(buildDataSourceOptions());

@@ -4,10 +4,12 @@ import { validate } from 'class-validator';
 import { UpdateTagDto } from './update-tag.dto';
 
 // tags.priority — NOT NULL с дефолтом в БД. skipNullProperties: false у PartialType сам по себе
-// не спасает: наследуемый от CreateTagDto @IsOptional() всё равно пропускает null мимо валидации
-// (IsOptional и добавленный PartialType'ом ValidateIf(value !== undefined) — независимые условия,
-// достаточно одного истинного, чтобы пропустить). Поле переведено на @ValidateIf вместо
-// @IsOptional() — этот тест это фиксирует (code review).
+// не спасает: class-validator пропускает проверку поля, если ХОТЯ БЫ ОДНО из его
+// conditionalValidations ложно (AND всех условий, не OR) — унаследованный от CreateTagDto
+// @IsOptional() возвращает false для null (его смысл — «нет ни null, ни undefined»), и один этим
+// пропускает всю проверку, даже когда добавленный PartialType'ом ValidateIf(value !== undefined)
+// для null истинен. Поле переведено на @ValidateIf вместо @IsOptional() — этот тест это фиксирует
+// (code review).
 describe('UpdateTagDto', () => {
   it('явный null для priority отклоняется валидацией, а не падает в БД', async () => {
     const dto = plainToInstance(UpdateTagDto, { priority: null });
