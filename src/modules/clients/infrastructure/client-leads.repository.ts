@@ -8,6 +8,7 @@ import {
   Repository,
 } from 'typeorm';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import { maskTail } from '../util/mask-tail.util';
 import { normalizeEmail } from '../util/normalize-email.util';
 import { normalizePhone } from '../util/normalize-phone.util';
 import { Client } from '../domain/client.entity';
@@ -114,6 +115,29 @@ export class ClientLeadsRepository {
     });
   }
 
+  // Отдельные неймспейсы адвизори-локов для phone/email — совпадение hashtext() между телефоном и
+  // email не должно ложно сериализовать два не связанных сабмита.
+  private static readonly PHONE_LOCK_NAMESPACE = 187_001;
+  private static readonly EMAIL_LOCK_NAMESPACE = 187_002;
+
+  // pg_advisory_xact_lock живёт до конца транзакции (снимается сам на commit/rollback) — сериализует
+  // конкурентные resolveClient по одному и тому же телефону/email на всё время резолва+attachContacts.
+  // Закрывает гонку «0 совпадений → два параллельных сабмита создают 2 разных Client с одним и тем же
+  // новым контактом» (Б1, независимый аудит 2026-08-21): без лока это давало unique-violation в
+  // createContactIfMissing и потерю лида. Порядок (phone, затем email) фиксирован ниже во всех вызовах
+  // — при одинаковом порядке приобретения ресурсов циклического ожидания (deadlock) между двумя
+  // транзакциями не возникает.
+  private async lockContactValue(
+    manager: EntityManager,
+    namespace: number,
+    value: string,
+  ): Promise<void> {
+    await manager.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [
+      namespace,
+      value,
+    ]);
+  }
+
   private async resolveClient(
     manager: EntityManager,
     name: string,
@@ -122,6 +146,21 @@ export class ClientLeadsRepository {
   ): Promise<ResolvedClient> {
     const normalizedPhone = normalizePhone(phoneRaw);
     const normalizedEmail = normalizeEmail(emailRaw);
+
+    if (normalizedPhone) {
+      await this.lockContactValue(
+        manager,
+        ClientLeadsRepository.PHONE_LOCK_NAMESPACE,
+        normalizedPhone,
+      );
+    }
+    if (normalizedEmail) {
+      await this.lockContactValue(
+        manager,
+        ClientLeadsRepository.EMAIL_LOCK_NAMESPACE,
+        normalizedEmail,
+      );
+    }
 
     const contactRepo = manager.getRepository(ClientContact);
     const clientRepo = manager.getRepository(Client);
@@ -241,8 +280,9 @@ export class ClientLeadsRepository {
         const reloaded = await repo.findOne({ where: { type, value } });
         if (!reloaded) throw error;
         if (reloaded.clientId !== clientId) {
+          this.logContactConflict(type, value, clientId, reloaded.clientId);
           throw new InternalServerErrorException(
-            `Контакт ${type}:${value} принадлежит другому клиенту`,
+            'Не удалось сохранить заявку: конфликт данных контакта',
           );
         }
         return;
@@ -250,10 +290,26 @@ export class ClientLeadsRepository {
     }
 
     if (existing.clientId !== clientId) {
+      this.logContactConflict(type, value, clientId, existing.clientId);
       throw new InternalServerErrorException(
-        `Контакт ${type}:${value} принадлежит другому клиенту`,
+        'Не удалось сохранить заявку: конфликт данных контакта',
       );
     }
+  }
+
+  // Сообщение исключения выше нарочно не содержит value (телефон/email — ПД) — safe-err-serializer
+  // всегда пробрасывает err.message в лог как есть, allowlist полей его не фильтрует (Б1, независимый
+  // аудит 2026-08-21). Маскированный хвост значения — единственный канал для ручного расследования.
+  private logContactConflict(
+    type: ClientContactType,
+    value: string,
+    expectedClientId: number,
+    actualClientId: number,
+  ): void {
+    this.logger.error(
+      { type, valueTail: maskTail(value), expectedClientId, actualClientId },
+      'Контакт уже принадлежит другому клиенту (гонка на создании/привязке)',
+    );
   }
 
   // Автослияние — по решению пользователя, переносится 1:1 (ТЗ §2 требует дедуп/объединение дублей

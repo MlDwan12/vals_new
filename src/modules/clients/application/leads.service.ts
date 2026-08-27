@@ -5,15 +5,7 @@ import { ClientLeadsRepository } from '../infrastructure/client-leads.repository
 import { buildBitrixPayload, parseUtm } from './bitrix-payload.util';
 import { CreateLeadDto } from '../dto/create-lead.dto';
 import { TariffSnapshotResolverService } from './tariff-snapshot-resolver.service';
-
-// Оставляет достаточно для ручного поиска лида человеком (последние 4 символа телефона/email),
-// не полное значение — контакт целиком в логах не должен оказаться ни при каких обстоятельствах
-// (R4, round-2 review). Для value.length <= 4 старая версия возвращала value как есть — то есть
-// значение целиком, ровно то, что должно быть невозможно (найдено /code-review high на этом же
-// батче: phone у CreateLeadDto не имеет MinLength, короткий ввод — не гипотетика).
-function maskTail(value: string): string {
-  return value.length > 4 ? `…${value.slice(-4)}` : '****';
-}
+import { maskTail } from '../util/mask-tail.util';
 
 @Injectable()
 export class LeadsService {

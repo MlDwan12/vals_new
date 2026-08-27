@@ -45,9 +45,14 @@ export class BitrixClient {
       // Bitrix отвечает ошибками HTTP-статусом 200 с телом {error, error_description} (N1,
       // round-2 review) — если бы мы вернули пустой bitrixLeadId как успех, лид отмечался бы SENT
       // без реальной доставки. Бросаем — уходит в тот же retry/классификацию, что сетевые ошибки.
-      throw new Error(
-        `Bitrix ответил 2xx без result: ${JSON.stringify(response.data)}`,
-      );
+      // Message берёт только задокументированные поля Bitrix-ошибки, не весь response.data целиком
+      // (Б1, независимый аудит 2026-08-21) — это сообщение оседает и в логах (LeadDeliveryService),
+      // и в bitrixError в БД, а тело ответа Bitrix может эхом содержать отправленные нами ПД лида.
+      const data =
+        response.data && typeof response.data === 'object' ? response.data : {};
+      const description = data.error_description ?? data.error;
+      const suffix = typeof description === 'string' ? `: ${description}` : '';
+      throw new Error(`Bitrix ответил 2xx без result${suffix}`);
     }
 
     return { bitrixLeadId, response: response.data };

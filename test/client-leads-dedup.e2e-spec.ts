@@ -193,4 +193,25 @@ describe('Client dedup and auto-merge (e2e)', () => {
     // A(1) + B(1), слитые один раз (не дважды) + 2 гоночные заявки = 4, не 5.
     expect(primary.leadsCount).toBe(4);
   });
+
+  it('гонка: два одновременных сабмита с одним и тем же НОВЫМ телефоном — один клиент, оба лида сохраняются (Б1)', async () => {
+    const [leadOne, leadTwo] = await Promise.all([
+      clientLeadsRepository.submitLead(
+        submitInput({ phoneRaw: '79991110040', name: 'Гонка новый 1' }),
+      ),
+      clientLeadsRepository.submitLead(
+        submitInput({ phoneRaw: '79991110040', name: 'Гонка новый 2' }),
+      ),
+    ]);
+
+    expect(leadOne.clientId).toBe(leadTwo.clientId);
+
+    const client = await clientRepo.findOneByOrFail({ id: leadOne.clientId });
+    expect(client.leadsCount).toBe(2);
+
+    const contacts = await clientContactRepo.find({
+      where: { type: ClientContactType.PHONE, value: '79991110040' },
+    });
+    expect(contacts).toHaveLength(1);
+  });
 });
