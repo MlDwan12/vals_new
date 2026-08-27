@@ -19,6 +19,11 @@ const MAX_ATTEMPTS = 5;
 // сметаем протухшие (LOW code review: без этого злоумышленник, перебирающий случайные логины,
 // растит Map неограниченно).
 const MAX_TRACKED_USERNAMES = 5000;
+// Guard выполняется раньше ValidationPipe (Nest: guards -> pipes), поэтому @MaxLength на LoginDto
+// этот код не защищает — без отдельной обрезки здесь атакующий с разных IP (в обход IP-throttle) мог
+// слать уникальные мегабайтные username и растить Map ключами почти по 1MB каждый вплоть до
+// MAX_TRACKED_USERNAMES записей (Б2, независимый аудит 2026-08-21).
+const MAX_USERNAME_KEY_LENGTH = 50;
 
 // Второй, независимый от IP лимит на логин (ТЗ §6: «жёсткий лимит по IP + по логину») — держит
 // в узде распределённый подбор пароля к одному аккаунту с разных IP. In-memory, без Redis (вне
@@ -41,7 +46,7 @@ export class LoginUsernameThrottleGuard implements CanActivate {
     const body = request.body as { username?: unknown } | undefined;
     const username =
       typeof body?.username === 'string'
-        ? body.username.trim().toLowerCase()
+        ? body.username.trim().toLowerCase().slice(0, MAX_USERNAME_KEY_LENGTH)
         : null;
 
     if (!username) {

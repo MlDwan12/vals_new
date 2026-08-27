@@ -10,6 +10,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MaxLength,
   ValidateIf,
@@ -20,6 +21,12 @@ export class CreateCaseDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
+  // slug — прямой пользовательский ввод из CONTENT-админки, встраивается в публичный маршрут
+  // (Б8, независимый аудит 2026-08-21) — без формата пробелы/`/`/`?`/кириллица проходили бы как есть.
+  @Matches(/^[a-z0-9-]+$/, {
+    message:
+      'slug может содержать только латиницу в нижнем регистре, цифры и дефис',
+  })
   slug: string;
 
   @IsString()

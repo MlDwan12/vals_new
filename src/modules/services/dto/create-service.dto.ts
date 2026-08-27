@@ -5,6 +5,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   Min,
   ValidateIf,
 } from 'class-validator';
@@ -13,6 +15,13 @@ import { ServiceBackgroundColor } from '../enums/service-background-color.enum';
 export class CreateServiceDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
+  // slug — прямой пользовательский ввод из CONTENT-админки, встраивается в публичный маршрут
+  // (Б8, независимый аудит 2026-08-21) — без формата пробелы/`/`/`?`/кириллица проходили бы как есть.
+  @Matches(/^[a-z0-9-]+$/, {
+    message:
+      'slug может содержать только латиницу в нижнем регистре, цифры и дефис',
+  })
   slug: string;
 
   @IsInt()

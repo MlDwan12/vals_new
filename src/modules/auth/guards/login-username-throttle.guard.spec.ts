@@ -61,4 +61,20 @@ describe('LoginUsernameThrottleGuard', () => {
     } as unknown as ExecutionContext;
     expect(guard.canActivate(ctxWithoutBody)).toBe(true);
   });
+
+  // Б2 (независимый аудит 2026-08-21): guard выполняется раньше ValidationPipe, поэтому @MaxLength
+  // на LoginDto его не защищает — без отдельной обрезки здесь username использовался бы как ключ
+  // BoundedTtlMap без верхней границы длины.
+  it('длинный username обрезается до одного ключа независимо от хвоста строки', () => {
+    const guard = new LoginUsernameThrottleGuard();
+    const prefix = 'victim'.padEnd(50, 'x');
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      expect(guard.canActivate(contextFor(`${prefix}-tail-a`))).toBe(true);
+    }
+
+    expect(() => guard.canActivate(contextFor(`${prefix}-tail-b`))).toThrow(
+      HttpException,
+    );
+  });
 });

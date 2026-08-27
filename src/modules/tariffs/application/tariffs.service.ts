@@ -151,10 +151,14 @@ export class TariffsService {
 
     return periods.map((period): BillingCycle => {
       const discountPercent = period.discountPercent ?? 0;
-      const pricePerMonth =
-        period.months === 1
-          ? basePrice
-          : basePrice * (1 - discountPercent / 100);
+      // Math.round — basePrice всегда целое число рублей (base_price int), а без округления
+      // дробная скидка даёт float-артефакты (99.3299999999999 руб.), которые улетают как есть в
+      // ответ API и в текст лида Bitrix (Б3, независимый аудит 2026-08-21). Скидка применяется
+      // единообразно для любого periodов, включая months:1 — TariffPeriodsService не пускает
+      // ненулевую discountPercent на период с months:1 (Б4, тот же аудит), поэтому здесь для
+      // months:1 discountPercent всегда 0 и специальный случай не нужен: ответ (pricePerMonth +
+      // discountPercent) больше не может быть внутренне противоречив.
+      const pricePerMonth = Math.round(basePrice * (1 - discountPercent / 100));
 
       return {
         periodId: period.id,

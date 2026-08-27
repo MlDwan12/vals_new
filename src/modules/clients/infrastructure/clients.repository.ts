@@ -14,8 +14,11 @@ export class ClientsRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  // isMerged: false — тот же фильтр, что и в findAndCount() ниже: слитые дубли не должны считаться
+  // отдельными клиентами (Б7, независимый аудит 2026-08-21 — дашборд без этого фильтра завышал
+  // счётчик клиентов относительно того, что реально видно в /admin/clients).
   count(): Promise<number> {
-    return this.repo.count();
+    return this.repo.count({ where: { isMerged: false } });
   }
 
   // Совпадает со старым контрактом: поиск по primaryPhone/primaryEmail, слитые дубли из списка не

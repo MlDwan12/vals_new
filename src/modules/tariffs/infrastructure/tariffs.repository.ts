@@ -46,4 +46,22 @@ export class TariffsRepository {
   async remove(id: number): Promise<void> {
     await this.repo.delete(id);
   }
+
+  // billing_cycles — jsonb-снапшот, не FK на tariff_periods (комментарий в tariff-period.entity.ts
+  // раньше ошибочно называл это ссылкой "по месяцам", а не по id — periodId там реально хранится) —
+  // без этой проверки TariffPeriodsService.remove() удалял бы используемый период молча (Б5,
+  // независимый аудит 2026-08-21), а следующий пересчёт billingCycles тарифа падал бы непонятной
+  // 400 "Периоды тарифа не найдены".
+  existsByPeriodId(periodId: number): Promise<boolean> {
+    return this.repo
+      .createQueryBuilder('tariff')
+      .where(
+        `EXISTS (
+          SELECT 1 FROM jsonb_array_elements(tariff.billing_cycles) AS cycle
+          WHERE (cycle->>'periodId')::int = :periodId
+        )`,
+        { periodId },
+      )
+      .getExists();
+  }
 }
