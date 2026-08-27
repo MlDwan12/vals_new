@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
@@ -8,6 +8,7 @@ import { StartedTestContainer } from 'testcontainers';
 import { Repository } from 'typeorm';
 import { Role } from '../src/core/enums/role.enum';
 import { User } from '../src/modules/users/domain/user.entity';
+import { resolveRoleId } from './support/resolve-role-id';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
@@ -44,6 +45,7 @@ describe('AuditLogsAdminController (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
     postgres = await startTestDatabase();
@@ -52,7 +54,7 @@ describe('AuditLogsAdminController (e2e)', () => {
     const { AppModule } =
       require('../src/app.module') as typeof import('../src/app.module');
 
-    const moduleRef = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
@@ -106,11 +108,12 @@ describe('AuditLogsAdminController (e2e)', () => {
 
   async function loginAs(role: Role, username: string): Promise<string> {
     const passwordHash = await bcrypt.hash('AuditPass123!', 4);
+    const roleId = await resolveRoleId(moduleRef, role);
     await users.save(
       users.create({
         username,
         password: passwordHash,
-        role,
+        roleId,
         isActive: true,
       }),
     );

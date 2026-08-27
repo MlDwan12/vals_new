@@ -1,11 +1,11 @@
-import { Role } from '../../../core/enums/role.enum';
 import { User } from '../domain/user.entity';
 
 export class UserResponseDto {
   id: number;
   username: string;
-  role: Role;
+  role: string;
   isActive: boolean;
+  accessExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 
@@ -13,8 +13,9 @@ export class UserResponseDto {
     const dto = new UserResponseDto();
     dto.id = user.id;
     dto.username = user.username;
-    dto.role = user.role;
+    dto.role = user.role.code;
     dto.isActive = user.isActive;
+    dto.accessExpiresAt = user.accessExpiresAt;
     dto.createdAt = user.createdAt;
     dto.updatedAt = user.updatedAt;
     return dto;

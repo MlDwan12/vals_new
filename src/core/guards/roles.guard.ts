@@ -10,7 +10,10 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
 interface RequestWithUser extends Request {
-  user?: { role: Role };
+  // role — простая строка (код роли из БД), не enum: см. AuthGuard/AuthenticatedRequestUser
+  // (EXPANSION_TASKS.md §1). Для 4 легаси-ролей код совпадает со значением старого enum, поэтому
+  // сравнение ниже работает без изменений.
+  user?: { role: string };
 }
 
 @Injectable()
@@ -30,7 +33,7 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const userRole = request.user?.role;
 
-    if (!userRole || !requiredRoles.includes(userRole)) {
+    if (!userRole || !(requiredRoles as string[]).includes(userRole)) {
       throw new ForbiddenException('Недостаточно прав для выполнения операции');
     }
 

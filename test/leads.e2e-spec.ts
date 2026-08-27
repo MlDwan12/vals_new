@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Role } from '../src/core/enums/role.enum';
 import { BitrixClient } from '../src/modules/clients/application/bitrix-client';
 import { User } from '../src/modules/users/domain/user.entity';
+import { resolveRoleId } from './support/resolve-role-id';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
@@ -61,6 +62,7 @@ describe('Leads (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
+  let moduleRef: TestingModule;
   let mockBitrixClient: MockBitrixClient;
 
   beforeAll(async () => {
@@ -73,7 +75,7 @@ describe('Leads (e2e)', () => {
 
     mockBitrixClient = new MockBitrixClient();
 
-    const moduleRef = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(BitrixClient)
@@ -95,11 +97,12 @@ describe('Leads (e2e)', () => {
   async function loginAsClientManager(): Promise<string> {
     const username = `leads-admin-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const passwordHash = await bcrypt.hash('LeadsAdminPass123!', 4);
+    const roleId = await resolveRoleId(moduleRef, Role.CLIENT_MANAGER);
     await users.save(
       users.create({
         username,
         password: passwordHash,
-        role: Role.CLIENT_MANAGER,
+        roleId,
         isActive: true,
       }),
     );

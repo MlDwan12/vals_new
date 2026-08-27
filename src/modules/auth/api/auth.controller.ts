@@ -19,6 +19,7 @@ import {
   setAuthCookies,
 } from '../../../core/cookies/auth-cookies';
 import { Public } from '../../../core/decorators/public.decorator';
+import { AuthenticatedRequestUser } from '../../../core/guards/auth.guard';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_TOKEN_TTL_SECONDS,
@@ -27,7 +28,6 @@ import { AuthService, AuthTokens } from '../application/auth.service';
 import { LoginDto } from '../dto/login.dto';
 import { LoginUsernameThrottleGuard } from '../guards/login-username-throttle.guard';
 import { RefreshAuthGuard } from '../guards/refresh-auth.guard';
-import { AccessTokenPayload } from '../strategies/jwt.strategy';
 import { RefreshTokenPayload } from '../strategies/refresh.strategy';
 
 interface RequestWithRefreshUser extends Request {
@@ -35,13 +35,21 @@ interface RequestWithRefreshUser extends Request {
 }
 
 interface RequestWithAccessUser extends Request {
-  user: AccessTokenPayload;
+  user: AuthenticatedRequestUser;
 }
 
 interface WhoAmI {
   username: string;
   role: string;
 }
+
+// Общий текст и на "нет такого логина", и на "неверный пароль" (анти-энумерация, M10 в журнале) —
+// disabled/accessExpired видны только тому, кто уже ввёл верный пароль (EXPANSION_TASKS.md §1,
+// приёмка п.6).
+const INVALID_CREDENTIALS_MESSAGE = 'Неверный логин или пароль';
+const ACCOUNT_DISABLED_MESSAGE = 'Аккаунт отключён';
+const ACCESS_EXPIRED_MESSAGE =
+  'Срок доступа истёк, обратитесь к администратору';
 
 @Controller('auth')
 export class AuthController {
@@ -59,18 +67,26 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<WhoAmI> {
-    const user = await this.authService.validateUser(
+    const result = await this.authService.validateUser(
       dto.username,
       dto.password,
     );
-    if (!user) {
-      throw new UnauthorizedException('Неверный логин или пароль');
+
+    if (result.outcome === 'invalidCredentials') {
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
+    if (result.outcome === 'disabled') {
+      throw new UnauthorizedException(ACCOUNT_DISABLED_MESSAGE);
+    }
+    if (result.outcome === 'accessExpired') {
+      throw new UnauthorizedException(ACCESS_EXPIRED_MESSAGE);
     }
 
+    const { user } = result;
     const tokens = await this.authService.login(user, fingerprintOf(req));
     this.setCookies(res, tokens);
 
-    return { username: user.username, role: user.role };
+    return { username: user.username, role: user.role.code };
   }
 
   @Public()

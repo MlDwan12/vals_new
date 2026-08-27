@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { EnvConfig } from '../config/env.validation';
 import { AuditModule } from '../modules/audit/audit.module';
+import { UsersModule } from '../modules/users/users.module';
 import { resolveGlobalThrottleLimit } from './rate-limit/internal-api-throttle.util';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { AuthGuard } from './guards/auth.guard';
@@ -39,6 +40,9 @@ const GLOBAL_THROTTLE_LIMIT = 100;
     // Секрет передаётся явно на каждый verify/sign (см. AuthGuard, modules/auth) — тут без дефолта.
     JwtModule.register({}),
     AuditModule,
+    // AuthGuard вызывает AuthContextService (не репозиторий напрямую, EXPANSION_TASKS.md §1.2) —
+    // UsersModule не зависит от CoreModule, цикла нет.
+    UsersModule,
   ],
   providers: [
     {

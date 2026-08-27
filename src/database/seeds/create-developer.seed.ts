@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
-import { Role } from '../../core/enums/role.enum';
+import { Role as RoleEnum } from '../../core/enums/role.enum';
 import dataSource from '../../data-source';
+import { Role } from '../../modules/roles/domain/role.entity';
 import { User } from '../../modules/users/domain/user.entity';
 
 const BCRYPT_COST = 12;
@@ -33,9 +34,20 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Роль сидится миграцией AddRolesAndPermissions с тем же кодом, что и старый enum
+    // (EXPANSION_TASKS.md §1.7) — findOneByOrFail здесь означает "миграция ещё не применена".
+    const roleRepo = dataSource.getRepository(Role);
+    const developerRole = await roleRepo.findOneByOrFail({
+      code: RoleEnum.DEVELOPER,
+    });
+
     const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     const user = await repo.save(
-      repo.create({ username, password: passwordHash, role: Role.DEVELOPER }),
+      repo.create({
+        username,
+        password: passwordHash,
+        roleId: developerRole.id,
+      }),
     );
 
     console.log(

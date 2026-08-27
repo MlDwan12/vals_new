@@ -20,6 +20,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { HealthModule } from './modules/health/health.module';
 import { IndustriesModule } from './modules/industries/industries.module';
 import { MediaModule } from './modules/media/media.module';
+import { RolesModule } from './modules/roles/roles.module';
 import { SearchModule } from './modules/search/search.module';
 import { ServicesModule } from './modules/services/services.module';
 import { TagsModule } from './modules/tags/tags.module';
@@ -138,6 +139,7 @@ import { UsersModule } from './modules/users/users.module';
     EmployeesModule,
     MediaModule,
     ClientsModule,
+    RolesModule,
     UsersModule,
     AuditModule,
     AuthModule,

@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
@@ -8,20 +8,23 @@ import { StartedTestContainer } from 'testcontainers';
 import { Repository } from 'typeorm';
 import { Role } from '../src/core/enums/role.enum';
 import { User } from '../src/modules/users/domain/user.entity';
+import { resolveRoleId } from './support/resolve-role-id';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
 
 async function createUser(
   users: Repository<User>,
+  moduleRef: TestingModule,
   data: { username: string; password: string; role: Role; isActive?: boolean },
 ): Promise<User> {
   const passwordHash = await bcrypt.hash(data.password, 4);
+  const roleId = await resolveRoleId(moduleRef, data.role);
   return users.save(
     users.create({
       username: data.username,
       password: passwordHash,
-      role: data.role,
+      roleId,
       isActive: data.isActive ?? true,
     }),
   );
@@ -36,6 +39,7 @@ describe('Auth (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
     postgres = await startTestDatabase();
@@ -48,7 +52,7 @@ describe('Auth (e2e)', () => {
     const { AppModule } =
       require('../src/app.module') as typeof import('../src/app.module');
 
-    const moduleRef = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
@@ -65,7 +69,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('логин с неверным паролем отвечает 401', async () => {
-    await createUser(users, {
+    await createUser(users, moduleRef, {
       username: 'wrongpass',
       password: 'CorrectPass123!',
       role: Role.ADMIN,
@@ -93,7 +97,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('полный жизненный цикл: login -> me -> refresh (ротация) -> старый refresh невалиден -> logout -> refresh после logout невалиден', async () => {
-    await createUser(users, {
+    await createUser(users, moduleRef, {
       username: 'lifecycle',
       password: 'LifecyclePass123!',
       role: Role.ADMIN,
@@ -147,7 +151,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('повторное использование отозванного refresh гасит все сессии пользователя', async () => {
-    await createUser(users, {
+    await createUser(users, moduleRef, {
       username: 'reuse',
       password: 'ReusePass123!',
       role: Role.ADMIN,
@@ -180,12 +184,12 @@ describe('Auth (e2e)', () => {
   });
 
   it('роли: content_manager получает 403 на /admin/users, admin — 200', async () => {
-    await createUser(users, {
+    await createUser(users, moduleRef, {
       username: 'rolecheck-admin',
       password: 'AdminPass123!',
       role: Role.ADMIN,
     });
-    await createUser(users, {
+    await createUser(users, moduleRef, {
       username: 'rolecheck-cm',
       password: 'CmPass123!',
       role: Role.CONTENT_MANAGER,
@@ -212,7 +216,7 @@ describe('Auth (e2e)', () => {
   });
 
   it('isActive: false блокирует refresh уже выданным токеном', async () => {
-    const user = await createUser(users, {
+    const user = await createUser(users, moduleRef, {
       username: 'deactivated',
       password: 'DeactivatedPass123!',
       role: Role.ADMIN,

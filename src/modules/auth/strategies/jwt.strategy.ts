@@ -5,12 +5,11 @@ import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { EnvConfig } from '../../../config/env.validation';
 import { ACCESS_TOKEN_COOKIE } from '../../../core/cookies/auth-cookies';
-import { Role } from '../../../core/enums/role.enum';
 
+// Токен несёт только id пользователя (EXPANSION_TASKS.md §1.4) — роль/права читаются живьём из БД
+// на каждый запрос (core/guards/auth.guard.ts::AuthContextService), не из токена.
 export interface AccessTokenPayload {
   sub: number;
-  username: string;
-  role: Role;
 }
 
 @Injectable()

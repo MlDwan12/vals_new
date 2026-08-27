@@ -22,9 +22,18 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-// issueTokens нужны только id/username/role — UserResponseDto (без password) годится так же, как
-// полная User-сущность (refresh() после N3/users-refactor работает с DTO из UsersService.findById).
-type TokenSubject = Pick<User, 'id' | 'username' | 'role'>;
+// issueTokens нужен только id — токен несёт только его (EXPANSION_TASKS.md §1.4).
+type TokenSubject = Pick<User, 'id'>;
+
+// 3 разных исхода вошедшему пользователю — EXPANSION_TASKS.md §1, приёмка п.6. invalidCredentials
+// покрывает и "нет такого логина", и "неверный пароль" — эти два сознательно не различаются
+// (анти-энумерация логина, M10 в журнале, не трогаем). disabled/accessExpired видны только ПОСЛЕ
+// успешной проверки пароля — иначе кто угодно без пароля мог бы узнать статус чужого аккаунта.
+export type ValidateUserResult =
+  | { outcome: 'ok'; user: User }
+  | { outcome: 'invalidCredentials' }
+  | { outcome: 'disabled' }
+  | { outcome: 'accessExpired' };
 
 @Injectable()
 export class AuthService {
@@ -38,14 +47,30 @@ export class AuthService {
     this.logger.setContext(AuthService.name);
   }
 
-  async validateUser(username: string, password: string): Promise<User | null> {
+  async validateUser(
+    username: string,
+    password: string,
+  ): Promise<ValidateUserResult> {
     const user = await this.usersService.findForAuth(username);
-    if (!user || !user.isActive) {
-      return null;
+    if (!user) {
+      return { outcome: 'invalidCredentials' };
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
-    return passwordMatches ? user : null;
+    if (!passwordMatches) {
+      return { outcome: 'invalidCredentials' };
+    }
+
+    // isActive/access_expires_at проверяются ПОСЛЕ пароля — раньше и это стало бы отдельным
+    // каналом энумерации (статус чужого аккаунта без знания пароля).
+    if (!user.isActive) {
+      return { outcome: 'disabled' };
+    }
+    if (user.accessExpiresAt && user.accessExpiresAt.getTime() <= Date.now()) {
+      return { outcome: 'accessExpired' };
+    }
+
+    return { outcome: 'ok', user };
   }
 
   login(user: TokenSubject, fingerprint: string | null): Promise<AuthTokens> {
@@ -85,7 +110,10 @@ export class AuthService {
     const user = await this.usersService
       .findById(session.userId)
       .catch(() => null);
-    if (!user || !user.isActive) {
+    const accessExpired = Boolean(
+      user?.accessExpiresAt && user.accessExpiresAt.getTime() <= Date.now(),
+    );
+    if (!user || !user.isActive || accessExpired) {
       await this.refreshSessionsRepository.revoke(session.id);
       throw new UnauthorizedException('Пользователь недоступен');
     }
@@ -166,11 +194,7 @@ export class AuthService {
       expiresAt,
     });
 
-    const accessPayload: AccessTokenPayload = {
-      sub: user.id,
-      username: user.username,
-      role: user.role,
-    };
+    const accessPayload: AccessTokenPayload = { sub: user.id };
     const refreshPayload: RefreshTokenPayload = { sub: user.id, jti };
 
     const accessToken = await this.jwtService.signAsync(accessPayload, {

@@ -1,20 +1,16 @@
 import {
-  Check,
   Column,
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Role } from '../../../core/enums/role.enum';
+import { Role } from '../../roles/domain/role.entity';
 
 @Entity('users')
-@Check(
-  `"role" IN (${Object.values(Role)
-    .map((role) => `'${role}'`)
-    .join(', ')})`,
-)
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -26,13 +22,24 @@ export class User {
   @Column({ type: 'varchar', select: false })
   password: string;
 
-  @Index()
-  @Column({ type: 'varchar', length: 32, default: Role.CONTENT_MANAGER })
+  @Column({ name: 'role_id' })
+  roleId: number;
+
+  // RESTRICT — как Service.category (service.entity.ts) — удалить роль с живыми пользователями
+  // физически невозможно без единой строчки бизнес-логики (EXPANSION_TASKS.md §1.4).
+  @ManyToOne(() => Role, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'role_id' })
   role: Role;
 
-  // Отключение аккаунта должно действовать немедленно (ТЗ §5) — проверяется на каждом refresh.
+  // Отключение аккаунта должно действовать немедленно (ТЗ §5) — проверяется на каждом запросе
+  // через AuthContextService, не только на refresh (EXPANSION_TASKS.md §1.4).
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
+
+  // null — бессрочно (владельцы/системные роли). Истёкший доступ отклоняется отдельным
+  // сообщением, отличным от "неверный пароль"/"аккаунт отключён" (EXPANSION_TASKS.md §1.3/1.6).
+  @Column({ name: 'access_expires_at', type: 'timestamptz', nullable: true })
+  accessExpiresAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

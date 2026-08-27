@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
@@ -8,6 +8,7 @@ import { StartedTestContainer } from 'testcontainers';
 import { Repository } from 'typeorm';
 import { Role } from '../src/core/enums/role.enum';
 import { User } from '../src/modules/users/domain/user.entity';
+import { resolveRoleId } from './support/resolve-role-id';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
@@ -22,6 +23,7 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
     postgres = await startTestDatabase();
@@ -30,7 +32,7 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     const { AppModule } =
       require('../src/app.module') as typeof import('../src/app.module');
 
-    const moduleRef = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
@@ -65,11 +67,12 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     for (const role of ALL_TEST_ROLES) {
       const username = `roles-${role}`;
       const passwordHash = await bcrypt.hash('RolesPass123!', 4);
+      const roleId = await resolveRoleId(moduleRef, role);
       await users.save(
         users.create({
           username,
           password: passwordHash,
-          role,
+          roleId,
           isActive: true,
         }),
       );
@@ -107,8 +110,11 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
       .send({ username, password: 'NewPass123!' });
     expect({ role, status: response.status }).toEqual({ role, status: 201 });
 
-    const created = await users.findOneByOrFail({ username });
-    expect(created.role).toBe(expectedAssignedRole);
+    const created = await users.findOneOrFail({
+      where: { username },
+      relations: { role: true },
+    });
+    expect(created.role.code).toBe(expectedAssignedRole);
   }
 
   it('POST /admin/users/admins — только DEVELOPER, остальные 403, роль сохраняется верно', async () => {
@@ -184,11 +190,12 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
 
   it('PATCH /admin/users/:id — только DEVELOPER, остальные 403 без изменения записи', async () => {
     const targetHash = await bcrypt.hash('TargetPass123!', 4);
+    const targetRoleId = await resolveRoleId(moduleRef, Role.CONTENT_MANAGER);
     const target = await users.save(
       users.create({
         username: uniqueUsername('patch-target'),
         password: targetHash,
-        role: Role.CONTENT_MANAGER,
+        roleId: targetRoleId,
         isActive: true,
       }),
     );
@@ -227,11 +234,12 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
 
   it('DELETE /admin/users/:id — только DEVELOPER, остальные 403 без удаления записи', async () => {
     const targetHash = await bcrypt.hash('TargetPass123!', 4);
+    const targetRoleId = await resolveRoleId(moduleRef, Role.CONTENT_MANAGER);
     const target = await users.save(
       users.create({
         username: uniqueUsername('delete-target'),
         password: targetHash,
-        role: Role.CONTENT_MANAGER,
+        roleId: targetRoleId,
         isActive: true,
       }),
     );
