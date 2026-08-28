@@ -26,6 +26,8 @@ interface AuditLogEntry {
   statusCode: number;
   errorMessage: string | null;
   ip: string | null;
+  meta: Record<string, unknown> | null;
+  signed: boolean;
   createdAt: string;
 }
 
@@ -224,5 +226,156 @@ describe('AuditLogsAdminController (e2e)', () => {
     expect(body.items).toHaveLength(1);
     expect(body.limit).toBe(1);
     expect(body.total).toBeGreaterThan(1);
+  });
+
+  // Общий DEVELOPER-логин для тестов ниже (EXPANSION_TASKS.md, задача 2) — /auth/login троттлится
+  // 10/мин на IP (см. комментарий в начале файла), новый логин на каждый тест исчерпал бы бюджет
+  // вместе с уже существующими выше.
+  let sharedDevCookie: string | undefined;
+  async function devCookie(): Promise<string> {
+    sharedDevCookie ??= await loginAs(Role.DEVELOPER, 'audit-shared-dev');
+    return sharedDevCookie;
+  }
+
+  it('правка сущности пишет в meta изменённые поля (EXPANSION_TASKS.md §2.2)', async () => {
+    const cookie = await devCookie();
+
+    const createTag = await request(app.getHttpServer())
+      .post('/admin/tags')
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ name: 'audit-meta-tag' });
+    expect(createTag.status).toBe(201);
+    const tagId = (createTag.body as { data: { id: number } }).data.id;
+
+    const patchTag = await request(app.getHttpServer())
+      .patch(`/admin/tags/${tagId}`)
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ name: 'audit-meta-tag-renamed' });
+    expect(patchTag.status).toBe(200);
+
+    const entry = await waitForAuditEntry(
+      cookie,
+      { action: 'UPDATE', resource: 'tags' },
+      (item) => item.path === `/admin/tags/${tagId}`,
+    );
+    // tags не размечен @Audit — запись пишется автоправилом, signed=false (EXPANSION_TASKS.md §2.3).
+    expect(entry.signed).toBe(false);
+    expect(entry.meta).toEqual({ name: 'audit-meta-tag-renamed' });
+  });
+
+  it('сброс пароля отличается в журнале от обычной правки и не светит пароль в meta (§1.6/§2.2/§2.3)', async () => {
+    const cookie = await devCookie();
+    const targetHash = await bcrypt.hash('TargetPass123!', 4);
+    const roleId = await resolveRoleId(moduleRef, Role.CONTENT_MANAGER);
+    const target = await users.save(
+      users.create({
+        username: 'audit-pw-target',
+        password: targetHash,
+        roleId,
+        isActive: true,
+      }),
+    );
+
+    const resetResponse = await request(app.getHttpServer())
+      .patch(`/admin/users/${target.id}/password`)
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ password: 'NewTargetPass123!' });
+    expect(resetResponse.status).toBe(204);
+
+    const entry = await waitForAuditEntry(
+      cookie,
+      { action: 'password_reset' },
+      (item) => item.path === `/admin/users/${target.id}/password`,
+    );
+    // @Audit({action:'password_reset'}) — не общий 'UPDATE' автоправила, signed=true. resource
+    // не переопределён декоратором (совпадает с автовыведенным из пути 'users'). Пароль в meta
+    // замаскирован тем же санитайзером, что и неподписанные записи.
+    expect(entry.resource).toBe('users');
+    expect(entry.action).toBe('password_reset');
+    expect(entry.signed).toBe(true);
+    expect(entry.meta).toEqual({ password: '***' });
+  });
+
+  it('отказ по правам (403) есть в журнале и не задвоен интерсептором+фильтром (§2.4)', async () => {
+    const viewerCookie = await devCookie();
+    const actorCookie = await loginAs(Role.CLIENT_MANAGER, 'audit-403-actor');
+
+    const forbidden = await request(app.getHttpServer())
+      .post('/admin/tags')
+      .set('Origin', ORIGIN)
+      .set('Cookie', actorCookie)
+      .send({ name: 'should-not-be-created' });
+    expect(forbidden.status).toBe(403);
+
+    await waitForAuditEntry(
+      viewerCookie,
+      { username: 'audit-403-actor' },
+      (item) => item.path === '/admin/tags' && item.statusCode === 403,
+    );
+
+    const response = await request(app.getHttpServer())
+      .get('/audit-logs')
+      .query({ username: 'audit-403-actor' })
+      .set('Cookie', viewerCookie);
+    const matches = auditLogsBody(response).items.filter(
+      (item) => item.path === '/admin/tags' && item.statusCode === 403,
+    );
+    expect(matches).toHaveLength(1);
+  });
+
+  it('400 от валидации DTO не пишется в журнал (§2.4)', async () => {
+    const cookie = await devCookie();
+
+    const invalid = await request(app.getHttpServer())
+      .post('/admin/tags')
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ name: '' });
+    expect(invalid.status).toBe(400);
+
+    // Даём шанс "выстрелил и забыл" записи долететь, если бы она была — затем убеждаемся в
+    // отсутствии. Без опроса here — отсутствие нельзя дождаться, только выждать разумный интервал.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const response = await request(app.getHttpServer())
+      .get('/audit-logs')
+      .query({ username: 'audit-shared-dev', resource: 'tags' })
+      .set('Cookie', cookie);
+    const has400 = auditLogsBody(response).items.some(
+      (item) => item.statusCode === 400,
+    );
+    expect(has400).toBe(false);
+  });
+
+  it('400 от бизнес-правила (одиночное сообщение, не ValidationPipe) пишется в журнал (code review high)', async () => {
+    const cookie = await devCookie();
+    const target = await users.save(
+      users.create({
+        username: 'audit-400-business-target',
+        password: await bcrypt.hash('TargetPass123!', 4),
+        roleId: await resolveRoleId(moduleRef, Role.CONTENT_MANAGER),
+        isActive: true,
+      }),
+    );
+
+    // roleId проходит class-validator (@IsInt @Min(1)), несуществующий id отклоняется сервисом
+    // одиночным BadRequestException — та самая "форма отказа", которую §2.4 требует не терять,
+    // в отличие от опечатки в форме (проверено тестом выше).
+    const businessRejection = await request(app.getHttpServer())
+      .patch(`/admin/users/${target.id}/role`)
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ roleId: 999_999 });
+    expect(businessRejection.status).toBe(400);
+
+    await waitForAuditEntry(
+      cookie,
+      { action: 'ERROR' },
+      (item) =>
+        item.path === `/admin/users/${target.id}/role` &&
+        item.statusCode === 400,
+    );
   });
 });

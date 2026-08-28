@@ -42,6 +42,7 @@ interface ApiErrorResponse {
 const INTERNAL_SERVER_ERROR_STATUS: number = HttpStatus.INTERNAL_SERVER_ERROR;
 const UNAUTHORIZED_STATUS: number = HttpStatus.UNAUTHORIZED;
 const FORBIDDEN_STATUS: number = HttpStatus.FORBIDDEN;
+const BAD_REQUEST_STATUS: number = HttpStatus.BAD_REQUEST;
 
 const STATUS_TO_CODE: Partial<Record<number, ErrorCode>> = {
   [HttpStatus.BAD_REQUEST]: ErrorCode.VALIDATION_ERROR,
@@ -91,7 +92,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.warn({ requestId, status, code }, message);
     }
 
-    this.writeAuditLog(request, status, message);
+    // Отличаем "форма не прошла ValidationPipe" (details — массив сообщений class-validator,
+    // ошибка ничего не значит без разбора по полям) от 400, брошенного вручную бизнес-правилом
+    // (details === null, единственное осмысленное сообщение) — например, самозащита последнего
+    // системного пользователя (users.service.ts) тоже отвечает 400, но это ровно то отказное
+    // событие, ради которого журнал заводился (EXPANSION_TASKS.md §2.4: "самое интересное в
+    // журнале — именно отказы"), а не опечатка в форме. Только первое — не событие для журнала.
+    const isValidationPipeNoise =
+      status === BAD_REQUEST_STATUS && Array.isArray(details);
+    this.writeAuditLog(request, status, message, isValidationPipeNoise);
 
     const body: ApiErrorResponse = {
       success: false,
@@ -162,6 +171,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     request: Request,
     status: number,
     errorMessage: string,
+    isValidationPipeNoise: boolean,
   ): void {
     const method = request.method.toUpperCase();
     const path = request.path;
@@ -171,7 +181,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status === UNAUTHORIZED_STATUS || status === FORBIDDEN_STATUS;
     const isServerError = status >= INTERNAL_SERVER_ERROR_STATUS;
 
-    if (!isMutation && !isAuthPath && !isSecurityEvent && !isServerError) {
+    if (
+      isValidationPipeNoise ||
+      (!isMutation && !isAuthPath && !isSecurityEvent && !isServerError)
+    ) {
       return;
     }
 
@@ -211,6 +224,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       errorMessage,
       ip,
+      meta: null,
+      // Этот путь никогда не смотрит на @Audit — только AuditInterceptor (успешные мутации) это
+      // делает (EXPANSION_TASKS.md §2.3), поэтому здесь всегда автоправило.
+      signed: false,
     });
   }
 

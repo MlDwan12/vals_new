@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { AuditLog } from '../domain/audit-log.entity';
-import { AuditAction } from '../enums/audit-action.enum';
 
 export interface CreateAuditLogRecord {
   userId: number | null;
@@ -17,6 +16,8 @@ export interface CreateAuditLogRecord {
   statusCode: number;
   errorMessage: string | null;
   ip: string | null;
+  meta: Record<string, unknown> | null;
+  signed: boolean;
 }
 
 export interface AuditLogFilter {
@@ -24,7 +25,7 @@ export interface AuditLogFilter {
   limit: number;
   userId?: number;
   username?: string;
-  action?: AuditAction;
+  action?: string;
   resource?: string;
   dateFrom?: Date;
   dateTo?: Date;

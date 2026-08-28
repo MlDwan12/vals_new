@@ -93,6 +93,10 @@ export const envSchema = z
     // Ограниченный ключ (только права search) — публичный GET /search ходит им, не мастер-ключом
     // (ТЗ §6). Значение выдаёт сам Meilisearch после старта (GET /keys), не задаётся заранее.
     MEILI_SEARCH_KEY: z.string().min(1),
+
+    // Срок хранения audit_logs, дней (EXPANSION_TASKS.md §2.5) — конфиг, не секрет, дефолт
+    // безопасно задать здесь же (было константой в планировщике).
+    AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(180),
   })
   .transform((data) => ({
     ...data,

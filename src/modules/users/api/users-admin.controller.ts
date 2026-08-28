@@ -15,6 +15,7 @@ import {
 import type { Request } from 'express';
 import { ADMIN_ROLES } from '../../../core/enums/role-groups.constant';
 import { Role } from '../../../core/enums/role.enum';
+import { Audit } from '../../../core/decorators/audit.decorator';
 import { Perm } from '../../../core/decorators/perm.decorator';
 import { Roles } from '../../../core/decorators/roles.decorator';
 import { AuthenticatedRequestUser } from '../../../core/guards/auth.guard';
@@ -108,6 +109,7 @@ export class UsersAdminController {
 
   @Patch(':id/role')
   @Perm(PERMISSIONS.USERS_MANAGE)
+  @Audit({ action: 'role_change' })
   changeRole(
     @Req() req: RequestWithUser,
     @Param('id', ParseIntPipe) id: number,
@@ -118,6 +120,7 @@ export class UsersAdminController {
 
   @Patch(':id/access-expiry')
   @Perm(PERMISSIONS.USERS_MANAGE)
+  @Audit({ action: 'access_expiry_change' })
   setAccessExpiry(
     @Req() req: RequestWithUser,
     @Param('id', ParseIntPipe) id: number,
@@ -130,6 +133,7 @@ export class UsersAdminController {
   // личность, это доверие другого уровня.
   @Patch(':id/password')
   @Perm(PERMISSIONS.USERS_RESET_PASSWORD)
+  @Audit({ action: 'password_reset' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(
     @Req() req: RequestWithUser,

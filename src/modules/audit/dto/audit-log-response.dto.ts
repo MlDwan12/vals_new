@@ -13,6 +13,8 @@ export class AuditLogResponseDto {
   statusCode: number;
   errorMessage: string | null;
   ip: string | null;
+  meta: Record<string, unknown> | null;
+  signed: boolean;
   createdAt: Date;
 
   static fromEntity(log: AuditLog): AuditLogResponseDto {
@@ -29,6 +31,8 @@ export class AuditLogResponseDto {
     dto.statusCode = log.statusCode;
     dto.errorMessage = log.errorMessage;
     dto.ip = log.ip;
+    dto.meta = log.meta;
+    dto.signed = log.signed;
     dto.createdAt = log.createdAt;
     return dto;
   }

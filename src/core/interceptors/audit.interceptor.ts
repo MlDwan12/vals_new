@@ -4,6 +4,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Request, Response } from 'express';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -14,13 +15,18 @@ import {
   resolveAuditResource,
   resolveClientIp,
 } from '../audit/resolve-audit-context.util';
+import { sanitizeAuditBody } from '../audit/sanitize-audit-body.util';
+import { AUDIT_KEY, AuditMetadata } from '../decorators/audit.decorator';
 import { AuthenticatedRequestUser } from '../guards/auth.guard';
 
 // Успешные мутации + logout (ТЗ §2 — "аудит-лог всех мутаций"). 401/403/5xx — отдельная ветка в
 // HttpExceptionFilter (успешный next.handle() сюда никогда не долетает с этими статусами).
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly reflector: Reflector,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -33,6 +39,9 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const response = context.switchToHttp().getResponse<Response>();
+    const auditMetadata = this.reflector.getAllAndOverride<
+      AuditMetadata | undefined
+    >(AUDIT_KEY, [context.getHandler(), context.getClass()]);
 
     return next.handle().pipe(
       tap((data) => {
@@ -58,7 +67,7 @@ export class AuditInterceptor implements NestInterceptor {
             (typeof loginResponse?.role === 'string'
               ? loginResponse.role
               : null),
-          action: this.resolveAction(method, path),
+          action: auditMetadata?.action ?? this.resolveAction(method, path),
           method,
           path,
           resource,
@@ -66,6 +75,10 @@ export class AuditInterceptor implements NestInterceptor {
           statusCode: response.statusCode,
           errorMessage: null,
           ip: resolveClientIp(request),
+          meta: sanitizeAuditBody(request.body) ?? null,
+          // Забытый @Audit не отменяет запись (EXPANSION_TASKS.md §2.3) — подпись выводится
+          // автоматически, как и раньше, только запись помечается неподписанной.
+          signed: auditMetadata !== undefined,
         });
       }),
     );
