@@ -1,4 +1,5 @@
 import { EmployeeShortDto } from '../../employees/dto/employee-short.dto';
+import { MediaCoverDto } from '../../media/dto/media-cover.dto';
 import { ServiceShortDto } from '../../services/dto/service-short.dto';
 import { TagShortDto } from '../../tags/dto/tag-short.dto';
 import { Case } from '../domain/case.entity';
@@ -23,6 +24,7 @@ export class CaseResponseDto {
   hasToc: boolean;
   createdAt: Date;
   updatedAt: Date;
+  cover: MediaCoverDto | null;
   services: ServiceShortDto[];
   authors: EmployeeShortDto[];
   tags: TagShortDto[];
@@ -53,6 +55,9 @@ export class CaseResponseDto {
     dto.hasToc = caseEntity.hasToc;
     dto.createdAt = caseEntity.createdAt;
     dto.updatedAt = caseEntity.updatedAt;
+    dto.cover = caseEntity.cover
+      ? MediaCoverDto.fromEntity(caseEntity.cover)
+      : null;
     dto.services = caseEntity.services.map((service) =>
       ServiceShortDto.fromEntity(service),
     );

@@ -115,8 +115,11 @@ export class TagsService {
     return candidate;
   }
 
-  // tag_id в article_tags/case_tags — ON DELETE NO ACTION (проверено на реальной миграции), удаление
-  // используемого тега падает FK-нарушением — здесь только понятное сообщение вместо сырой ошибки Postgres.
+  // tag_id в article_tags/case_tags/news_tags — ON DELETE NO ACTION (проверено на реальной
+  // миграции), удаление используемого тега падает FK-нарушением — здесь только понятное сообщение
+  // вместо сырой ошибки Postgres. Текст обновлён при добавлении news_tags (задача 3
+  // EXPANSION_TASKS.md) — без этого сообщение вводило в заблуждение про тег, используемый только
+  // новостью (живой прогон это подтвердил до фикса).
   async remove(id: number): Promise<void> {
     await this.findEntityByIdOrFail(id);
 
@@ -125,7 +128,7 @@ export class TagsService {
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new BadRequestException(
-          'Нельзя удалить тег — он используется в статьях или кейсах. Сначала уберите тег из материалов.',
+          'Нельзя удалить тег — он используется в статьях, кейсах или новостях. Сначала уберите тег из материалов.',
         );
       }
       throw error;

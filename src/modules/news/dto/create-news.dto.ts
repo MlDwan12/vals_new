@@ -3,7 +3,6 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
-  IsBoolean,
   IsDateString,
   IsInt,
   IsNotEmpty,
@@ -17,12 +16,12 @@ import {
 } from 'class-validator';
 import { MaxKeywords } from '../../../core/validators/max-keywords.validator';
 
-export class CreateCaseDto {
+export class CreateNewsDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  // slug — прямой пользовательский ввод из CONTENT-админки, встраивается в публичный маршрут
-  // (Б8, независимый аудит 2026-08-21) — без формата пробелы/`/`/`?`/кириллица проходили бы как есть.
+  // slug — прямой пользовательский ввод из CONTENT-админки, встраивается в публичный маршрут, тот
+  // же формат-контракт, что у статей/кейсов (Б8, независимый аудит 2026-08-21).
   @Matches(/^[a-z0-9-]+$/, {
     message:
       'slug может содержать только латиницу в нижнем регистре, цифры и дефис',
@@ -36,26 +35,11 @@ export class CreateCaseDto {
 
   @IsOptional()
   @IsString()
-  description?: string;
+  announce?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  problem: string;
-
-  @IsString()
-  @IsNotEmpty()
-  result: string;
-
-  @IsArray()
-  @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @MaxLength(64, { each: true })
-  industry: string[];
-
-  // Основной контент кейса (JSON редактора, например TipTap)
-  @IsOptional()
+  // Основной контент новости (JSON редактора, например TipTap)
   @IsObject()
-  content?: Record<string, unknown>;
+  content: Record<string, unknown>;
 
   @IsOptional()
   @IsString()
@@ -81,29 +65,17 @@ export class CreateCaseDto {
   datePublished?: string | null;
 
   // NOT NULL с дефолтом в БД — @IsOptional() пропустил бы явный null мимо валидации на PATCH
-  // (см. update-article.dto.ts/create-article.dto.ts — тот же приём, code review).
+  // (тот же приём, что в create-article.dto.ts/create-case.dto.ts, code review).
   @ValidateIf((_, value) => value !== undefined)
   @IsInt()
   @Min(0)
   priority?: number;
-
-  @ValidateIf((_, value) => value !== undefined)
-  @IsBoolean()
-  hasToc?: boolean;
 
   // Обложка — опциональная ссылка на медиатеку (задача 4). null — явно снять обложку на PATCH.
   @IsOptional()
   @IsInt()
   @Min(1)
   coverMediaId?: number | null;
-
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(50)
-  @Type(() => Number)
-  @IsInt({ each: true })
-  @Min(1, { each: true })
-  serviceIds: number[];
 
   @IsArray()
   @ArrayMinSize(1)

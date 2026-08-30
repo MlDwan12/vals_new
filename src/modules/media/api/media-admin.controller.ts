@@ -4,8 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -19,6 +17,7 @@ import { Roles } from '../../../core/decorators/roles.decorator';
 import { CONTENT_ROLES } from '../../../core/enums/role-groups.constant';
 import { MediaService } from '../application/media.service';
 import { MediaListQueryDto } from '../dto/media-list-query.dto';
+import { MediaRemoveResponseDto } from '../dto/media-remove-response.dto';
 import { MediaResponseDto } from '../dto/media-response.dto';
 import { UploadMediaDto } from '../dto/upload-media.dto';
 import { MAX_SINGLE_FILE_BYTES } from '../util/media-size-budget.util';
@@ -76,9 +75,12 @@ export class MediaAdminController {
     return this.mediaService.upload(files, dto);
   }
 
+  // Не 204: тело ответа несёт предупреждение, если файл использовался как обложка (задача 4,
+  // EXPANSION_TASKS.md §4.2) — файл при этом всё равно удаляется, это не подтверждение действия.
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    await this.mediaService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<MediaRemoveResponseDto> {
+    return this.mediaService.remove(id);
   }
 }

@@ -84,6 +84,12 @@ export class CreateArticleDto {
   @IsBoolean()
   hasToc?: boolean;
 
+  // Обложка — опциональная ссылка на медиатеку (задача 4). null — явно снять обложку на PATCH.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  coverMediaId?: number | null;
+
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(5)

@@ -9,8 +9,10 @@ import { applyDefinedFields } from '../../../core/persistence/apply-defined-fiel
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import {
   resolveOptionalEntitiesByIds,
+  resolveOptionalEntityById,
   resolveRequiredEntitiesByIds,
 } from '../../../core/persistence/resolve-entities-by-ids.util';
+import { MediaRepository } from '../../media/infrastructure/media.repository';
 import { SearchIndexService } from '../../search/application/search-index.service';
 import { ServicesRepository } from '../../services/infrastructure/services.repository';
 import { TagsRepository } from '../../tags/infrastructure/tags.repository';
@@ -36,13 +38,14 @@ export class CasesService {
     private readonly casesRepository: CasesRepository,
     private readonly servicesRepository: ServicesRepository,
     private readonly employeesRepository: EmployeesRepository,
+    private readonly mediaRepository: MediaRepository,
     private readonly tagsRepository: TagsRepository,
     private readonly searchIndexService: SearchIndexService,
     private readonly caseFaqService: CaseFaqService,
   ) {}
 
   async create(dto: CreateCaseDto): Promise<CaseResponseDto> {
-    const [services, authors, tags] = await Promise.all([
+    const [services, authors, tags, cover] = await Promise.all([
       resolveRequiredEntitiesByIds(
         dto.serviceIds,
         (ids) => this.servicesRepository.findByIds(ids),
@@ -60,6 +63,7 @@ export class CasesService {
         (ids) => this.tagsRepository.findByIds(ids),
         'Теги',
       ),
+      this.resolveCover(dto.coverMediaId),
     ]);
 
     const caseEntity = this.casesRepository.create({
@@ -77,6 +81,7 @@ export class CasesService {
       datePublished: dto.datePublished ? new Date(dto.datePublished) : null,
       priority: dto.priority ?? 0,
       hasToc: dto.hasToc ?? false,
+      cover,
       services,
       authors,
       tags,
@@ -117,6 +122,11 @@ export class CasesService {
         (ids) => this.tagsRepository.findByIds(ids),
         'Теги',
       );
+    }
+    if (dto.coverMediaId !== undefined) {
+      // Присваиваем саму relation-сущность, не FK-скаляр — см. ArticlesService.update, тот же
+      // приём и та же причина (уже загруженная caseEntity.cover иначе переопределяет FK при save()).
+      caseEntity.cover = await this.resolveCover(dto.coverMediaId);
     }
     // datePublished — отдельно от общего хелпера ниже: значение нужно конвертировать в Date,
     // а простое присутствие ключа в DTO (в т.ч. null) уже отличает "не трогать" от "обнулить".
@@ -280,6 +290,14 @@ export class CasesService {
       return new ConflictException('Кейс с таким slug уже существует');
     }
     return error;
+  }
+
+  private resolveCover(coverMediaId: number | null | undefined) {
+    return resolveOptionalEntityById(
+      coverMediaId,
+      (id) => this.mediaRepository.findById(id),
+      'Обложка',
+    );
   }
 
   // FAQ кейса синхронизируется тем же вызовом, что и сам документ — иначе unpublish/публикация/

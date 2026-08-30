@@ -47,8 +47,10 @@ export class EmployeesService {
     }
   }
 
-  // Удаление блокируется на уровне FK (article_authors/case_authors — ON DELETE NO ACTION) — здесь
-  // только понятное сообщение вместо сырой ошибки Postgres.
+  // Удаление блокируется на уровне FK (article_authors/case_authors/news_authors — ON DELETE NO
+  // ACTION) — здесь только понятное сообщение вместо сырой ошибки Postgres. Текст обновлён при
+  // добавлении news_authors (задача 3 EXPANSION_TASKS.md) — тот же пробел, что был в
+  // TagsService.remove до фикса той же сессии (code-review high, N-2).
   async remove(id: number): Promise<void> {
     await this.findEntityByIdOrFail(id);
 
@@ -57,7 +59,7 @@ export class EmployeesService {
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new BadRequestException(
-          'Нельзя удалить сотрудника — у него есть статьи или кейсы. Сначала снимите привязку или скройте сотрудника (isVisible: false).',
+          'Нельзя удалить сотрудника — у него есть статьи, кейсы или новости. Сначала снимите привязку или скройте сотрудника (isVisible: false).',
         );
       }
       throw error;

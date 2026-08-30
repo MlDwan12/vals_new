@@ -13,6 +13,7 @@ import {
   AUTHOR_SHORT_FIELDS,
   TAG_SHORT_FIELDS,
 } from '../../../core/persistence/author-tag-relation-filters.util';
+import { MEDIA_COVER_SHORT_FIELDS } from '../../../core/persistence/media-cover-fields.util';
 import { SortByDate } from '../../../core/enums/sort-by-date.enum';
 import {
   buildPaginatedResult,
@@ -77,9 +78,11 @@ export class CasesRepository {
       .createQueryBuilder('cases')
       .leftJoin('cases.authors', 'author')
       .leftJoin('cases.tags', 'tag')
+      .leftJoin('cases.cover', 'cover')
       .select(CASE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
+      .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .skip((query.page - 1) * query.limit)
       .take(query.limit);
 
@@ -145,7 +148,13 @@ export class CasesRepository {
   findBySlug(slug: string): Promise<Case | null> {
     return this.repo.findOne({
       where: { slug },
-      relations: { services: true, authors: true, tags: true, faq: true },
+      relations: {
+        services: true,
+        authors: true,
+        tags: true,
+        faq: true,
+        cover: true,
+      },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -153,7 +162,13 @@ export class CasesRepository {
   findBySlugPublished(slug: string): Promise<Case | null> {
     return this.repo.findOne({
       where: { slug, datePublished: LessThanOrEqual(new Date()) },
-      relations: { services: true, authors: true, tags: true, faq: true },
+      relations: {
+        services: true,
+        authors: true,
+        tags: true,
+        faq: true,
+        cover: true,
+      },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -161,7 +176,13 @@ export class CasesRepository {
   findById(id: number): Promise<Case | null> {
     return this.repo.findOne({
       where: { id },
-      relations: { services: true, authors: true, tags: true, faq: true },
+      relations: {
+        services: true,
+        authors: true,
+        tags: true,
+        faq: true,
+        cover: true,
+      },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -220,9 +241,11 @@ export class CasesRepository {
       .createQueryBuilder('cases')
       .leftJoin('cases.authors', 'author')
       .leftJoin('cases.tags', 'tag')
+      .leftJoin('cases.cover', 'cover')
       .select(CASE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
+      .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .where('cases.id IN (:...ids)', { ids })
       .getMany();
 
@@ -267,6 +290,7 @@ export class CasesRepository {
     datePublished: Date | null;
     priority: number;
     hasToc: boolean;
+    cover: Case['cover'];
     services: Case['services'];
     authors: Case['authors'];
     tags: Case['tags'];
@@ -295,9 +319,11 @@ export function findPublishedCasesByServiceId(
     .innerJoin('cases.services', 'service')
     .leftJoin('cases.authors', 'author')
     .leftJoin('cases.tags', 'tag')
+    .leftJoin('cases.cover', 'cover')
     .select(CASE_MAIN_FIELDS)
     .addSelect(AUTHOR_SHORT_FIELDS)
     .addSelect(TAG_SHORT_FIELDS)
+    .addSelect(MEDIA_COVER_SHORT_FIELDS)
     .where('service.id = :serviceId', { serviceId })
     .andWhere('cases.datePublished IS NOT NULL')
     .andWhere('cases.datePublished <= :now', { now: new Date() })

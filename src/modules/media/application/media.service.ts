@@ -11,10 +11,12 @@ import { PinoLogger } from 'nestjs-pino';
 import { UPLOADS_ROOT } from '../../../core/uploads.constants';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { MediaListQueryDto } from '../dto/media-list-query.dto';
+import { MediaRemoveResponseDto } from '../dto/media-remove-response.dto';
 import { MediaResponseDto } from '../dto/media-response.dto';
 import { UploadMediaDto } from '../dto/upload-media.dto';
 import { maxFileSizeBytes } from '../util/media-size-budget.util';
 import { isValidWebpSignature } from '../util/webp-signature.util';
+import { parseImageDimensions } from '../util/media-dimensions.util';
 import { MediaRepository } from '../infrastructure/media.repository';
 
 const UPLOAD_DIR = path.join(UPLOADS_ROOT, 'media');
@@ -115,11 +117,21 @@ export class MediaService implements OnModuleInit {
     }
 
     try {
-      const records = files.map((file, index) => ({
-        name: path.parse(decodeOriginalName(file)).name,
-        fileName: path.basename(filePaths[index]),
-        alt: dto.alt?.[index]?.trim() || null,
-      }));
+      const records = files.map((file, index) => {
+        // Формат уже подтверждён isValidWebpSignature выше — dimensions может быть null только на
+        // экзотическом валидном WEBP-подформате (VP8X с нестандартной структурой), не на невалидном
+        // файле; отсутствие размеров не должно блокировать саму загрузку.
+        const dimensions = parseImageDimensions(file.buffer);
+        return {
+          name: path.parse(decodeOriginalName(file)).name,
+          fileName: path.basename(filePaths[index]),
+          alt: dto.alt?.[index]?.trim() || null,
+          width: dimensions?.width ?? null,
+          height: dimensions?.height ?? null,
+          mimeType: 'image/webp',
+          sizeBytes: file.buffer.length,
+        };
+      });
 
       const saved = await this.mediaRepository.create(records);
       return saved.map((media) => MediaResponseDto.fromEntity(media));
@@ -135,13 +147,19 @@ export class MediaService implements OnModuleInit {
     }
   }
 
-  async remove(id: number): Promise<void> {
-    const media = await this.mediaRepository.findById(id);
+  // Удаление не блокируется использованием (FK cover_media_id — SET NULL, не RESTRICT): обложка
+  // важнее не терять доступ к медиатеке из-за забытой картинки, но вызывающий должен узнать,
+  // где она использовалась (EXPANSION_TASKS.md §4.2 — "предупреждение в ответе, со списком").
+  async remove(id: number): Promise<MediaRemoveResponseDto> {
+    // Чтение использования, блокировка строки и удаление — одной транзакцией в репозитории
+    // (removeWithCoverUsage), не тремя отдельными вызовами: иначе конкурентный PATCH мог успеть
+    // привязать материал к файлу в промежутке между чтением списка и удалением — список в ответе
+    // оказался бы неполным (code-review high, N-1).
+    const { media, usedIn } =
+      await this.mediaRepository.removeWithCoverUsage(id);
     if (!media) {
       throw new NotFoundException(`Файл с ID ${id} не найден`);
     }
-
-    await this.mediaRepository.remove(id);
 
     try {
       await fs.promises.unlink(path.join(UPLOAD_DIR, media.fileName));
@@ -151,5 +169,7 @@ export class MediaService implements OnModuleInit {
         'Failed to delete media file from disk',
       );
     }
+
+    return MediaRemoveResponseDto.of(usedIn);
   }
 }

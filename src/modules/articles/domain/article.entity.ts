@@ -3,13 +3,16 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Employee } from '../../employees/domain/employee.entity';
+import { Media } from '../../media/domain/media.entity';
 import { Tag } from '../../tags/domain/tag.entity';
 import { ArticleFaq } from './article-faq.entity';
 
@@ -61,6 +64,16 @@ export class Article {
   // Показывать автособираемое оглавление по заголовкам H1-H3 на странице статьи
   @Column({ name: 'has_toc', type: 'boolean', default: false })
   hasToc: boolean;
+
+  // Обложка — опциональная ссылка на медиатеку. Удаление файла не должно ронять статью — SET NULL.
+  // Без отдельной скалярной cover_media_id-колонки (только relation) — по образцу Service.category:
+  // дублирующая колонка рядом с relation на ту же FK — источник TypeORM-ловушки (save() при
+  // одновременно загруженной stale-relation и напрямую выставленном скаляре молча предпочитает
+  // relation), устранена на уровне схемы, а не обходом в сервисе (altitude review, /simplify).
+  @Index()
+  @ManyToOne(() => Media, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cover_media_id' })
+  cover: Media | null;
 
   // Авторы (many-to-many, задел на соавторов — сейчас на практике один автор)
   @ManyToMany(() => Employee, (employee) => employee.articles, {

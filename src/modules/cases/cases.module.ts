@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmployeesModule } from '../employees/employees.module';
+import { MediaModule } from '../media/media.module';
 import { SearchModule } from '../search/search.module';
 import { ServicesModule } from '../services/services.module';
 import { TagsModule } from '../tags/tags.module';
@@ -19,6 +20,7 @@ import { CasesRepository } from './infrastructure/cases.repository';
   imports: [
     TypeOrmModule.forFeature([Case, CaseFaq]),
     EmployeesModule,
+    MediaModule,
     TagsModule,
     ServicesModule,
     SearchModule,

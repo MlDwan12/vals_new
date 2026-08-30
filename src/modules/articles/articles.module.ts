@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmployeesModule } from '../employees/employees.module';
+import { MediaModule } from '../media/media.module';
 import { SearchModule } from '../search/search.module';
 import { TagsModule } from '../tags/tags.module';
 import { ArticleFaqAdminController } from './api/article-faq-admin.controller';
@@ -18,6 +19,7 @@ import { ArticlesRepository } from './infrastructure/articles.repository';
   imports: [
     TypeOrmModule.forFeature([Article, ArticleFaq]),
     EmployeesModule,
+    MediaModule,
     TagsModule,
     SearchModule,
   ],

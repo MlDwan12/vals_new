@@ -20,6 +20,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { HealthModule } from './modules/health/health.module';
 import { IndustriesModule } from './modules/industries/industries.module';
 import { MediaModule } from './modules/media/media.module';
+import { NewsModule } from './modules/news/news.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SearchModule } from './modules/search/search.module';
 import { ServicesModule } from './modules/services/services.module';
@@ -131,6 +132,7 @@ import { UsersModule } from './modules/users/users.module';
     SearchModule,
     ArticlesModule,
     CasesModule,
+    NewsModule,
     ServicesModule,
     TariffsModule,
     TariffPeriodsModule,

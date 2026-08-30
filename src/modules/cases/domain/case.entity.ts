@@ -3,13 +3,16 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Employee } from '../../employees/domain/employee.entity';
+import { Media } from '../../media/domain/media.entity';
 import { Service } from '../../services/domain/service.entity';
 import { Tag } from '../../tags/domain/tag.entity';
 import { CaseFaq } from './case-faq.entity';
@@ -82,6 +85,13 @@ export class Case {
 
   @Column({ name: 'has_toc', type: 'boolean', default: false })
   hasToc: boolean;
+
+  // Обложка — опциональная ссылка на медиатеку. Удаление файла не должно ронять кейс — SET NULL.
+  // Без отдельной скалярной cover_media_id-колонки — см. article.entity.ts, тот же приём и причина.
+  @Index()
+  @ManyToOne(() => Media, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cover_media_id' })
+  cover: Media | null;
 
   // Авторы (many-to-many, задел на соавторов — сейчас на практике один автор)
   @ManyToMany(() => Employee, (employee) => employee.cases, {

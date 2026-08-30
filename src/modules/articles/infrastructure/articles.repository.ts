@@ -13,6 +13,7 @@ import {
   AUTHOR_SHORT_FIELDS,
   TAG_SHORT_FIELDS,
 } from '../../../core/persistence/author-tag-relation-filters.util';
+import { MEDIA_COVER_SHORT_FIELDS } from '../../../core/persistence/media-cover-fields.util';
 import { SortByDate } from '../../../core/enums/sort-by-date.enum';
 import {
   buildPaginatedResult,
@@ -77,9 +78,11 @@ export class ArticlesRepository {
       .createQueryBuilder('article')
       .leftJoin('article.authors', 'author')
       .leftJoin('article.tags', 'tag')
+      .leftJoin('article.cover', 'cover')
       .select(ARTICLE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
+      .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .skip((query.page - 1) * query.limit)
       .take(query.limit);
 
@@ -145,7 +148,7 @@ export class ArticlesRepository {
   findBySlug(slug: string): Promise<Article | null> {
     return this.repo.findOne({
       where: { slug },
-      relations: { authors: true, tags: true, faq: true },
+      relations: { authors: true, tags: true, faq: true, cover: true },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -153,7 +156,7 @@ export class ArticlesRepository {
   findBySlugPublished(slug: string): Promise<Article | null> {
     return this.repo.findOne({
       where: { slug, datePublished: LessThanOrEqual(new Date()) },
-      relations: { authors: true, tags: true, faq: true },
+      relations: { authors: true, tags: true, faq: true, cover: true },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -161,7 +164,7 @@ export class ArticlesRepository {
   findById(id: number): Promise<Article | null> {
     return this.repo.findOne({
       where: { id },
-      relations: { authors: true, tags: true, faq: true },
+      relations: { authors: true, tags: true, faq: true, cover: true },
       order: { faq: { id: 'ASC' } },
     });
   }
@@ -217,9 +220,11 @@ export class ArticlesRepository {
       .createQueryBuilder('article')
       .leftJoin('article.authors', 'author')
       .leftJoin('article.tags', 'tag')
+      .leftJoin('article.cover', 'cover')
       .select(ARTICLE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
+      .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .where('article.id IN (:...ids)', { ids })
       .getMany();
 
@@ -263,6 +268,7 @@ export class ArticlesRepository {
     priority: number;
     readingTime: number | null;
     hasToc: boolean;
+    cover: Article['cover'];
     authors: Article['authors'];
     tags: Article['tags'];
   }): Article {

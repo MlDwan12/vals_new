@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Article } from '../../articles/domain/article.entity';
 import { Case } from '../../cases/domain/case.entity';
+import { News } from '../../news/domain/news.entity';
 
 @Entity('employees')
 export class Employee {
@@ -67,6 +68,9 @@ export class Employee {
 
   @ManyToMany(() => Case, (caseEntity) => caseEntity.authors)
   cases: Case[];
+
+  @ManyToMany(() => News, (news) => news.authors)
+  news: News[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

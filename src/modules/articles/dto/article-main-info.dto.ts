@@ -1,4 +1,5 @@
 import { EmployeeShortDto } from '../../employees/dto/employee-short.dto';
+import { MediaCoverDto } from '../../media/dto/media-cover.dto';
 import { TagShortDto } from '../../tags/dto/tag-short.dto';
 import { Article } from '../domain/article.entity';
 
@@ -13,6 +14,7 @@ export class ArticleMainInfoDto {
   readingTime: number | null;
   createdAt: Date;
   updatedAt: Date;
+  cover: MediaCoverDto | null;
   authors: EmployeeShortDto[];
   tags: TagShortDto[];
 
@@ -27,6 +29,7 @@ export class ArticleMainInfoDto {
     dto.readingTime = article.readingTime;
     dto.createdAt = article.createdAt;
     dto.updatedAt = article.updatedAt;
+    dto.cover = article.cover ? MediaCoverDto.fromEntity(article.cover) : null;
     dto.authors = article.authors.map((author) =>
       EmployeeShortDto.fromEntity(author),
     );

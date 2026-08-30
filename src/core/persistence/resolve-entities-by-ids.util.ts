@@ -51,3 +51,22 @@ export async function resolveOptionalEntitiesByIds<T extends { id: number }>(
   );
   return found;
 }
+
+// Одиночная опциональная связь (cover_media_id) — null/undefined это валидное "без обложки",
+// несуществующий id — ошибка валидации. Аналог resolveOptionalEntitiesByIds для one-to-one FK, не
+// массива; ServicesService.resolveCategory — тот же приём, но для обязательной связи (без null-ветки).
+export async function resolveOptionalEntityById<T extends { id: number }>(
+  id: number | null | undefined,
+  findById: (id: number) => Promise<T | null>,
+  label: string,
+): Promise<T | null> {
+  if (id === null || id === undefined) return null;
+
+  const found = await findById(id);
+  if (!found) {
+    // "не существует", не "не найден(а)" — label общий для меток разного рода (Обложка ж.р.,
+    // Тег м.р. и т.п.), а "существует" не требует согласования.
+    throw new BadRequestException(`${label} с ID ${id} не существует`);
+  }
+  return found;
+}

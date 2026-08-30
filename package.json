@@ -28,6 +28,7 @@
     "migration:show": "yarn build && node ./node_modules/typeorm/cli.js migration:show --dataSource dist/data-source.js",
     "seed:developer": "ts-node src/database/seeds/create-developer.seed.ts",
     "migrate:prod-data": "ts-node src/database/data-migration/migrate-prod-data.script.ts",
+    "backfill:media-dimensions": "ts-node src/database/data-migration/backfill-media-dimensions.script.ts",
     "insomnia:generate": "node scripts/generate-insomnia-collection.mjs"
   },
   "dependencies": {

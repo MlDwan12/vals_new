@@ -1,4 +1,5 @@
 import { EmployeeShortDto } from '../../employees/dto/employee-short.dto';
+import { MediaCoverDto } from '../../media/dto/media-cover.dto';
 import { TagShortDto } from '../../tags/dto/tag-short.dto';
 import { Article } from '../domain/article.entity';
 import { ArticleFaqResponseDto } from './article-faq-response.dto';
@@ -20,6 +21,7 @@ export class ArticleResponseDto {
   hasToc: boolean;
   createdAt: Date;
   updatedAt: Date;
+  cover: MediaCoverDto | null;
   authors: EmployeeShortDto[];
   tags: TagShortDto[];
   faq: ArticleFaqResponseDto[];
@@ -41,6 +43,7 @@ export class ArticleResponseDto {
     dto.hasToc = article.hasToc;
     dto.createdAt = article.createdAt;
     dto.updatedAt = article.updatedAt;
+    dto.cover = article.cover ? MediaCoverDto.fromEntity(article.cover) : null;
     dto.authors = article.authors.map((author) =>
       EmployeeShortDto.fromEntity(author),
     );

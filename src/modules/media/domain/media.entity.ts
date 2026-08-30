@@ -22,6 +22,20 @@ export class Media {
   @Column({ type: 'text', nullable: true })
   alt: string | null;
 
+  // Nullable — существующие до задачи 4 файлы не заполнены до разового бэкафилла
+  // (см. src/database/data-migration/backfill-media-dimensions.script.ts).
+  @Column({ type: 'int', nullable: true })
+  width: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  height: number | null;
+
+  @Column({ name: 'mime_type', type: 'varchar', length: 100, nullable: true })
+  mimeType: string | null;
+
+  @Column({ name: 'size_bytes', type: 'int', nullable: true })
+  sizeBytes: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
