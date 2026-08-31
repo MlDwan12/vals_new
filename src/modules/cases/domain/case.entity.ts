@@ -12,6 +12,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Employee } from '../../employees/domain/employee.entity';
+import { Landing } from '../../landings/domain/landing.entity';
 import { Media } from '../../media/domain/media.entity';
 import { Service } from '../../services/domain/service.entity';
 import { Tag } from '../../tags/domain/tag.entity';
@@ -118,6 +119,14 @@ export class Case {
   // FAQ кейса — структурированные данные для FAQPage JSON-LD
   @OneToMany(() => CaseFaq, (faq) => faq.case)
   faq: CaseFaq[];
+
+  // Обратная сторона Landing.cases (EXPANSION_TASKS.md §10) — onDelete здесь тоже обязателен, а не
+  // только на владеющей стороне: TypeORM берёт onDelete инверсной FK-колонки (case_id) join-таблицы
+  // отсюда, не с Landing.cases (тот же приём и причина, что у Service.cases выше).
+  @ManyToMany(() => Landing, (landing) => landing.cases, {
+    onDelete: 'CASCADE',
+  })
+  landings: Landing[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

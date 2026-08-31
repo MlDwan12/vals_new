@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
+import { In, LessThanOrEqual, Repository, SelectQueryBuilder } from 'typeorm';
 import {
   countPublicationStats,
   PublicationStats,
@@ -184,6 +184,17 @@ export class CasesRepository {
         cover: true,
       },
       order: { faq: { id: 'ASC' } },
+    });
+  }
+
+  // Для LandingsService.resolveCases (EXPANSION_TASKS.md §10) — по образцу
+  // ServicesRepository.findByIds: id/slug/title, не только id — LandingResponseDto.cases
+  // (CaseShortDto) отдаёт их напрямую из уже загруженного M2M без повторного похода в БД.
+  findByIds(ids: number[]): Promise<Case[]> {
+    if (!ids.length) return Promise.resolve([]);
+    return this.repo.find({
+      where: { id: In(ids) },
+      select: { id: true, slug: true, title: true },
     });
   }
 

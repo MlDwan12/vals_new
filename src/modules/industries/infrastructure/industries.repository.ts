@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
 import { Industry } from '../domain/industry.entity';
+// Только класс-ссылка для manager.find() — см. тот же приём и причину в
+// ServicesRepository.findReferencingLandings.
+import { Landing } from '../../landings/domain/landing.entity';
 
 interface CreateIndustryRecord {
   slug?: string;
@@ -45,6 +48,16 @@ export class IndustriesRepository {
 
   async remove(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+
+  // Проверка перед удалением (RESTRICT на landings.industry_id, §10.1 expansion-decisions.md).
+  findReferencingLandings(
+    industryId: number,
+  ): Promise<{ id: number; title: string }[]> {
+    return this.repo.manager.find(Landing, {
+      where: { industry: { id: industryId } },
+      select: { id: true, title: true },
+    });
   }
 
   // Публичный блок «Отрасли» — только те, у кого уже задан slug (страница есть).

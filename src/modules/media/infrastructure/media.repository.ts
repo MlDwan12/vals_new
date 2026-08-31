@@ -17,6 +17,7 @@ import { Media } from '../domain/media.entity';
 // знает обо всех сущностях DataSource глобально, независимо от forFeature конкретного модуля).
 import { Article } from '../../articles/domain/article.entity';
 import { Case } from '../../cases/domain/case.entity';
+import { Landing } from '../../landings/domain/landing.entity';
 import { News } from '../../news/domain/news.entity';
 
 interface CreateMediaRecord {
@@ -88,7 +89,7 @@ export class MediaRepository {
       ): MediaCoverUsage[] =>
         rows.map((row) => ({ type, id: row.id, title: row.title }));
 
-      const [articleRows, caseRows, newsRows] = await Promise.all([
+      const [articleRows, caseRows, newsRows, landingRows] = await Promise.all([
         manager.find(Article, {
           where: { cover: { id } },
           select: { id: true, title: true },
@@ -98,6 +99,10 @@ export class MediaRepository {
           select: { id: true, title: true },
         }),
         manager.find(News, {
+          where: { cover: { id } },
+          select: { id: true, title: true },
+        }),
+        manager.find(Landing, {
           where: { cover: { id } },
           select: { id: true, title: true },
         }),
@@ -111,6 +116,7 @@ export class MediaRepository {
           ...toUsage('article', articleRows),
           ...toUsage('case', caseRows),
           ...toUsage('news', newsRows),
+          ...toUsage('landing', landingRows),
         ],
       };
     });

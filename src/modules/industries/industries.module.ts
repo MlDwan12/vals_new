@@ -10,5 +10,6 @@ import { IndustriesRepository } from './infrastructure/industries.repository';
   imports: [TypeOrmModule.forFeature([Industry])],
   controllers: [IndustriesController, IndustriesAdminController],
   providers: [IndustriesService, IndustriesRepository],
+  exports: [IndustriesRepository],
 })
 export class IndustriesModule {}

@@ -3,6 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Case } from '../../cases/domain/case.entity';
 import { findPublishedCasesByServiceId } from '../../cases/infrastructure/cases.repository';
+// Только класс-ссылка для manager.find() в findReferencingLandings — не отдельный
+// @InjectRepository, той же причине, что MediaRepository.removeWithCoverUsage не требует
+// регистрации Article/Case/News в MediaModule: EntityManager знает обо всех сущностях DataSource
+// глобально. Так LandingsModule может импортировать ServicesModule, не создавая цикл обратно.
+import { Landing } from '../../landings/domain/landing.entity';
 import { SortByDate } from '../../../core/enums/sort-by-date.enum';
 import {
   buildPaginatedResult,
@@ -184,5 +189,16 @@ export class ServicesRepository {
 
   async remove(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+
+  // Проверка перед удалением (RESTRICT на landings.service_id, §10.1 expansion-decisions.md) —
+  // список ссылающихся нишевых страниц для понятного сообщения вместо голой ошибки FK.
+  findReferencingLandings(
+    serviceId: number,
+  ): Promise<{ id: number; title: string }[]> {
+    return this.repo.manager.find(Landing, {
+      where: { service: { id: serviceId } },
+      select: { id: true, title: true },
+    });
   }
 }

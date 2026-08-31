@@ -2,10 +2,10 @@ import { GlobalSearchDocument } from './global-search-document.interface';
 
 const DESCRIPTION_MAX_LENGTH = 200;
 
-// Общий билдер для article_faq/case_faq/service_faq — три структурно идентичные сущности
-// (question/answer + родитель), не три копии одной и той же функции.
+// Общий билдер для article_faq/case_faq/service_faq/landing_faq — структурно идентичные сущности
+// (question/answer + родитель), не N копий одной и той же функции.
 export function buildFaqSearchDocument(params: {
-  idPrefix: 'articleFaq' | 'caseFaq' | 'serviceFaq';
+  idPrefix: 'articleFaq' | 'caseFaq' | 'serviceFaq' | 'landingFaq';
   id: number;
   question: string;
   answer: string;

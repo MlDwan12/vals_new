@@ -7,7 +7,10 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
-import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from '../../../core/persistence/postgres-error.util';
 import { CreateIndustryDto } from '../dto/create-industry.dto';
 import { Industry } from '../domain/industry.entity';
 import { IndustryResponseDto } from '../dto/industry-response.dto';
@@ -43,8 +46,44 @@ export class IndustriesService {
   }
 
   async remove(id: number): Promise<void> {
-    await this.findEntityByIdOrFail(id);
-    await this.industriesRepository.remove(id);
+    // Независимые запросы (существование отрасли + список ссылающихся landing) — параллельно.
+    const [, referencingLandings] = await Promise.all([
+      this.findEntityByIdOrFail(id),
+      // RESTRICT на landings.industry_id (§10.1 expansion-decisions.md) — см. тот же приём в
+      // ServicesService.remove.
+      this.industriesRepository.findReferencingLandings(id),
+    ]);
+    if (referencingLandings.length) {
+      throw this.landingConflict(referencingLandings);
+    }
+
+    try {
+      await this.industriesRepository.remove(id);
+    } catch (error) {
+      // Гонка: страница могла привязаться к отрасли между пречеком выше и этим DELETE (TOCTOU,
+      // code review) — см. тот же приём в ServicesService.remove.
+      if (isForeignKeyViolation(error)) {
+        throw this.landingConflict(
+          await this.industriesRepository.findReferencingLandings(id),
+        );
+      }
+      throw error;
+    }
+  }
+
+  private landingConflict(
+    referencingLandings: { title: string }[],
+  ): ConflictException {
+    if (!referencingLandings.length) {
+      return new ConflictException(
+        'Отрасль нельзя удалить — она используется в нишевой странице',
+      );
+    }
+    return new ConflictException(
+      `Отрасль нельзя удалить — она используется в нишевых страницах: ${referencingLandings
+        .map((landing) => landing.title)
+        .join(', ')}`,
+    );
   }
 
   async findById(id: number): Promise<IndustryResponseDto> {

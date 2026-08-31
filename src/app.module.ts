@@ -19,6 +19,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { HealthModule } from './modules/health/health.module';
 import { IndustriesModule } from './modules/industries/industries.module';
+import { LandingsModule } from './modules/landings/landings.module';
 import { MediaModule } from './modules/media/media.module';
 import { NewsModule } from './modules/news/news.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -143,6 +144,7 @@ import { UsersModule } from './modules/users/users.module';
     TariffPeriodsModule,
     TagsModule,
     IndustriesModule,
+    LandingsModule,
     EmployeesModule,
     MediaModule,
     ClientsModule,

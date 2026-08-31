@@ -1,4 +1,5 @@
-export type SearchEntityType = 'article' | 'case' | 'service' | 'news' | 'faq';
+export type SearchEntityType =
+  'article' | 'case' | 'service' | 'news' | 'landing' | 'faq';
 
 // Документ индекса Meilisearch — умышленно только то, что реально показывается в выдаче поиска
 // (карточка результата: заголовок, описание, ссылка). Раздутые поля старого документа (content,
