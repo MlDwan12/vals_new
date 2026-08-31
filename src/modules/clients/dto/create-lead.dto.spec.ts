@@ -137,4 +137,43 @@ describe('CreateLeadDto', () => {
     });
     expect(errors).toHaveLength(0);
   });
+
+  it('formId длиннее 64 символов не проходит (EXPANSION_TASKS.md §6)', async () => {
+    const errors = await validateDto({
+      name: 'Иван',
+      phone: '79991112233',
+      type: ClientLeadType.PARTNER,
+      formId: 'a'.repeat(65),
+    });
+    expect(errors.some((e) => e.property === 'formId')).toBe(true);
+  });
+
+  it('formId/pagePath в пределах длины проходят валидацию без изменений', async () => {
+    const errors = await validateDto({
+      name: 'Иван',
+      phone: '79991112233',
+      type: ClientLeadType.PARTNER,
+      formId: 'free-consultation',
+      pagePath: '/services/orm',
+      blockId: 'hero-cta',
+    });
+    expect(errors).toHaveLength(0);
+  });
+
+  it('pagePath/referrer/landingPath длиннее лимита обрезаются, а не отклоняются (EXPANSION_TASKS.md §7)', async () => {
+    const dto = plainToInstance(CreateLeadDto, {
+      name: 'Иван',
+      phone: '79991112233',
+      type: ClientLeadType.PARTNER,
+      pagePath: '/p'.repeat(300),
+      referrer: `https://example.com/${'a'.repeat(2100)}`,
+      landingPath: '/l'.repeat(300),
+    });
+    const errors = await validate(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.pagePath).toHaveLength(500);
+    expect(dto.referrer).toHaveLength(2048);
+    expect(dto.landingPath).toHaveLength(500);
+  });
 });

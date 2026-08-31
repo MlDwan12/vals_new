@@ -8,7 +8,15 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { TruncateString } from '../../../core/util/truncate.util';
 import { ClientLeadType } from '../enums/client-lead-type.enum';
+
+// EXPANSION_TASKS.md §7: "длины ограничить, значения обрезать, а не отклонять заявку из-за
+// длинного URL" — обрезка вместо @MaxLength (который бы отклонил заявку целиком).
+const PAGE_PATH_MAX_LENGTH = 500;
+const BLOCK_ID_MAX_LENGTH = 255;
+const REFERRER_MAX_LENGTH = 2048;
+const LANDING_PATH_MAX_LENGTH = 500;
 
 export class CreateLeadDto {
   @IsString()
@@ -67,4 +75,36 @@ export class CreateLeadDto {
   @IsString()
   @MaxLength(255)
   website?: string;
+
+  // Внутренняя метка формы (EXPANSION_TASKS.md §6) — короткий константный код с фронта, не
+  // произвольный URL, поэтому длинное значение — признак мусора/атаки, а не легитимного контента:
+  // отклоняем, а не обрезаем (в отличие от pagePath/referrer ниже). Незнакомый, но короткий formId
+  // не отклоняется здесь — мягкая деградация до null происходит в LeadsService.
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  formId?: string;
+
+  @IsOptional()
+  @IsString()
+  @TruncateString(PAGE_PATH_MAX_LENGTH)
+  pagePath?: string;
+
+  @IsOptional()
+  @IsString()
+  @TruncateString(BLOCK_ID_MAX_LENGTH)
+  blockId?: string;
+
+  // Источник перехода (EXPANSION_TASKS.md §7) — первый реферер и страница входа за сессию,
+  // фиксируются на фронте (document.referrer теряется при внутренней навигации). userAgent сюда не
+  // входит — он берётся сервером из заголовка запроса (см. LeadsController), не с фронта.
+  @IsOptional()
+  @IsString()
+  @TruncateString(REFERRER_MAX_LENGTH)
+  referrer?: string;
+
+  @IsOptional()
+  @IsString()
+  @TruncateString(LANDING_PATH_MAX_LENGTH)
+  landingPath?: string;
 }

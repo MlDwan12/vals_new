@@ -77,6 +77,11 @@ import { UsersModule } from './modules/users/users.module';
               // уходит в логи в открытом виде на каждом 4xx/5xx от internal-трафика (найдено
               // /code-review high на этом же батче).
               'req.headers["x-internal-key"]',
+              // pino-http по умолчанию логирует весь req.headers — без этого пути User-Agent
+              // посетителя уходит в логи целиком на каждом 4xx/5xx (EXPANSION_TASKS.md §7.1,
+              // существующий пробел, не созданный этой задачей — закрыт заодно с полем
+              // client_leads.user_agent). В БД (не в логах) он хранится как обычное поле лида.
+              'req.headers["user-agent"]',
               'res.headers["set-cookie"]',
             ],
             remove: true,

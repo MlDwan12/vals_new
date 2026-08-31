@@ -77,6 +77,39 @@ export class ClientLead {
   @Column({ type: 'jsonb' })
   payload: Record<string, unknown>;
 
+  // Внутренние метки формы (EXPANSION_TASKS.md §6) — отдельными колонками, а не внутри payload:
+  // по ним фильтрует админка, а фильтр по полю внутри jsonb неудобен. formId — закрытый набор из
+  // FORM_IDS (по факту единицы значений), индекс даёт реальную селективность под точный фильтр в
+  // админке; pagePath — свободный текст (URL), почти уникален построчно, индекс на нём не окупает
+  // стоимость на каждой вставке (efficiency-обзор при закрытии задачи), поэтому без @Index(). blockId
+  // (третье поле метки) в отдельную колонку не выносится — живёт в payload.source, у него нет
+  // собственного фильтра в списке заявок.
+  @Index()
+  @Column({ name: 'form_id', type: 'varchar', length: 64, nullable: true })
+  formId: string | null;
+
+  @Column({ name: 'page_path', type: 'varchar', length: 500, nullable: true })
+  pagePath: string | null;
+
+  // Источник перехода (EXPANSION_TASKS.md §7) — дополнение к UTM-меткам, не замена: referrer
+  // браузера дырявый (HTTPS→HTTP, Referrer-Policy, приложения/мессенджеры его не дают вовсе).
+  @Column({ type: 'varchar', length: 2048, nullable: true })
+  referrer: string | null;
+
+  @Column({
+    name: 'landing_path',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
+  landingPath: string | null;
+
+  // Берётся на беке из заголовка запроса (req.headers['user-agent']), не с фронта — надёжнее и не
+  // требует правки формы. В общий лог не попадает (redact.paths в app.module.ts, EXPANSION_TASKS.md
+  // §7.1) — в БД лежит как обычное поле лида, в логах ему делать нечего.
+  @Column({ name: 'user_agent', type: 'varchar', length: 512, nullable: true })
+  userAgent: string | null;
+
   @Column({ name: 'bitrix_payload', type: 'jsonb', nullable: true })
   bitrixPayload: Record<string, unknown> | null;
 

@@ -21,6 +21,8 @@ export class ClientLeadsAdminService {
     const [items, total] = await this.clientLeadsRepository.findAndCount({
       clientId: query.clientId,
       type: query.type,
+      formId: query.formId,
+      pagePath: query.pagePath,
       page: query.page,
       limit: query.limit,
     });

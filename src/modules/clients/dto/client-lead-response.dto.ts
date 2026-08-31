@@ -13,9 +13,15 @@ export class ClientLeadResponseDto {
   message: string | null;
   comment: string | null;
   utm: Record<string, string> | null;
-  // Структурированные данные заявки (для TARIFF_REQUEST — снапшот тарифа на момент отправки),
-  // не regex-парсинг Bitrix-комментария постфактум.
+  // Структурированные данные заявки (для TARIFF_REQUEST — снапшот тарифа на момент отправки, для
+  // остальных типов — источник вида {blockId} из EXPANSION_TASKS.md §6), не regex-парсинг
+  // Bitrix-комментария постфактум.
   payload: Record<string, unknown>;
+  formId: string | null;
+  pagePath: string | null;
+  referrer: string | null;
+  landingPath: string | null;
+  userAgent: string | null;
   status: LeadDeliveryStatus;
   retryCount: number;
   nextRetryAt: Date | null;
@@ -36,6 +42,11 @@ export class ClientLeadResponseDto {
     dto.comment = lead.comment;
     dto.utm = lead.utm;
     dto.payload = lead.payload;
+    dto.formId = lead.formId;
+    dto.pagePath = lead.pagePath;
+    dto.referrer = lead.referrer;
+    dto.landingPath = lead.landingPath;
+    dto.userAgent = lead.userAgent;
     // SENDING — внутреннее переходное состояние claim-а (H10 code review), контракт ответа
     // (admin_front) построен под старые 3 значения статуса — наружу оно неотличимо от PENDING
     // (доставка ещё не подтверждена), а не отдельное значение, под которое фронт не готов.

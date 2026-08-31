@@ -28,6 +28,11 @@ interface SubmitLeadInput {
   utm: Record<string, string> | null;
   payload: Record<string, unknown>;
   bitrixPayload: Record<string, unknown>;
+  formId: string | null;
+  pagePath: string | null;
+  referrer: string | null;
+  landingPath: string | null;
+  userAgent: string | null;
 }
 
 interface ResolvedClient {
@@ -39,6 +44,8 @@ interface ResolvedClient {
 interface AdminLeadFilter {
   clientId?: number;
   type?: ClientLeadType;
+  formId?: string;
+  pagePath?: string;
   page: number;
   limit: number;
 }
@@ -87,6 +94,11 @@ export class ClientLeadsRepository {
         utm: input.utm,
         payload: input.payload,
         bitrixPayload: input.bitrixPayload,
+        formId: input.formId,
+        pagePath: input.pagePath,
+        referrer: input.referrer,
+        landingPath: input.landingPath,
+        userAgent: input.userAgent,
         bitrixResponse: null,
         bitrixLeadId: null,
         status: LeadDeliveryStatus.PENDING,
@@ -517,6 +529,8 @@ export class ClientLeadsRepository {
       where: {
         ...(filter.clientId ? { clientId: filter.clientId } : {}),
         ...(filter.type ? { type: filter.type } : {}),
+        ...(filter.formId ? { formId: filter.formId } : {}),
+        ...(filter.pagePath ? { pagePath: filter.pagePath } : {}),
       },
       order: { id: 'DESC' },
       skip: (filter.page - 1) * filter.limit,
