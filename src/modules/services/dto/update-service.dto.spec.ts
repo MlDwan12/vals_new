@@ -26,4 +26,14 @@ describe('UpdateServiceDto', () => {
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
   });
+
+  // Мета-поля (задача 9) — легитимно nullable в БД, явный null на PATCH снимает значение.
+  it('явный null для metaTitle/h1 проходит — легитимное снятие значения', async () => {
+    const dto = plainToInstance(UpdateServiceDto, {
+      metaTitle: null,
+      h1: null,
+    });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+  });
 });

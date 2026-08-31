@@ -12,7 +12,7 @@ import { ServiceCategory } from '../src/modules/services/domain/service-category
 import {
   createTestIndustry,
   createTestService,
-} from './support/landing-fixtures';
+} from './support/service-fixtures';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 // EXPANSION_TASKS.md задача 10: у нишевой страницы (landing) свой, отличный от articles/cases/news

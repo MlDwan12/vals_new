@@ -14,6 +14,7 @@ import { Tariff } from '../../tariffs/domain/tariff.entity';
 import { ServiceBackgroundColor } from '../enums/service-background-color.enum';
 import { ServiceCategory } from './service-category.entity';
 import { ServiceFaq } from './service-faq.entity';
+import { ServiceRelation } from './service-relation.entity';
 import { ServiceStep } from './service-step.entity';
 
 @Entity('services')
@@ -60,8 +61,31 @@ export class Service {
   })
   backgroundColor: ServiceBackgroundColor;
 
+  // Мета-поля — EXPANSION_TASKS.md задача 9: сейчас страница услуги собирается из
+  // front/src/views/service/config/servicesRegistry.ts (*.seo.ts), мета там не редактируема из
+  // панели. Nullable — у 18 существующих услуг это поле пока пустое (перенос текстов без потерь
+  // требует доступа к front, заблокирован — см. expansion-decisions.md), заполняется контент-
+  // менеджером по мере переноса, не разовым бэкафиллом.
+  @Column({ name: 'meta_title', type: 'varchar', length: 255, nullable: true })
+  metaTitle: string | null;
+
+  @Column({ name: 'meta_description', type: 'text', nullable: true })
+  metaDescription: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  keywords: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  h1: string | null;
+
   @OneToMany(() => ServiceStep, (step) => step.service)
   steps: ServiceStep[];
+
+  // Связанные услуги ("смотрите также") — не M2M: нужен порядок, конструкция без него не может его
+  // нести (§9 expansion-decisions.md). Однонаправленно: список услуги A не совпадает автоматически
+  // со списком услуги B — это редакторский выбор, не симметричное отношение.
+  @OneToMany(() => ServiceRelation, (relation) => relation.service)
+  relatedServices: ServiceRelation[];
 
   @OneToMany(() => Tariff, (tariff) => tariff.service)
   tariffs: Tariff[];

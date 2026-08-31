@@ -17,7 +17,7 @@ import { User } from '../src/modules/users/domain/user.entity';
 import {
   createTestIndustry,
   createTestService,
-} from './support/landing-fixtures';
+} from './support/service-fixtures';
 import { resolveRoleId } from './support/resolve-role-id';
 import { runTestMigrations, startTestDatabase } from './support/test-database';
 

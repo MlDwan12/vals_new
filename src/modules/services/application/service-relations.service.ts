@@ -1,0 +1,153 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  buildPaginatedResult,
+  PaginatedResult,
+} from '../../../core/pagination/paginated-result.interface';
+import {
+  getViolatedConstraint,
+  isUniqueViolation,
+} from '../../../core/persistence/postgres-error.util';
+import { ServicesRepository } from '../infrastructure/services.repository';
+import { ServiceRelation } from '../domain/service-relation.entity';
+import { CreateServiceRelationDto } from '../dto/create-service-relation.dto';
+import { ServiceRelationResponseDto } from '../dto/service-relation-response.dto';
+import { UpdateServiceRelationDto } from '../dto/update-service-relation.dto';
+import { ServiceRelationsRepository } from '../infrastructure/service-relations.repository';
+
+const PAIR_UNIQUE_INDEX = 'IDX_service_relations_pair_unique';
+const ORDER_UNIQUE_INDEX = 'IDX_service_relations_order_unique';
+
+@Injectable()
+export class ServiceRelationsService {
+  constructor(
+    private readonly serviceRelationsRepository: ServiceRelationsRepository,
+    private readonly servicesRepository: ServicesRepository,
+  ) {}
+
+  async create(
+    dto: CreateServiceRelationDto,
+  ): Promise<ServiceRelationResponseDto> {
+    this.assertNotSelfRelation(dto.serviceId, dto.relatedServiceId);
+    await this.assertServicesExist(dto.serviceId, dto.relatedServiceId);
+    try {
+      const relation = await this.serviceRelationsRepository.create(dto);
+      return ServiceRelationResponseDto.fromEntity(relation);
+    } catch (error) {
+      throw this.mapConflict(error);
+    }
+  }
+
+  async update(
+    id: number,
+    dto: UpdateServiceRelationDto,
+  ): Promise<ServiceRelationResponseDto> {
+    const existing = await this.findEntityByIdOrFail(id);
+    const serviceId = dto.serviceId ?? existing.serviceId;
+    const relatedServiceId = dto.relatedServiceId ?? existing.relatedServiceId;
+    this.assertNotSelfRelation(serviceId, relatedServiceId);
+    if (dto.serviceId !== undefined || dto.relatedServiceId !== undefined) {
+      await this.assertServicesExist(serviceId, relatedServiceId);
+    }
+
+    try {
+      const updated = await this.serviceRelationsRepository.update(id, dto);
+      if (!updated) {
+        throw new NotFoundException(`Связь услуг с ID ${id} не найдена`);
+      }
+      return ServiceRelationResponseDto.fromEntity(updated);
+    } catch (error) {
+      throw this.mapConflict(error);
+    }
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.findEntityByIdOrFail(id);
+    await this.serviceRelationsRepository.remove(id);
+  }
+
+  async findById(id: number): Promise<ServiceRelationResponseDto> {
+    return ServiceRelationResponseDto.fromEntity(
+      await this.findEntityByIdOrFail(id),
+    );
+  }
+
+  async paginate(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ServiceRelationResponseDto>> {
+    const [items, total] = await this.serviceRelationsRepository.findAndCount(
+      page,
+      limit,
+    );
+    return buildPaginatedResult(
+      items.map((item) => ServiceRelationResponseDto.fromEntity(item)),
+      total,
+      page,
+      limit,
+    );
+  }
+
+  private async findEntityByIdOrFail(id: number): Promise<ServiceRelation> {
+    const relation = await this.serviceRelationsRepository.findById(id);
+    if (!relation) {
+      throw new NotFoundException(`Связь услуг с ID ${id} не найдена`);
+    }
+    return relation;
+  }
+
+  private assertNotSelfRelation(
+    serviceId: number,
+    relatedServiceId: number,
+  ): void {
+    if (serviceId === relatedServiceId) {
+      throw new BadRequestException('Услуга не может ссылаться сама на себя');
+    }
+  }
+
+  private async assertServicesExist(
+    serviceId: number,
+    relatedServiceId: number,
+  ): Promise<void> {
+    const found = await this.servicesRepository.findByIds([
+      serviceId,
+      relatedServiceId,
+    ]);
+    const foundIds = new Set(found.map((service) => service.id));
+    const missing = [serviceId, relatedServiceId].filter(
+      (id) => !foundIds.has(id),
+    );
+    if (missing.length) {
+      throw new BadRequestException(
+        missing.length > 1
+          ? `Услуги с ID ${missing.join(', ')} не найдены`
+          : `Услуга с ID ${missing[0]} не найдена`,
+      );
+    }
+  }
+
+  // Два разных composite-unique на таблице (пара service+relatedService, и service+order) —
+  // разные сообщения для разных ошибок пользователя, тот же приём, что tags.service.ts
+  // (mapSlugConflict): сначала isUniqueViolation(error), и только внутри — какой именно constraint
+  // через getViolatedConstraint (не наоборот — code review, /simplify).
+  private mapConflict(error: unknown): unknown {
+    if (isUniqueViolation(error)) {
+      const constraint = getViolatedConstraint(error);
+      if (constraint === PAIR_UNIQUE_INDEX) {
+        return new ConflictException(
+          'Эта услуга уже связана с указанной связанной услугой',
+        );
+      }
+      if (constraint === ORDER_UNIQUE_INDEX) {
+        return new ConflictException(
+          'Связь с таким порядковым номером уже существует у этой услуги',
+        );
+      }
+    }
+    return error;
+  }
+}

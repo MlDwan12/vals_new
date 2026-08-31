@@ -10,6 +10,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import { MaxKeywords } from '../../../core/validators/max-keywords.validator';
 import { ServiceBackgroundColor } from '../enums/service-background-color.enum';
 
 export class CreateServiceDto {
@@ -58,4 +59,24 @@ export class CreateServiceDto {
   @ValidateIf((_, value) => value !== undefined)
   @IsEnum(ServiceBackgroundColor)
   backgroundColor?: ServiceBackgroundColor;
+
+  // Мета-поля — EXPANSION_TASKS.md задача 9, тот же контракт валидации, что у CreateArticleDto.
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  metaTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  metaDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxKeywords(5, { message: 'Можно указать не более 5 ключевых фраз' })
+  keywords?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  h1?: string;
 }

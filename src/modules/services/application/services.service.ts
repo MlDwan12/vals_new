@@ -51,6 +51,10 @@ export class ServicesService {
       list: dto.list,
       icon: dto.icon,
       backgroundColor: dto.backgroundColor,
+      metaTitle: dto.metaTitle,
+      metaDescription: dto.metaDescription,
+      keywords: dto.keywords,
+      h1: dto.h1,
     });
 
     try {
@@ -81,6 +85,10 @@ export class ServicesService {
       list: dto.list,
       icon: dto.icon,
       backgroundColor: dto.backgroundColor,
+      metaTitle: dto.metaTitle,
+      metaDescription: dto.metaDescription,
+      keywords: dto.keywords,
+      h1: dto.h1,
     });
 
     try {
