@@ -1,13 +1,13 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { CLIENT_ROLES } from '../../../core/enums/role-groups.constant';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ClientContactsAdminService } from '../application/client-contacts-admin.service';
 import { ClientContactResponseDto } from '../dto/client-contact-response.dto';
 
 @Controller('admin/client-contacts')
-@Roles(...CLIENT_ROLES)
+@Perm(PERMISSIONS.CLIENTS_READ)
 export class ClientContactsAdminController {
   constructor(
     private readonly clientContactsAdminService: ClientContactsAdminService,

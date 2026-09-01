@@ -68,11 +68,18 @@ function buildRepositories(): {
   permissionsRepo: jest.Mocked<PermissionsRepository>;
   saveMock: jest.Mock;
   removeMock: jest.Mock;
+  saveGuardedMock: jest.Mock;
 } {
   const saveMock = jest.fn((role: Role) =>
     Promise.resolve({ ...role, id: role.id ?? 1 }),
   );
   const removeMock = jest.fn();
+  // По умолчанию — как будто держателей у роли нет, барьер не срабатывает (симметрично тому, что
+  // UsersRepository.runGuardedBySystemRoleHeadcount возвращает 'ok', когда цель не активный
+  // системный держатель) — тесты, которым нужен именно 'blocked', переопределяют явно.
+  const saveGuardedMock = jest.fn((role: Role) =>
+    Promise.resolve({ ...role, id: role.id ?? 1 }),
+  );
   const rolesRepo = {
     findAll: jest.fn(),
     findById: jest.fn(),
@@ -81,12 +88,13 @@ function buildRepositories(): {
     create: jest.fn((data) => ({ ...data, id: 1 }) as Role),
     save: saveMock,
     remove: removeMock,
+    saveGuardedBySystemRoleHeadcount: saveGuardedMock,
   } as unknown as jest.Mocked<RolesRepository>;
   const permissionsRepo = {
     findAll: jest.fn(),
     findByIds: jest.fn().mockResolvedValue([]),
   } as unknown as jest.Mocked<PermissionsRepository>;
-  return { rolesRepo, permissionsRepo, saveMock, removeMock };
+  return { rolesRepo, permissionsRepo, saveMock, removeMock, saveGuardedMock };
 }
 
 describe('RolesService.create — барьеры §1.3', () => {
@@ -225,6 +233,67 @@ describe('RolesService.update — снятие is_system (§1.4)', () => {
     await expect(
       service.update(actor, 1, { isSystem: true }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+// security-audit-2026-08-31.md HIGH №2 — снятие is_system у роли отбирает байпас у ВСЕХ её
+// активных держателей разом, не у одного пользователя (в отличие от уже защищённого уровня
+// пользователя, EXPANSION_TASKS.md §1.6) — до этого фикса headcount на уровне роли не проверялся
+// вообще. Сам подсчёт "останется ли хотя бы один активный системный держатель" — в
+// RolesRepository.saveGuardedBySystemRoleHeadcount (реальный Postgres, проверено в
+// test/rbac-role-self-lockout.e2e-spec.ts); здесь — только то, что сервис действительно идёт
+// через guarded-путь для этой ветки и правильно интерпретирует 'blocked'.
+describe('RolesService.update — headcount-барьер при снятии is_system (security-audit HIGH №2)', () => {
+  function buildFlipOffRole(): Role {
+    return buildRole({
+      isSystem: true,
+      permissions: [
+        buildPermission(PERMISSIONS.USERS_MANAGE, 1),
+        buildPermission(PERMISSIONS.ROLES_MANAGE, 2),
+      ],
+    });
+  }
+
+  it('снятие is_system идёт через saveGuardedBySystemRoleHeadcount, не через обычный save', async () => {
+    const { rolesRepo, permissionsRepo, saveGuardedMock, saveMock } =
+      buildRepositories();
+    rolesRepo.findById.mockResolvedValue(buildFlipOffRole());
+    const service = new RolesService(rolesRepo, permissionsRepo);
+    const actor = buildActor({ isSystem: true, rank: 100 });
+
+    await expect(
+      service.update(actor, 1, { isSystem: false }),
+    ).resolves.toBeDefined();
+    expect(saveGuardedMock).toHaveBeenCalledTimes(1);
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("'blocked' от guarded-save -> BadRequestException, роль не сохраняется обычным save", async () => {
+    const { rolesRepo, permissionsRepo, saveGuardedMock, saveMock } =
+      buildRepositories();
+    rolesRepo.findById.mockResolvedValue(buildFlipOffRole());
+    saveGuardedMock.mockResolvedValue('blocked');
+    const service = new RolesService(rolesRepo, permissionsRepo);
+    const actor = buildActor({ isSystem: true, rank: 100 });
+
+    await expect(
+      service.update(actor, 1, { isSystem: false }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it('правка роли, остающейся системной, идёт обычным save — headcount не проверяется', async () => {
+    const { rolesRepo, permissionsRepo, saveGuardedMock, saveMock } =
+      buildRepositories();
+    rolesRepo.findById.mockResolvedValue(buildRole({ isSystem: true }));
+    const service = new RolesService(rolesRepo, permissionsRepo);
+    const actor = buildActor({ isSystem: true, rank: 100 });
+
+    await expect(
+      service.update(actor, 1, { title: 'Новое название' }),
+    ).resolves.toBeDefined();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveGuardedMock).not.toHaveBeenCalled();
   });
 });
 

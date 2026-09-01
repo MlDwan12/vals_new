@@ -12,9 +12,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { CONTENT_ROLES } from '../../../core/enums/role-groups.constant';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { MediaService } from '../application/media.service';
 import { MediaListQueryDto } from '../dto/media-list-query.dto';
 import { MediaRemoveResponseDto } from '../dto/media-remove-response.dto';
@@ -32,11 +32,11 @@ const PER_FILE_FORM_FIELDS = 1;
 const EXTRA_FORM_FIELDS_MARGIN = 2;
 
 @Controller('admin/media')
-@Roles(...CONTENT_ROLES)
 export class MediaAdminController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Get()
+  @Perm(PERMISSIONS.MEDIA_READ)
   findAndCount(
     @Query() query: MediaListQueryDto,
   ): Promise<PaginatedResult<MediaResponseDto>> {
@@ -44,6 +44,7 @@ export class MediaAdminController {
   }
 
   @Post('upload')
+  @Perm(PERMISSIONS.MEDIA_WRITE)
   @UseInterceptors(
     FilesInterceptor('files', MAX_FILES_PER_UPLOAD, {
       limits: {
@@ -78,6 +79,7 @@ export class MediaAdminController {
   // Не 204: тело ответа несёт предупреждение, если файл использовался как обложка (задача 4,
   // EXPANSION_TASKS.md §4.2) — файл при этом всё равно удаляется, это не подтверждение действия.
   @Delete(':id')
+  @Perm(PERMISSIONS.MEDIA_DELETE)
   remove(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<MediaRemoveResponseDto> {

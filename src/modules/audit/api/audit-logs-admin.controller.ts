@@ -1,13 +1,13 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { ADMIN_ROLES } from '../../../core/enums/role-groups.constant';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { AuditService } from '../application/audit.service';
 import { AuditLogQueryDto } from '../dto/audit-log-query.dto';
 import { AuditLogResponseDto } from '../dto/audit-log-response.dto';
 
 @Controller('audit-logs')
-@Roles(...ADMIN_ROLES)
+@Perm(PERMISSIONS.AUDIT_READ)
 export class AuditLogsAdminController {
   constructor(private readonly auditService: AuditService) {}
 

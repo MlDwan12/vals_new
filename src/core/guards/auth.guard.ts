@@ -79,6 +79,13 @@ export class AuthGuard implements CanActivate {
       payload.sub,
     );
 
+    // request.user выставляется ДО проверки прав — иначе отказ по @Perm() улетает в
+    // HttpExceptionFilter/AuditService как анонимный (userId/username: null), хотя личность уже
+    // установлена (security-audit-2026-08-31.md, находка №1 — проверено при подключении @Perm()
+    // к контентным контроллерам, обнаружено регрессией audit-logs.e2e-spec.ts §2.4).
+    (request as Request & { user: AuthenticatedRequestUser }).user =
+      requestUser;
+
     // Гвард аутентификации и проверки прав — один и тот же (EXPANSION_TASKS.md §1.2/§1.4):
     // отдельному гварду понадобился бы уже заполненный request.user, а порядок гвардов в Nest не
     // гарантирован — тихая дыра. is_system — байпас, не зависящий от role_permissions (§1.1).
@@ -94,8 +101,6 @@ export class AuthGuard implements CanActivate {
       throw new ForbiddenException('Недостаточно прав для выполнения операции');
     }
 
-    (request as Request & { user: AuthenticatedRequestUser }).user =
-      requestUser;
     return true;
   }
 }

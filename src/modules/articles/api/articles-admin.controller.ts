@@ -11,12 +11,11 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { Roles } from '../../../core/decorators/roles.decorator';
-import {
-  ADMIN_ROLES,
-  CONTENT_ROLES,
-} from '../../../core/enums/role-groups.constant';
+import { ADMIN_ROLES } from '../../../core/enums/role-groups.constant';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ArticlesService } from '../application/articles.service';
 import { ArticleListQueryDto } from '../dto/article-list-query.dto';
 import { ArticleMainInfoDto } from '../dto/article-main-info.dto';
@@ -25,11 +24,11 @@ import { CreateArticleDto } from '../dto/create-article.dto';
 import { UpdateArticleDto } from '../dto/update-article.dto';
 
 @Controller('admin/articles')
-@Roles(...CONTENT_ROLES)
 export class ArticlesAdminController {
   constructor(private readonly articlesService: ArticlesService) {}
 
   @Post()
+  @Perm(PERMISSIONS.ARTICLES_WRITE)
   create(@Body() dto: CreateArticleDto): Promise<ArticleResponseDto> {
     return this.articlesService.create(dto);
   }
@@ -44,6 +43,7 @@ export class ArticlesAdminController {
   }
 
   @Get()
+  @Perm(PERMISSIONS.ARTICLES_READ)
   findList(
     @Query() query: ArticleListQueryDto,
   ): Promise<PaginatedResult<ArticleMainInfoDto>> {
@@ -51,6 +51,7 @@ export class ArticlesAdminController {
   }
 
   @Get('all/main-info')
+  @Perm(PERMISSIONS.ARTICLES_READ)
   findAllMainInfo(
     @Query() query: ArticleListQueryDto,
   ): Promise<PaginatedResult<ArticleMainInfoDto>> {
@@ -58,11 +59,13 @@ export class ArticlesAdminController {
   }
 
   @Get(':id')
+  @Perm(PERMISSIONS.ARTICLES_READ)
   findById(@Param('id', ParseIntPipe) id: number): Promise<ArticleResponseDto> {
     return this.articlesService.findById(id);
   }
 
   @Patch(':id')
+  @Perm(PERMISSIONS.ARTICLES_WRITE)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateArticleDto,
@@ -71,6 +74,7 @@ export class ArticlesAdminController {
   }
 
   @Delete(':id')
+  @Perm(PERMISSIONS.ARTICLES_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.articlesService.remove(id);

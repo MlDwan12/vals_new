@@ -121,7 +121,8 @@ export class RolesService {
     // §1.4): без явных users.manage/roles.manage в самой роли все её держатели мгновенно теряют
     // доступ без предупреждения. Правка чекбоксов у роли, ОСТАЮЩЕЙСЯ системной, безопасна — байпас
     // всё равно даёт доступ независимо от role_permissions.
-    if (role.isSystem && !resultingIsSystem) {
+    const isSystemFlipOff = role.isSystem && !resultingIsSystem;
+    if (isSystemFlipOff) {
       const keepsAccess =
         resultingPermissionCodes.has(PERMISSIONS.USERS_MANAGE) &&
         resultingPermissionCodes.has(PERMISSIONS.ROLES_MANAGE);
@@ -147,7 +148,28 @@ export class RolesService {
     role.isSystem = resultingIsSystem;
     role.permissions = resultingPermissions;
 
+    // Снятие is_system может забрать байпас у ВСЕХ активных держателей роли разом — тот же
+    // headcount-барьер, что уже есть на уровне пользователя (security-audit-2026-08-31.md
+    // HIGH №2), только здесь считает держателей ЭТОЙ роли, а не одного userId.
+    if (isSystemFlipOff) {
+      return this.saveGuardedByHeadcount(role);
+    }
+
     return this.saveAndReturn(role);
+  }
+
+  private async saveGuardedByHeadcount(role: Role): Promise<RoleResponseDto> {
+    const saved = await this.mapSaveErrors(() =>
+      this.rolesRepository.saveGuardedBySystemRoleHeadcount(role),
+    );
+    if (saved === 'blocked') {
+      throw new BadRequestException(
+        'Нельзя снять системный статус: после этого не останется ни одного активного ' +
+          'пользователя с системной ролью — сначала назначьте системную роль другому активному ' +
+          'пользователю',
+      );
+    }
+    return RoleResponseDto.fromEntity(saved);
   }
 
   // users.role_id -> RESTRICT (user.entity.ts) — удаление роли с живыми пользователями падает
@@ -180,9 +202,15 @@ export class RolesService {
   // перед вызовом) плюс сгенерированные/обновлённые колонки — повторный SELECT не добавляет
   // информации (найдено efficiency-ревью этой же задачи).
   private async saveAndReturn(role: Role): Promise<RoleResponseDto> {
+    const saved = await this.mapSaveErrors(() =>
+      this.rolesRepository.save(role),
+    );
+    return RoleResponseDto.fromEntity(saved);
+  }
+
+  private async mapSaveErrors<T>(op: () => Promise<T>): Promise<T> {
     try {
-      const saved = await this.rolesRepository.save(role);
-      return RoleResponseDto.fromEntity(saved);
+      return await op();
     } catch (error) {
       if (isForeignKeyViolation(error)) throw error;
       throw this.mapCodeConflict(error);

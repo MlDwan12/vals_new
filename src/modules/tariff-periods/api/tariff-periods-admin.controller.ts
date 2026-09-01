@@ -12,25 +12,28 @@ import {
   Query,
 } from '@nestjs/common';
 import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { CONTENT_ROLES } from '../../../core/enums/role-groups.constant';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { TariffPeriodsService } from '../application/tariff-periods.service';
 import { CreateTariffPeriodDto } from '../dto/create-tariff-period.dto';
 import { TariffPeriodResponseDto } from '../dto/tariff-period-response.dto';
 import { UpdateTariffPeriodDto } from '../dto/update-tariff-period.dto';
 
+// Подраздел "Услуги" панели (permission.registry.ts) — гейтится теми же services.*-кодами,
+// отдельного tariff-periods.* в реестре нет.
 @Controller('admin/tariff-periods')
-@Roles(...CONTENT_ROLES)
 export class TariffPeriodsAdminController {
   constructor(private readonly tariffPeriodsService: TariffPeriodsService) {}
 
   @Post()
+  @Perm(PERMISSIONS.SERVICES_WRITE)
   create(@Body() dto: CreateTariffPeriodDto): Promise<TariffPeriodResponseDto> {
     return this.tariffPeriodsService.create(dto);
   }
 
   @Get()
+  @Perm(PERMISSIONS.SERVICES_READ)
   paginate(
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<TariffPeriodResponseDto>> {
@@ -38,6 +41,7 @@ export class TariffPeriodsAdminController {
   }
 
   @Get(':id')
+  @Perm(PERMISSIONS.SERVICES_READ)
   findById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<TariffPeriodResponseDto> {
@@ -45,6 +49,7 @@ export class TariffPeriodsAdminController {
   }
 
   @Patch(':id')
+  @Perm(PERMISSIONS.SERVICES_WRITE)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTariffPeriodDto,
@@ -53,6 +58,7 @@ export class TariffPeriodsAdminController {
   }
 
   @Delete(':id')
+  @Perm(PERMISSIONS.SERVICES_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.tariffPeriodsService.remove(id);

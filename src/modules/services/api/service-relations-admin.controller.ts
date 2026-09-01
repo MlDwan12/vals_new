@@ -12,22 +12,24 @@ import {
   Query,
 } from '@nestjs/common';
 import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { CONTENT_ROLES } from '../../../core/enums/role-groups.constant';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ServiceRelationsService } from '../application/service-relations.service';
 import { CreateServiceRelationDto } from '../dto/create-service-relation.dto';
 import { ServiceRelationResponseDto } from '../dto/service-relation-response.dto';
 import { UpdateServiceRelationDto } from '../dto/update-service-relation.dto';
 
+// Подраздел "Услуги" панели (permission.registry.ts) — гейтится теми же services.*-кодами,
+// отдельного service-relations.* в реестре нет.
 @Controller('admin/service-relations')
-@Roles(...CONTENT_ROLES)
 export class ServiceRelationsAdminController {
   constructor(
     private readonly serviceRelationsService: ServiceRelationsService,
   ) {}
 
   @Post()
+  @Perm(PERMISSIONS.SERVICES_WRITE)
   create(
     @Body() dto: CreateServiceRelationDto,
   ): Promise<ServiceRelationResponseDto> {
@@ -35,6 +37,7 @@ export class ServiceRelationsAdminController {
   }
 
   @Get()
+  @Perm(PERMISSIONS.SERVICES_READ)
   paginate(
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<ServiceRelationResponseDto>> {
@@ -42,6 +45,7 @@ export class ServiceRelationsAdminController {
   }
 
   @Get(':id')
+  @Perm(PERMISSIONS.SERVICES_READ)
   findById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ServiceRelationResponseDto> {
@@ -49,6 +53,7 @@ export class ServiceRelationsAdminController {
   }
 
   @Patch(':id')
+  @Perm(PERMISSIONS.SERVICES_WRITE)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateServiceRelationDto,
@@ -57,6 +62,7 @@ export class ServiceRelationsAdminController {
   }
 
   @Delete(':id')
+  @Perm(PERMISSIONS.SERVICES_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.serviceRelationsService.remove(id);

@@ -7,6 +7,7 @@ import {
   Repository,
 } from 'typeorm';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
+import { withSystemRoleHeadcountLock } from '../../../core/persistence/system-role-headcount-lock.util';
 import { User } from '../domain/user.entity';
 
 interface CreateUserRecord {
@@ -25,12 +26,6 @@ interface UpdateUserRecord {
 }
 
 export type SystemRoleGuardedResult = 'ok' | 'blocked' | 'not_found';
-
-// Единый фиксированный ключ advisory-лока (не привязан к конкретным строкам) — сериализует саму
-// операцию проверки "останется ли хотя бы один активный системный пользователь", а не набор строк,
-// который в момент проверки может параллельно меняться (EXPANSION_TASKS.md §1.5, тот же приём, что
-// pg_advisory_xact_lock в client-leads.repository.ts для Б1 этой же сессии).
-const SYSTEM_ROLE_HEADCOUNT_LOCK_KEY = 'system-role-headcount';
 
 @Injectable()
 export class UsersRepository {
@@ -118,11 +113,7 @@ export class UsersRepository {
     userId: number,
     mutate: (manager: EntityManager) => Promise<void>,
   ): Promise<SystemRoleGuardedResult> {
-    return this.dataSource.transaction(async (manager) => {
-      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-        SYSTEM_ROLE_HEADCOUNT_LOCK_KEY,
-      ]);
-
+    return withSystemRoleHeadcountLock(this.dataSource, async (manager) => {
       const target = await manager.findOne(User, {
         where: { id: userId },
         relations: { role: true },
