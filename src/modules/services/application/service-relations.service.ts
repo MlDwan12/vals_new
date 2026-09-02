@@ -13,6 +13,7 @@ import {
   isForeignKeyViolation,
   isUniqueViolation,
 } from '../../../core/persistence/postgres-error.util';
+import { resolveRequiredEntitiesByIds } from '../../../core/persistence/resolve-entities-by-ids.util';
 import { ServicesRepository } from '../infrastructure/services.repository';
 import { ServiceRelation } from '../domain/service-relation.entity';
 import { CreateServiceRelationDto } from '../dto/create-service-relation.dto';
@@ -110,25 +111,21 @@ export class ServiceRelationsService {
     }
   }
 
-  private async assertServicesExist(
+  // Переиспользует общий resolveRequiredEntitiesByIds (case review: раньше был ручной
+  // fetch+diff+throw, дублирующий его логику) — create()/update() дальше пишут serviceId/
+  // relatedServiceId как скаляры, найденные сущности не нужны. assertNotSelfRelation выше уже
+  // гарантирует serviceId !== relatedServiceId, так что "пустой список"-ветка утилиты (для
+  // необязательного случая) сюда не относится — два ID всегда различны и всегда заданы.
+  private assertServicesExist(
     serviceId: number,
     relatedServiceId: number,
-  ): Promise<void> {
-    const found = await this.servicesRepository.findByIds([
-      serviceId,
-      relatedServiceId,
-    ]);
-    const foundIds = new Set(found.map((service) => service.id));
-    const missing = [serviceId, relatedServiceId].filter(
-      (id) => !foundIds.has(id),
+  ): Promise<unknown> {
+    return resolveRequiredEntitiesByIds(
+      [serviceId, relatedServiceId],
+      (ids) => this.servicesRepository.findByIds(ids),
+      'Услуги',
+      'serviceId/relatedServiceId',
     );
-    if (missing.length) {
-      throw new BadRequestException(
-        missing.length > 1
-          ? `Услуги с ID ${missing.join(', ')} не найдены`
-          : `Услуга с ID ${missing[0]} не найдена`,
-      );
-    }
   }
 
   // Два разных composite-unique на таблице (пара service+relatedService, и service+order) —
