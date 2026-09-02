@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -6,7 +7,10 @@ import {
 import { EmployeesRepository } from '../../employees/infrastructure/employees.repository';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
-import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from '../../../core/persistence/postgres-error.util';
 import {
   resolveOptionalEntitiesByIds,
   resolveOptionalEntityById,
@@ -93,7 +97,7 @@ export class CasesService {
       await this.indexCase(entity);
       return CaseResponseDto.fromEntity(entity);
     } catch (error) {
-      throw this.mapSlugConflict(error);
+      throw this.mapConflict(error);
     }
   }
 
@@ -158,7 +162,7 @@ export class CasesService {
       await this.indexCase(entity);
       return CaseResponseDto.fromEntity(entity);
     } catch (error) {
-      throw this.mapSlugConflict(error);
+      throw this.mapConflict(error);
     }
   }
 
@@ -285,9 +289,17 @@ export class CasesService {
     return caseEntity;
   }
 
-  private mapSlugConflict(error: unknown): unknown {
+  private mapConflict(error: unknown): unknown {
     if (isUniqueViolation(error)) {
       return new ConflictException('Кейс с таким slug уже существует');
+    }
+    // TOCTOU: услуга/сотрудник/тег из dto.serviceIds/authorIds/tagIds мог быть удалён между
+    // resolveRequiredEntitiesByIds/resolveOptionalEntitiesByIds выше и этим save() (security-audit-
+    // 2026-08-31.md №11) — без перехвата голый QueryFailedError уходит наружу как 500.
+    if (isForeignKeyViolation(error)) {
+      return new BadRequestException(
+        'Одна из связанных сущностей (услуга/сотрудник/тег) была удалена — повторите с актуальным списком',
+      );
     }
     return error;
   }

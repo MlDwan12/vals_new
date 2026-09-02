@@ -138,13 +138,6 @@ export class NewsRepository {
     return rows;
   }
 
-  findBySlug(slug: string): Promise<News | null> {
-    return this.repo.findOne({
-      where: { slug },
-      relations: { authors: true, tags: true, cover: true },
-    });
-  }
-
   findBySlugPublished(slug: string): Promise<News | null> {
     return this.repo.findOne({
       where: { slug, datePublished: LessThanOrEqual(new Date()) },

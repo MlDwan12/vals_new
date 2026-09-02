@@ -61,6 +61,13 @@ export class LeadDeliveryService {
   // повторный SELECT не нужен. Если markSentWithRetry исчерпает попытки и бросит — лид остаётся в
   // SENDING (сознательно не откатывается в PENDING/FAILED), реклейм по STUCK_SENDING_TIMEOUT_MS
   // подберёт его позже; bitrixLeadId уже залогирован выше для ручной сверки.
+  //
+  // Принятый остаточный риск (security-audit-2026-08-31.md №13): если процесс упадёт строго между
+  // успешным bitrixClient.sendLead() и коммитом markSent() (например, kill процесса/OOM в этот
+  // конкретный момент), лид остаётся в SENDING и будет реклеймлен по таймауту — повторный
+  // sendLead() создаст в Bitrix дубль лида. crm.lead.add в REST API Bitrix24 не поддерживает
+  // идемпотентный ключ, закрыть на уровне запроса нечем. Окно узкое (один await между HTTP-ответом
+  // и записью в БД) — сознательно не чиним, не эксплуатируется намеренно.
   async attemptDelivery(lead: ClientLead): Promise<ClientLead> {
     let bitrixLeadId: string;
     let response: Record<string, unknown>;

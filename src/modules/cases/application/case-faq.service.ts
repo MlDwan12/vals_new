@@ -7,6 +7,7 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { isForeignKeyViolation } from '../../../core/persistence/postgres-error.util';
 import { GlobalSearchDocument } from '../../search/application/global-search-document.interface';
 import { SearchIndexService } from '../../search/application/search-index.service';
 import { buildFaqSearchDocument } from '../../search/application/faq-search-document.util';
@@ -30,21 +31,29 @@ export class CaseFaqService {
 
   async create(dto: CreateCaseFaqDto): Promise<CaseFaqResponseDto> {
     const caseEntity = await this.resolveCase(dto.caseId);
-    const faq = await this.caseFaqRepository.create(dto);
-    await this.indexFaq(faq, caseEntity);
-    return CaseFaqResponseDto.fromEntity(faq);
+    try {
+      const faq = await this.caseFaqRepository.create(dto);
+      await this.indexFaq(faq, caseEntity);
+      return CaseFaqResponseDto.fromEntity(faq);
+    } catch (error) {
+      throw this.mapConflict(error);
+    }
   }
 
   async update(id: number, dto: UpdateCaseFaqDto): Promise<CaseFaqResponseDto> {
     const existing = await this.findEntityByIdOrFail(id);
     const caseEntity = await this.resolveCase(dto.caseId ?? existing.caseId);
 
-    const updated = await this.caseFaqRepository.update(id, dto);
-    if (!updated) {
-      throw new NotFoundException(`FAQ с ID ${id} не найдено`);
+    try {
+      const updated = await this.caseFaqRepository.update(id, dto);
+      if (!updated) {
+        throw new NotFoundException(`FAQ с ID ${id} не найдено`);
+      }
+      await this.indexFaq(updated, caseEntity);
+      return CaseFaqResponseDto.fromEntity(updated);
+    } catch (error) {
+      throw this.mapConflict(error);
     }
-    await this.indexFaq(updated, caseEntity);
-    return CaseFaqResponseDto.fromEntity(updated);
   }
 
   async remove(id: number): Promise<void> {
@@ -97,6 +106,18 @@ export class CaseFaqService {
       throw new NotFoundException(`FAQ с ID ${id} не найдено`);
     }
     return faq;
+  }
+
+  // TOCTOU: кейс мог быть удалён между resolveCase выше и этим create()/update() (case_faq.case_id
+  // — CASCADE, security-audit-2026-08-31.md №11) — без перехвата голый QueryFailedError уходит
+  // наружу как 500.
+  private mapConflict(error: unknown): unknown {
+    if (isForeignKeyViolation(error)) {
+      return new BadRequestException(
+        'Кейс, к которому привязывается FAQ, был удалён — повторите с актуальным caseId',
+      );
+    }
+    return error;
   }
 
   private async resolveCase(caseId: number): Promise<CaseMeta> {

@@ -145,14 +145,6 @@ export class ArticlesRepository {
     return rows;
   }
 
-  findBySlug(slug: string): Promise<Article | null> {
-    return this.repo.findOne({
-      where: { slug },
-      relations: { authors: true, tags: true, faq: true, cover: true },
-      order: { faq: { id: 'ASC' } },
-    });
-  }
-
   findBySlugPublished(slug: string): Promise<Article | null> {
     return this.repo.findOne({
       where: { slug, datePublished: LessThanOrEqual(new Date()) },

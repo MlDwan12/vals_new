@@ -10,6 +10,7 @@ import {
 } from '../../../core/pagination/paginated-result.interface';
 import {
   getViolatedConstraint,
+  isForeignKeyViolation,
   isUniqueViolation,
 } from '../../../core/persistence/postgres-error.util';
 import { ServicesRepository } from '../infrastructure/services.repository';
@@ -147,6 +148,14 @@ export class ServiceRelationsService {
           'Связь с таким порядковым номером уже существует у этой услуги',
         );
       }
+    }
+    // TOCTOU: одна из услуг могла быть удалена между assertServicesExist выше и этим
+    // INSERT/UPDATE (оба FK — CASCADE, security-audit-2026-08-31.md №12) — без перехвата голый
+    // QueryFailedError уходит наружу как 500.
+    if (isForeignKeyViolation(error)) {
+      return new BadRequestException(
+        'Одна из указанных услуг была удалена — повторите с актуальным ID',
+      );
     }
     return error;
   }

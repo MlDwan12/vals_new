@@ -8,6 +8,7 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { NoDangerousUriScheme } from '../../../core/validators/no-dangerous-uri-scheme.validator';
 import { TruncateString } from '../../../core/util/truncate.util';
 import { ClientLeadType } from '../enums/client-lead-type.enum';
 import { IsNormalizablePhone } from '../validators/is-normalizable-phone.validator';
@@ -90,6 +91,7 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   @TruncateString(PAGE_PATH_MAX_LENGTH)
+  @NoDangerousUriScheme()
   pagePath?: string;
 
   @IsOptional()
@@ -103,10 +105,12 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   @TruncateString(REFERRER_MAX_LENGTH)
+  @NoDangerousUriScheme()
   referrer?: string;
 
   @IsOptional()
   @IsString()
   @TruncateString(LANDING_PATH_MAX_LENGTH)
+  @NoDangerousUriScheme()
   landingPath?: string;
 }
