@@ -7,19 +7,13 @@ import {
   Query,
 } from '@nestjs/common';
 import { Perm } from '../../../core/decorators/perm.decorator';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { CLIENT_ROLES } from '../../../core/enums/role-groups.constant';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ClientLeadsAdminService } from '../application/client-leads-admin.service';
 import { ClientLeadListQueryDto } from '../dto/client-lead-list-query.dto';
 import { ClientLeadResponseDto } from '../dto/client-lead-response.dto';
 
-// `@Roles(...CLIENT_ROLES)` на контроллере оставлен для `retry` — в реестре прав нет
-// clients.write/clients.delete (security-audit-2026-08-31.md, находка №1, задокументированный
-// пробел), только на GET-роутах добавлен @Perm(CLIENTS_READ) поверх.
 @Controller('admin/client-leads')
-@Roles(...CLIENT_ROLES)
 export class ClientLeadsAdminController {
   constructor(
     private readonly clientLeadsAdminService: ClientLeadsAdminService,
@@ -50,6 +44,7 @@ export class ClientLeadsAdminController {
   }
 
   @Post(':id/retry')
+  @Perm(PERMISSIONS.CLIENTS_WRITE)
   retry(@Param('id', ParseIntPipe) id: number): Promise<ClientLeadResponseDto> {
     return this.clientLeadsAdminService.retry(id);
   }

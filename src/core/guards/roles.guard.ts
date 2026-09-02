@@ -8,12 +8,12 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { AuthenticatedRequestUser } from './auth.guard';
 
 interface RequestWithUser extends Request {
-  // role — простая строка (код роли из БД), не enum: см. AuthGuard/AuthenticatedRequestUser
-  // (EXPANSION_TASKS.md §1). Для 4 легаси-ролей код совпадает со значением старого enum, поэтому
-  // сравнение ниже работает без изменений.
-  user?: { role: string };
+  // Тип целиком из AuthGuard (не локальное независимое объявление) — role/isSystem уже несут
+  // инвариант §1.1 там, дублировать его форму здесь второй раз незачем.
+  user?: Pick<AuthenticatedRequestUser, 'role' | 'isSystem'>;
 }
 
 @Injectable()
@@ -31,7 +31,17 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const userRole = request.user?.role;
+    const requestUser = request.user;
+
+    // is_system — байпас, не зависящий от role_permissions/@Roles() (§1.1, тот же инвариант,
+    // что и у @Perm() в AuthGuard) — иначе кастомная системная роль проходит гранулярные права,
+    // но упирается в легаси @Roles() на ещё не переведённых роутах (code review, сессия 29,
+    // находка №1).
+    if (requestUser?.isSystem) {
+      return true;
+    }
+
+    const userRole = requestUser?.role;
 
     if (!userRole || !(requiredRoles as string[]).includes(userRole)) {
       throw new ForbiddenException('Недостаточно прав для выполнения операции');

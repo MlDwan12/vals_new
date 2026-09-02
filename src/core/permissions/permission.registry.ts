@@ -20,6 +20,9 @@ export const PERMISSIONS = {
   SERVICES_READ: 'services.read',
   SERVICES_WRITE: 'services.write',
   SERVICES_DELETE: 'services.delete',
+  LANDINGS_READ: 'landings.read',
+  LANDINGS_WRITE: 'landings.write',
+  LANDINGS_DELETE: 'landings.delete',
   MEDIA_READ: 'media.read',
   MEDIA_WRITE: 'media.write',
   MEDIA_DELETE: 'media.delete',
@@ -30,6 +33,8 @@ export const PERMISSIONS = {
   EMPLOYEES_WRITE: 'employees.write',
   EMPLOYEES_DELETE: 'employees.delete',
   CLIENTS_READ: 'clients.read',
+  CLIENTS_WRITE: 'clients.write',
+  CLIENTS_DELETE: 'clients.delete',
   CLIENTS_EXPORT: 'clients.export',
   USERS_MANAGE: 'users.manage',
   // Отдельный код от USERS_MANAGE (EXPANSION_TASKS.md §1.6) — сброс чужого пароля отдаёт чужую
@@ -37,6 +42,10 @@ export const PERMISSIONS = {
   USERS_RESET_PASSWORD: 'users.reset_password',
   ROLES_MANAGE: 'roles.manage',
   AUDIT_READ: 'audit.read',
+  // Кросс-доменный код (как audit.read) — реиндексация дороже обычных CRUD-операций, осознанно
+  // строже, чем `<раздел>.write` (только admin, не content_manager — code review, сессия 29,
+  // находка №1).
+  SEARCH_REINDEX: 'search.reindex',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

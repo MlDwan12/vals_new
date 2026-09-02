@@ -13,12 +13,14 @@ import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
 
-// Отдельный файл: /admin/{articles,cases,services}/reindex сужают класс-роль CONTENT_ROLES до
-// ADMIN_ROLES прямо на методе (M4, round-1 review) — role-matrix.e2e-spec.ts этого не ловит
-// принципиально, там представительный GET-роут на группу, а тут метод расходится с классом внутри
-// одного контроллера (RolesGuard проверяет метаданные конкретного метода, не только класса).
-// Свой /auth/login — свой testcontainers, чтобы не делить throttle-бюджет с другими e2e.
-describe('Reindex-роуты: сужение роли до ADMIN_ROLES на методе (e2e)', () => {
+// Отдельный файл: все 5 /admin/{articles,cases,services,news,landings}/reindex гейтятся
+// PERMISSIONS.SEARCH_REINDEX — отдельным правом от `*.write` того же раздела, выданным только
+// admin, не content_manager (M4, round-1 review; переведено с @Roles(...ADMIN_ROLES) на @Perm() —
+// code review, сессия 29, находка №1). role-matrix.e2e-spec.ts этого не ловит принципиально, там
+// представительный GET-роут на группу, а тут конкретный POST-хендлер несёт код строже, чем
+// остальной контроллер. Свой /auth/login — свой testcontainers, чтобы не делить throttle-бюджет с
+// другими e2e.
+describe('Reindex-роуты: SEARCH_REINDEX уже admin, не content_manager (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
@@ -90,28 +92,38 @@ describe('Reindex-роуты: сужение роли до ADMIN_ROLES на ме
   // SearchIndexService глотают сетевые ошибки через try/catch + warn (ТЗ §7 п.2, уже проверено в
   // прошлых сессиях). Разрешённая роль поэтому получает 200 (@HttpCode(HttpStatus.OK) на методе),
   // не 403 и не 500 — именно это и разделяет «доступ запрещён» от «доступ разрешён, but деградация».
-  it('CONTENT_MANAGER получает 403 на всех трёх reindex-роутах, ADMIN/DEVELOPER — 200', async () => {
+  it('CONTENT_MANAGER получает 403 на всех пяти reindex-роутах, ADMIN/DEVELOPER — 200', async () => {
     const REINDEX_ROUTES = [
       '/admin/articles/reindex',
       '/admin/cases/reindex',
       '/admin/services/reindex',
+      '/admin/news/reindex',
+      '/admin/landings/reindex',
     ];
 
-    for (const path of REINDEX_ROUTES) {
-      for (const role of ALL_TEST_ROLES) {
-        const response = await request(app.getHttpServer())
+    // Все 20 запросов (5 роутов × 4 роли) читают разными куками, ничего друг у друга не мутируют —
+    // независимы, гоняем параллельно вместо последовательного двойного цикла (/simplify, сессия 29).
+    const cases = REINDEX_ROUTES.flatMap((path) =>
+      ALL_TEST_ROLES.map((role) => ({ path, role })),
+    );
+    const responses = await Promise.all(
+      cases.map(({ path, role }) =>
+        request(app.getHttpServer())
           .post(path)
           .set('Origin', ORIGIN)
-          .set('Cookie', cookiesByRole.get(role)!);
-        const expectedStatus = [Role.DEVELOPER, Role.ADMIN].includes(role)
-          ? 200
-          : 403;
-        expect({ path, role, status: response.status }).toEqual({
-          path,
-          role,
-          status: expectedStatus,
-        });
-      }
-    }
+          .set('Cookie', cookiesByRole.get(role)!),
+      ),
+    );
+
+    cases.forEach(({ path, role }, index) => {
+      const expectedStatus = [Role.DEVELOPER, Role.ADMIN].includes(role)
+        ? 200
+        : 403;
+      expect({ path, role, status: responses[index].status }).toEqual({
+        path,
+        role,
+        status: expectedStatus,
+      });
+    });
   });
 });

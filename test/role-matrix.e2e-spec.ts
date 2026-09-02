@@ -7,7 +7,10 @@ import request from 'supertest';
 import { StartedTestContainer } from 'testcontainers';
 import { Repository } from 'typeorm';
 import { Role } from '../src/core/enums/role.enum';
-import { PERMISSIONS } from '../src/core/permissions/permission.registry';
+import {
+  PERMISSIONS,
+  PermissionCode,
+} from '../src/core/permissions/permission.registry';
 import { Permission } from '../src/modules/roles/domain/permission.entity';
 import { Role as RoleEntity } from '../src/modules/roles/domain/role.entity';
 import { User } from '../src/modules/users/domain/user.entity';
@@ -64,6 +67,28 @@ describe('Матрица ролей: каждая роль против кажд
     return (raw ?? []).map((cookie) => cookie.split(';')[0]).join('; ');
   }
 
+  // Общий боевой блок для тестовых кастомных ролей ниже (было 3 копии одного и того же
+  // roles.save(roles.create({...})) — /simplify, сессия 29).
+  async function createRoleWithPermissions(
+    codePrefix: string,
+    title: string,
+    permissionCodes: PermissionCode[],
+  ): Promise<RoleEntity> {
+    const rolePermissions = await Promise.all(
+      permissionCodes.map((code) => permissions.findOneByOrFail({ code })),
+    );
+    return roles.save(
+      roles.create({
+        code: `${codePrefix}-${Date.now()}`,
+        title,
+        description: null,
+        rank: 10,
+        isSystem: false,
+        permissions: rolePermissions,
+      }),
+    );
+  }
+
   // §9 ТЗ: «каждая роль против каждой группы роутов» — не один пример, а полная матрица
   // 4 роли × 4 группы. По одному представительному GET-роуту на группу — для 4 легаси-ролей этого
   // достаточно: сиды миграции AddRolesAndPermissions дают им одинаковый набор прав на весь домен
@@ -81,6 +106,10 @@ describe('Матрица ролей: каждая роль против кажд
       {
         path: '/admin/clients',
         allowed: [Role.DEVELOPER, Role.ADMIN, Role.CLIENT_MANAGER],
+      },
+      {
+        path: '/admin/landings',
+        allowed: [Role.DEVELOPER, Role.ADMIN, Role.CONTENT_MANAGER],
       },
       { path: '/audit-logs', allowed: [Role.DEVELOPER, Role.ADMIN] },
       {
@@ -144,18 +173,10 @@ describe('Матрица ролей: каждая роль против кажд
   // поэтому маршруты здесь выбраны такие, что мутирующие хендлеры гарантированно защищены новым
   // @Perm(), а не старым @Roles() (/code-review high, сессия 28).
   it('роль с единственным *_READ-правом проходит GET, но получает 403 на POST/PATCH/DELETE того же домена', async () => {
-    const readOnlyPermission = await permissions.findOneByOrFail({
-      code: PERMISSIONS.TAGS_READ,
-    });
-    const readOnlyRole = await roles.save(
-      roles.create({
-        code: `role-matrix-read-only-${Date.now()}`,
-        title: 'Тестовая роль только на чтение тегов',
-        description: null,
-        rank: 10,
-        isSystem: false,
-        permissions: [readOnlyPermission],
-      }),
+    const readOnlyRole = await createRoleWithPermissions(
+      'role-matrix-read-only',
+      'Тестовая роль только на чтение тегов',
+      [PERMISSIONS.TAGS_READ],
     );
 
     const username = 'matrix-tags-read-only';
@@ -197,5 +218,129 @@ describe('Матрица ролей: каждая роль против кажд
       .delete('/admin/tags/1')
       .set('Cookie', cookie);
     expect(deleteResponse.status).toBe(403);
+  });
+
+  // Тот же класс регрессии, что и тест выше на tags, но для нового LANDINGS_READ/WRITE/DELETE
+  // (code review, сессия 29, находка №1) — landings.e2e-spec.ts проверяет только роль
+  // content_manager, у которой все три кода сразу, поэтому перепутанный @Perm() на конкретном
+  // хендлере (например, LANDINGS_READ по ошибке оставлен на remove) там незаметен.
+  it('роль с единственным LANDINGS_READ проходит GET /admin/landings, но получает 403 на POST/PATCH/DELETE', async () => {
+    const readOnlyRole = await createRoleWithPermissions(
+      'role-matrix-landings-read-only',
+      'Тестовая роль только на чтение нишевых страниц',
+      [PERMISSIONS.LANDINGS_READ],
+    );
+
+    const username = 'matrix-landings-read-only';
+    const passwordHash = await bcrypt.hash('MatrixPass123!', 4);
+    await users.save(
+      users.create({
+        username,
+        password: passwordHash,
+        roleId: readOnlyRole.id,
+        isActive: true,
+      }),
+    );
+
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('Origin', ORIGIN)
+      .send({ username, password: 'MatrixPass123!' });
+    expect(login.status).toBe(201);
+    const cookie = cookieHeader(login);
+
+    const getResponse = await request(app.getHttpServer())
+      .get('/admin/landings')
+      .set('Cookie', cookie);
+    expect(getResponse.status).toBe(200);
+
+    const [postResponse, patchResponse, deleteResponse] = await Promise.all([
+      request(app.getHttpServer())
+        .post('/admin/landings')
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookie)
+        .send({ name: 'irrelevant' }),
+      request(app.getHttpServer())
+        .patch('/admin/landings/1')
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookie)
+        .send({ name: 'irrelevant' }),
+      request(app.getHttpServer())
+        .delete('/admin/landings/1')
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookie),
+    ]);
+    expect(postResponse.status).toBe(403);
+    expect(patchResponse.status).toBe(403);
+    expect(deleteResponse.status).toBe(403);
+  });
+
+  // clients.write (retry) и clients.delete (remove) — новые коды (code review, сессия 29, находка
+  // №1), раньше обе ручки сидели за одним и тем же @Roles(...CLIENT_ROLES) на классе. Несуществующий
+  // id намеренно: цель — отличить 403 (гейт не пропустил) от 404 (гейт пропустил, дошло до сервиса),
+  // не проверять сам remove/retry.
+  it('clients.write и clients.delete не взаимозаменяемы: retry и remove проверяют разные коды', async () => {
+    async function loginAs(username: string, roleId: number): Promise<string> {
+      const passwordHash = await bcrypt.hash('MatrixPass123!', 4);
+      await users.save(
+        users.create({
+          username,
+          password: passwordHash,
+          roleId,
+          isActive: true,
+        }),
+      );
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .set('Origin', ORIGIN)
+        .send({ username, password: 'MatrixPass123!' });
+      expect(login.status).toBe(201);
+      return cookieHeader(login);
+    }
+
+    const [writeOnlyRole, deleteOnlyRole] = await Promise.all([
+      createRoleWithPermissions(
+        'role-matrix-clients-write-only',
+        'Тестовая роль: только clients.write',
+        [PERMISSIONS.CLIENTS_WRITE],
+      ),
+      createRoleWithPermissions(
+        'role-matrix-clients-delete-only',
+        'Тестовая роль: только clients.delete',
+        [PERMISSIONS.CLIENTS_DELETE],
+      ),
+    ]);
+
+    const [writeOnlyCookie, deleteOnlyCookie] = await Promise.all([
+      loginAs('matrix-clients-write-only', writeOnlyRole.id),
+      loginAs('matrix-clients-delete-only', deleteOnlyRole.id),
+    ]);
+
+    // Несуществующий id намеренно: цель — отличить 403 (гейт не пропустил) от 404 (гейт
+    // пропустил, дошло до сервиса), не проверять сам remove/retry. Все 4 запроса читают разными
+    // куками один и тот же несуществующий id, ничего не мутируют — независимы, можно параллельно.
+    const [writeOnlyRetry, writeOnlyRemove, deleteOnlyRemove, deleteOnlyRetry] =
+      await Promise.all([
+        request(app.getHttpServer())
+          .post('/admin/client-leads/999999/retry')
+          .set('Origin', ORIGIN)
+          .set('Cookie', writeOnlyCookie),
+        request(app.getHttpServer())
+          .delete('/admin/clients/999999')
+          .set('Origin', ORIGIN)
+          .set('Cookie', writeOnlyCookie),
+        request(app.getHttpServer())
+          .delete('/admin/clients/999999')
+          .set('Origin', ORIGIN)
+          .set('Cookie', deleteOnlyCookie),
+        request(app.getHttpServer())
+          .post('/admin/client-leads/999999/retry')
+          .set('Origin', ORIGIN)
+          .set('Cookie', deleteOnlyCookie),
+      ]);
+    expect(writeOnlyRetry.status).toBe(404);
+    expect(writeOnlyRemove.status).toBe(403);
+    expect(deleteOnlyRemove.status).toBe(404);
+    expect(deleteOnlyRetry.status).toBe(403);
   });
 });

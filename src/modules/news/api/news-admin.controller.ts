@@ -12,8 +12,6 @@ import {
   Query,
 } from '@nestjs/common';
 import { Perm } from '../../../core/decorators/perm.decorator';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import { ADMIN_ROLES } from '../../../core/enums/role-groups.constant';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { NewsService } from '../application/news.service';
@@ -33,10 +31,11 @@ export class NewsAdminController {
     return this.newsService.create(dto);
   }
 
-  // Реиндексация всего контента — дороже обычных CRUD-операций, за ADMIN_ROLES отдельно от общего
-  // CONTENT_ROLES контроллера — тот же приём, что у статей/кейсов (M4 code review).
+  // Реиндексация всего контента — дороже обычных CRUD-операций, отдельный код от NEWS_WRITE,
+  // выдаётся только admin, не content_manager — тот же приём, что у статей/кейсов (M4 code
+  // review, сессия 29 находка №1).
   @Post('reindex')
-  @Roles(...ADMIN_ROLES)
+  @Perm(PERMISSIONS.SEARCH_REINDEX)
   @HttpCode(HttpStatus.OK)
   reindex(): Promise<void> {
     return this.newsService.reindexSearch();

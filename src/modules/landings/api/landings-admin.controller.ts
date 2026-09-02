@@ -11,12 +11,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Roles } from '../../../core/decorators/roles.decorator';
-import {
-  ADMIN_ROLES,
-  CONTENT_ROLES,
-} from '../../../core/enums/role-groups.constant';
+import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { LandingsService } from '../application/landings.service';
 import { CreateLandingDto } from '../dto/create-landing.dto';
 import { LandingListQueryDto } from '../dto/landing-list-query.dto';
@@ -25,25 +22,27 @@ import { LandingResponseDto } from '../dto/landing-response.dto';
 import { UpdateLandingDto } from '../dto/update-landing.dto';
 
 @Controller('admin/landings')
-@Roles(...CONTENT_ROLES)
 export class LandingsAdminController {
   constructor(private readonly landingsService: LandingsService) {}
 
   @Post()
+  @Perm(PERMISSIONS.LANDINGS_WRITE)
   create(@Body() dto: CreateLandingDto): Promise<LandingResponseDto> {
     return this.landingsService.create(dto);
   }
 
-  // Реиндексация всего контента — дороже обычных CRUD-операций, держим за ADMIN_ROLES отдельно от
-  // общего CONTENT_ROLES контроллера (тот же прецедент, что у articles/cases/news).
+  // Реиндексация всего контента — дороже обычных CRUD-операций, отдельный код от LANDINGS_WRITE,
+  // выдаётся только admin, не content_manager (тот же прецедент, что у articles/cases/news,
+  // code review сессия 29 находка №1).
   @Post('reindex')
-  @Roles(...ADMIN_ROLES)
+  @Perm(PERMISSIONS.SEARCH_REINDEX)
   @HttpCode(HttpStatus.OK)
   reindex(): Promise<void> {
     return this.landingsService.reindexSearch();
   }
 
   @Get()
+  @Perm(PERMISSIONS.LANDINGS_READ)
   findList(
     @Query() query: LandingListQueryDto,
   ): Promise<PaginatedResult<LandingMainInfoDto>> {
@@ -51,11 +50,13 @@ export class LandingsAdminController {
   }
 
   @Get(':id')
+  @Perm(PERMISSIONS.LANDINGS_READ)
   findById(@Param('id', ParseIntPipe) id: number): Promise<LandingResponseDto> {
     return this.landingsService.findById(id);
   }
 
   @Patch(':id')
+  @Perm(PERMISSIONS.LANDINGS_WRITE)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateLandingDto,
@@ -64,6 +65,7 @@ export class LandingsAdminController {
   }
 
   @Delete(':id')
+  @Perm(PERMISSIONS.LANDINGS_DELETE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.landingsService.remove(id);
