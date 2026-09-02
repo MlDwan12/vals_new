@@ -207,4 +207,19 @@ export class ServicesRepository {
       select: { id: true, title: true },
     });
   }
+
+  // Проверка перед удалением (RESTRICT на service_to_case.service_id, security-audit-2026-08-31.md
+  // №4) — список ссылающихся кейсов для понятного сообщения вместо голой ошибки FK. M2M — через
+  // QueryBuilder с join, а не .find({where: {cases: {...}}}) (ненадёжно для ManyToMany в TypeORM),
+  // тот же приём, что у findPublishedCasesByServiceId.
+  findReferencingCases(
+    serviceId: number,
+  ): Promise<{ id: number; title: string }[]> {
+    return this.caseRepo
+      .createQueryBuilder('cases')
+      .innerJoin('cases.services', 'service')
+      .select(['cases.id', 'cases.title'])
+      .where('service.id = :serviceId', { serviceId })
+      .getMany();
+  }
 }

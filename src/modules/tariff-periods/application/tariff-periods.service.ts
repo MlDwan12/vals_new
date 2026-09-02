@@ -64,15 +64,19 @@ export class TariffPeriodsService {
   // Без этой проверки удаление используемого периода не падает сразу (billing_cycles — jsonb-
   // снапшот, не FK на tariff_periods), а стреляет позже непонятной 400 "Периоды тарифа не найдены"
   // при первом же пересчёте billingCycles тарифа, который на него ссылался (Б5, независимый аудит
-  // 2026-08-21).
+  // 2026-08-21). withMutationLock — сериализует эту проверку с TariffsService (не в транзакции с
+  // TOCTOU-окном для конкурентного создания/обновления тарифа тем же periodId, security-audit-
+  // 2026-08-31.md MEDIUM №5).
   async remove(id: number): Promise<void> {
     await this.findEntityByIdOrFail(id);
-    if (await this.tariffsRepository.existsByPeriodId(id)) {
-      throw new BadRequestException(
-        'Нельзя удалить период — он используется в тарифах. Сначала уберите период из тарифов.',
-      );
-    }
-    await this.tariffPeriodsRepository.remove(id);
+    await this.tariffPeriodsRepository.withMutationLock(async () => {
+      if (await this.tariffsRepository.existsByPeriodId(id)) {
+        throw new BadRequestException(
+          'Нельзя удалить период — он используется в тарифах. Сначала уберите период из тарифов.',
+        );
+      }
+      await this.tariffPeriodsRepository.remove(id);
+    });
   }
 
   async findById(id: number): Promise<TariffPeriodResponseDto> {

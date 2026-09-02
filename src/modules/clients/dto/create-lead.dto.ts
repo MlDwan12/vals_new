@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { TruncateString } from '../../../core/util/truncate.util';
 import { ClientLeadType } from '../enums/client-lead-type.enum';
+import { IsNormalizablePhone } from '../validators/is-normalizable-phone.validator';
 
 // EXPANSION_TASKS.md §7: "длины ограничить, значения обрезать, а не отклонять заявку из-за
 // длинного URL" — обрезка вместо @MaxLength (который бы отклонил заявку целиком).
@@ -25,6 +26,7 @@ export class CreateLeadDto {
 
   @IsString()
   @MaxLength(32)
+  @IsNormalizablePhone()
   phone: string;
 
   @IsEnum(ClientLeadType)

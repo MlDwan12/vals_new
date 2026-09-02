@@ -27,57 +27,83 @@ export class TariffsService {
     private readonly tariffPeriodsRepository: TariffPeriodsRepository,
   ) {}
 
+  // withMutationLock — сериализует резолв periodIds здесь с TariffPeriodsService.remove() (не в
+  // транзакции с TOCTOU-окном для конкурентного удаления того же periodId, security-audit-2026-
+  // 08-31.md MEDIUM №5); billing_cycles — jsonb-снапшот, не FK, поэтому без общего лока обе
+  // стороны видят состояние друг друга устаревшим. Лок только когда periodIds реально заданы
+  // (create) — тариф без периодов вообще не читает tariff_periods, брать лок не за что
+  // (/simplify efficiency finding: лок сериализовал бы и заведомо несвязанные операции).
   async create(dto: CreateTariffDto): Promise<TariffResponseDto> {
-    const [service, billingCycles] = await Promise.all([
-      this.resolveService(dto.serviceId),
-      this.buildBillingCycles(dto.periodIds, dto.basePrice),
-    ]);
+    const buildAndSave = async () => {
+      const [service, billingCycles] = await Promise.all([
+        this.resolveService(dto.serviceId),
+        this.buildBillingCycles(dto.periodIds, dto.basePrice),
+      ]);
 
-    const tariff = this.tariffsRepository.create({
-      service,
-      name: dto.name,
-      from: dto.from,
-      features: dto.features,
-      isPopular: dto.isPopular ?? false,
-      billingCycles,
-      basePrice: dto.basePrice,
-      orderIndex: dto.orderIndex ?? 0,
-    });
+      const tariff = this.tariffsRepository.create({
+        service,
+        name: dto.name,
+        from: dto.from,
+        features: dto.features,
+        isPopular: dto.isPopular ?? false,
+        billingCycles,
+        basePrice: dto.basePrice,
+        orderIndex: dto.orderIndex ?? 0,
+      });
 
-    const saved = await this.tariffsRepository.save(tariff);
+      return this.tariffsRepository.save(tariff);
+    };
+
+    const saved = dto.periodIds?.length
+      ? await this.tariffPeriodsRepository.withMutationLock(buildAndSave)
+      : await buildAndSave();
     return TariffResponseDto.fromEntity(saved);
   }
 
   async update(id: number, dto: UpdateTariffDto): Promise<TariffResponseDto> {
-    const tariff = await this.findEntityByIdOrFail(id);
+    const applyAndSave = async () => {
+      const tariff = await this.findEntityByIdOrFail(id);
 
-    if (dto.serviceId !== undefined) {
-      tariff.service = await this.resolveService(dto.serviceId);
-    }
+      if (dto.serviceId !== undefined) {
+        tariff.service = await this.resolveService(dto.serviceId);
+      }
 
-    applyDefinedFields(tariff, {
-      name: dto.name,
-      from: dto.from,
-      features: dto.features,
-      isPopular: dto.isPopular,
-      orderIndex: dto.orderIndex,
-      basePrice: dto.basePrice,
-    });
+      applyDefinedFields(tariff, {
+        name: dto.name,
+        from: dto.from,
+        features: dto.features,
+        isPopular: dto.isPopular,
+        orderIndex: dto.orderIndex,
+        basePrice: dto.basePrice,
+      });
 
-    if (dto.periodIds !== undefined || dto.basePrice !== undefined) {
-      if (tariff.basePrice === null) {
-        throw new BadRequestException(
-          'Нельзя пересчитать периоды тарифа без basePrice',
+      if (dto.periodIds !== undefined || dto.basePrice !== undefined) {
+        if (tariff.basePrice === null) {
+          throw new BadRequestException(
+            'Нельзя пересчитать периоды тарифа без basePrice',
+          );
+        }
+        tariff.billingCycles = await this.buildBillingCycles(
+          dto.periodIds,
+          tariff.basePrice,
+          tariff.billingCycles,
         );
       }
-      tariff.billingCycles = await this.buildBillingCycles(
-        dto.periodIds,
-        tariff.basePrice,
-        tariff.billingCycles,
-      );
-    }
 
-    const saved = await this.tariffsRepository.save(tariff);
+      return this.tariffsRepository.save(tariff);
+    };
+
+    // Тот же гейт, что и внутри applyAndSave — только он же решает, дойдёт ли дело до
+    // buildBillingCycles (переименование/isPopular и т.п. его не трогают, лок не нужен).
+    // periodIds: [] явно очищает периоды до синтетического цикла без единого обращения к
+    // tariff_periods — как и в create(), лок в этом случае не за что брать (code review high:
+    // раньше здесь было `!== undefined`, бравшее лок и на пустой массив тоже).
+    const needsPeriodLock =
+      (dto.periodIds?.length ?? 0) > 0 ||
+      (dto.periodIds === undefined && dto.basePrice !== undefined);
+    const saved = needsPeriodLock
+      ? await this.tariffPeriodsRepository.withMutationLock(applyAndSave)
+      : await applyAndSave();
     return TariffResponseDto.fromEntity(saved);
   }
 

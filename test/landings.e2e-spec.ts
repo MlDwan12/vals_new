@@ -357,4 +357,39 @@ describe('Landings admin: CRUD + FAQ + delete guards (e2e)', () => {
       expect(body.cover).toBeNull();
     });
   });
+
+  // Не про landings — переиспользует уже поднятое приложение и фикстуры этого файла
+  // (createService/cases) вместо отдельного e2e-файла ради одного теста (security-audit-
+  // 2026-08-31.md №4). Раньше service_to_case.service_id был ON DELETE CASCADE — удаление услуги
+  // молча обнуляло Case.services у кейса в обход ArrayMinSize(1) на CreateCaseDto/UpdateCaseDto.
+  describe('RESTRICT: удаление услуги, используемой в кейсе', () => {
+    it('DELETE /admin/services/:id — 409 со списком кейсов, пока услуга привязана к кейсу', async () => {
+      const service = await createService('restrict-service-case');
+      const relatedCase = await cases.save(
+        cases.create({
+          slug: 'restrict-case-service',
+          title: 'Кейс, использующий услугу',
+          problem: 'Проблема',
+          result: 'Результат',
+          services: [service],
+        }),
+      );
+
+      const deleteAttempt = await agent(
+        'delete',
+        `/admin/services/${service.id}`,
+      );
+      expect(deleteAttempt.status).toBe(409);
+      expect((deleteAttempt.body as { message: string }).message).toContain(
+        'Кейс, использующий услугу',
+      );
+
+      await cases.delete(relatedCase.id);
+      const deleteAfterCleanup = await agent(
+        'delete',
+        `/admin/services/${service.id}`,
+      );
+      expect(deleteAfterCleanup.status).toBe(204);
+    });
+  });
 });

@@ -155,6 +155,7 @@ export class ClientLeadsRepository {
     name: string,
     phoneRaw: string,
     emailRaw: string | null,
+    isRetry = false,
   ): Promise<ResolvedClient> {
     const normalizedPhone = normalizePhone(phoneRaw);
     const normalizedEmail = normalizeEmail(emailRaw);
@@ -214,7 +215,16 @@ export class ClientLeadsRepository {
         where: { id: uniqueClientIds[0], isMerged: false },
       });
       if (!client) {
-        throw new InternalServerErrorException('Клиент не найден');
+        // Гонка: advisory-локи берутся по значениям контактов ИЗ ТЕКУЩЕЙ заявки, а не по id уже
+        // резолвленного клиента — параллельная транзакция, слившая этого клиента в другого по
+        // ДРУГОМУ его контакту (например email), не пересекается с нашим локом на phone
+        // (security-audit-2026-08-31.md №7). mergeClients() уже перевесил ClientContact.clientId
+        // на нового primary — повторный проход находит его корректно, вместо голого 500 на
+        // легитимном запросе. Один ретрай: если гонка повторится даже тут, это уже что-то другое.
+        if (isRetry) {
+          throw new InternalServerErrorException('Клиент не найден');
+        }
+        return this.resolveClient(manager, name, phoneRaw, emailRaw, true);
       }
       return { client, normalizedPhone, normalizedEmail };
     }

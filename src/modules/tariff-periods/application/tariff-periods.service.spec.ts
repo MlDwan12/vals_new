@@ -28,6 +28,9 @@ function buildRepositories(): {
     findById: jest.fn(),
     findAll: jest.fn(),
     findAndCount: jest.fn(),
+    // Без реальной транзакции/лока в юните — просто прогоняет переданный колбэк, как и было бы в
+    // проде при отсутствии конкурента на advisory-лок.
+    withMutationLock: jest.fn((fn: () => unknown) => fn()),
   } as unknown as jest.Mocked<TariffPeriodsRepository>;
   const tariffsRepo = {
     existsByPeriodId: jest.fn().mockResolvedValue(false),

@@ -378,4 +378,29 @@ describe('AuditLogsAdminController (e2e)', () => {
         item.statusCode === 400,
     );
   });
+
+  // security-audit-2026-08-31.md, MEDIUM №8: POST /bitrix (@Public()) писал сырые
+  // name/phone/email/message в audit_logs.meta мимо доменной маскировки клиентского модуля —
+  // запись остаётся (видимость "что за мутация была"), но без ПД.
+  it('POST /bitrix (@Public()) пишет запись без ПД в meta (§2.4/security-audit №8)', async () => {
+    const cookie = await devCookie();
+
+    const submitLead = await request(app.getHttpServer())
+      .post('/bitrix')
+      .set('Origin', ORIGIN)
+      .send({
+        name: 'Аудит ПД',
+        phone: '79990009999',
+        type: 'FREE_CONSULTATION',
+      });
+    expect(submitLead.status).toBe(201);
+
+    const entry = await waitForAuditEntry(
+      cookie,
+      { resource: 'bitrix' },
+      (item) => item.path === '/bitrix' && item.statusCode === 201,
+    );
+    expect(entry.meta).toBeNull();
+    expect(entry.userId).toBeNull();
+  });
 });

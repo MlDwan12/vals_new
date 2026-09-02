@@ -39,9 +39,22 @@ function summarizeLargeField(value: unknown): {
   return { changed: true, length: serializedLength(value) };
 }
 
+// Элемент массива сам может быть объектом-обёрткой секрета ({ employees: [{ name, password }] })
+// — раньше массив копировался в audit_logs.meta целиком, в обход маскирования (security-audit-
+// 2026-08-31.md, находка №3). Ключ элемента условный ('' — не совпадёт ни с SECRET_KEY_PATTERN,
+// ни с LARGE_FIELD_KEYS), поэтому под маскирование попадают только вложенные ключи самого объекта.
+function sanitizeArrayItem(item: unknown, depth: number): unknown {
+  return typeof item === 'object' && item !== null && !Array.isArray(item)
+    ? sanitizeEntries(item as Record<string, unknown>, depth)
+    : item;
+}
+
 function sanitizeValue(key: string, value: unknown, depth: number): unknown {
   if (isSecretKeyName(key)) return '***';
   if (LARGE_FIELD_KEYS.has(key)) return summarizeLargeField(value);
+  if (depth < MAX_NESTING_DEPTH && Array.isArray(value)) {
+    return value.map((item) => sanitizeArrayItem(item, depth + 1));
+  }
   if (
     depth < MAX_NESTING_DEPTH &&
     typeof value === 'object' &&

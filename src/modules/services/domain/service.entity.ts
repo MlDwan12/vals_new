@@ -91,10 +91,12 @@ export class Service {
   tariffs: Tariff[];
 
   // onDelete на этой (не владеющей) стороне тоже обязателен: TypeORM берёт onDelete инверсной
-  // FK-колонки (service_id) join-таблицы отсюда, а не с владеющей стороны (Case.services) —
-  // без этого service_id получает ON DELETE NO ACTION, а case_id — CASCADE (несимметрично).
+  // FK-колонки (service_id) join-таблицы отсюда, а не с владеющей стороны (Case.services).
+  // RESTRICT, не CASCADE (security-audit-2026-08-31.md №4) — раньше удаление услуги молча обнуляло
+  // Case.services у ссылающихся кейсов в обход ArrayMinSize(1) на DTO; теперь ServicesService.remove()
+  // сначала проверяет ссылающиеся кейсы (по образцу уже существующей защиты через landings).
   @ManyToMany(() => Case, (caseEntity) => caseEntity.services, {
-    onDelete: 'CASCADE',
+    onDelete: 'RESTRICT',
   })
   cases: Case[];
 

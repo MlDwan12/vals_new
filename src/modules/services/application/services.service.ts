@@ -104,28 +104,45 @@ export class ServicesService {
   }
 
   async remove(id: number): Promise<void> {
-    // Независимые запросы (существование услуги + список ссылающихся landing) — параллельно.
-    const [service, referencingLandings] = await Promise.all([
+    // Независимые запросы (существование услуги + списки ссылающихся landing/кейсов) — параллельно.
+    const [service, referencingLandings, referencingCases] = await Promise.all([
       this.findEntityByIdOrFail(id),
       // RESTRICT на landings.service_id (§10.1 expansion-decisions.md) — понятное сообщение со
       // списком страниц вместо голой ошибки FK, по образцу предупреждения при удалении обложки
       // (EXPANSION_TASKS.md §4.2).
       this.servicesRepository.findReferencingLandings(id),
+      // RESTRICT на service_to_case.service_id (security-audit-2026-08-31.md №4) — раньше эта
+      // связь была CASCADE и молча обнуляла Case.services в обход ArrayMinSize(1) на DTO.
+      this.servicesRepository.findReferencingCases(id),
     ]);
     if (referencingLandings.length) {
-      throw this.landingConflict(referencingLandings);
+      throw this.notDeletableConflict(
+        referencingLandings,
+        'в нишевых страницах',
+      );
+    }
+    if (referencingCases.length) {
+      throw this.notDeletableConflict(referencingCases, 'в кейсах');
     }
 
     try {
       await this.servicesRepository.remove(id);
     } catch (error) {
-      // Гонка: страница могла привязаться к услуге между пречеком выше и этим DELETE (TOCTOU,
-      // code review) — RESTRICT на landings.service_id тогда бьёт по самому DELETE. Ловим тем же
-      // приёмом, что isForeignKeyViolation у tags/employees, вместо голого 500 из QueryFailedError.
+      // Гонка: страница/кейс могли привязаться к услуге между пречеком выше и этим DELETE (TOCTOU,
+      // code review) — RESTRICT на landings.service_id/service_to_case.service_id тогда бьёт по
+      // самому DELETE. Ловим тем же приёмом, что isForeignKeyViolation у tags/employees, вместо
+      // голого 500 из QueryFailedError.
       if (isForeignKeyViolation(error)) {
-        throw this.landingConflict(
-          await this.servicesRepository.findReferencingLandings(id),
-        );
+        const [landings, cases] = await Promise.all([
+          this.servicesRepository.findReferencingLandings(id),
+          this.servicesRepository.findReferencingCases(id),
+        ]);
+        if (landings.length) {
+          throw this.notDeletableConflict(landings, 'в нишевых страницах');
+        }
+        if (cases.length) {
+          throw this.notDeletableConflict(cases, 'в кейсах');
+        }
       }
       throw error;
     }
@@ -135,17 +152,15 @@ export class ServicesService {
     ]);
   }
 
-  private landingConflict(
-    referencingLandings: { title: string }[],
+  // Общий шаблон для findReferencingLandings/findReferencingCases (/simplify simplification
+  // finding — landingConflict/caseConflict были на 90% одним и тем же ConflictException).
+  private notDeletableConflict(
+    items: { title: string }[],
+    usedInPhrase: string,
   ): ConflictException {
-    if (!referencingLandings.length) {
-      return new ConflictException(
-        'Услугу нельзя удалить — она используется в нишевой странице',
-      );
-    }
     return new ConflictException(
-      `Услугу нельзя удалить — она используется в нишевых страницах: ${referencingLandings
-        .map((landing) => landing.title)
+      `Услугу нельзя удалить — она используется ${usedInPhrase}: ${items
+        .map((item) => item.title)
         .join(', ')}`,
     );
   }

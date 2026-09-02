@@ -26,6 +26,8 @@ function buildRepositories(): {
 
   const tariffPeriodsRepository = {
     findByIds: jest.fn(),
+    // Без реальной транзакции/лока в юните — просто прогоняет переданный колбэк.
+    withMutationLock: jest.fn((fn: () => unknown) => fn()),
   } as unknown as jest.Mocked<TariffPeriodsRepository>;
 
   return { tariffsRepository, servicesRepository, tariffPeriodsRepository };

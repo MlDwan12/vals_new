@@ -17,6 +17,7 @@ import {
 } from '../audit/resolve-audit-context.util';
 import { sanitizeAuditBody } from '../audit/sanitize-audit-body.util';
 import { AUDIT_KEY, AuditMetadata } from '../decorators/audit.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthenticatedRequestUser } from '../guards/auth.guard';
 
 // Успешные мутации + logout (ТЗ §2 — "аудит-лог всех мутаций"). 401/403/5xx — отдельная ветка в
@@ -42,6 +43,18 @@ export class AuditInterceptor implements NestInterceptor {
     const auditMetadata = this.reflector.getAllAndOverride<
       AuditMetadata | undefined
     >(AUDIT_KEY, [context.getHandler(), context.getClass()]);
+    // Любой @Public()-роут (сейчас — POST /bitrix, POST /auth/login|refresh), не конкретно
+    // /bitrix — sanitizeAuditBody маскирует только по имени ключа, не по PII-семантике, поэтому
+    // сырые phone/email/name/message публичной заявки не должны дублироваться в audit_logs.meta
+    // под общей (не доменной) retention-политикой (security-audit-2026-08-31.md №8). Обнулять
+    // meta именно по @Public(), а не точечно по пути — тот же принцип "забытый роут не должен
+    // стать дырой", что и у самого декоратора: новый публичный мутирующий роут в будущем
+    // унаследует безопасный дефолт, не потребует правки этого интерсептора. Сама запись
+    // (кто/что/когда) остаётся — теряется только тело.
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     return next.handle().pipe(
       tap((data) => {
@@ -75,7 +88,7 @@ export class AuditInterceptor implements NestInterceptor {
           statusCode: response.statusCode,
           errorMessage: null,
           ip: resolveClientIp(request),
-          meta: sanitizeAuditBody(request.body) ?? null,
+          meta: isPublic ? null : (sanitizeAuditBody(request.body) ?? null),
           // Забытый @Audit не отменяет запись (EXPANSION_TASKS.md §2.3) — подпись выводится
           // автоматически, как и раньше, только запись помечается неподписанной.
           signed: auditMetadata !== undefined,

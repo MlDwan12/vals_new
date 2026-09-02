@@ -12,6 +12,12 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 // Глобальная CSRF-защита через проверку Origin (ТЗ §6) — не навешивается выборочно на роуты,
 // иначе забытый роут окажется дырой. Origin сверяется с тем же списком, что и CORS.
+// Действует и на @Public()-роуты (сейчас POST /bitrix, POST/PATCH /auth/login|refresh) —
+// осознанно: единственный публичный отправитель формы заявок — браузер публичного сайта.
+// Зафиксировано явно (security-audit-2026-08-31.md №9): POST /bitrix не предназначен для
+// server-to-server интеграций без собственного Origin — такой вызов получит 403 без объяснения
+// на фронте. Если это когда-либо понадобится, нужен отдельный путь аутентификации/allowlist для
+// такого клиента, не молчаливое исключение по @Public().
 @Injectable()
 export class CsrfOriginGuard implements CanActivate {
   private readonly allowedOrigins: Set<string>;

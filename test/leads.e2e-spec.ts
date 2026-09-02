@@ -226,4 +226,15 @@ describe('Leads (e2e)', () => {
 
     expect(response.status).toBe(400);
   });
+
+  // security-audit-2026-08-31.md, MEDIUM №6: phone без единой цифры нормализуется в null —
+  // без этой проверки заявка проходила бы 201, отключая дедупликацию клиентов для неё полностью.
+  it('phone без цифр (normalizePhone -> null) отклоняется 400', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/bitrix')
+      .set('Origin', ORIGIN)
+      .send({ name: 'X', phone: 'x', type: 'FREE_CONSULTATION' });
+
+    expect(response.status).toBe(400);
+  });
 });

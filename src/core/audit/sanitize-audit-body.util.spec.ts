@@ -60,6 +60,28 @@ describe('sanitizeAuditBody', () => {
     });
   });
 
+  it('маскирует секрет внутри массива объектов, а не копирует массив целиком (security-audit-2026-08-31.md №3)', () => {
+    expect(
+      sanitizeAuditBody({
+        employees: [
+          { name: 'Иван', password: 'p1' },
+          { name: 'Пётр', apiKey: 'k1' },
+        ],
+      }),
+    ).toEqual({
+      employees: [
+        { name: 'Иван', password: '***' },
+        { name: 'Пётр', apiKey: '***' },
+      ],
+    });
+  });
+
+  it('оставляет массив примитивов как есть', () => {
+    expect(sanitizeAuditBody({ tagIds: [1, 2, 3] })).toEqual({
+      tagIds: [1, 2, 3],
+    });
+  });
+
   it('заменяет bio/bioHtml сотрудников сводкой, как content/contentHtml', () => {
     const bio = { type: 'doc', content: [] };
     expect(

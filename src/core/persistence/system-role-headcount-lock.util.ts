@@ -1,4 +1,5 @@
 import { DataSource, EntityManager } from 'typeorm';
+import { withAdvisoryXactLock } from './advisory-xact-lock.util';
 import { SYSTEM_ROLE_HEADCOUNT_LOCK_KEY } from './system-role-headcount-lock.constant';
 
 // Общая обёртка для UsersRepository.runGuardedBySystemRoleHeadcount и
@@ -10,10 +11,5 @@ export function withSystemRoleHeadcountLock<T>(
   dataSource: DataSource,
   fn: (manager: EntityManager) => Promise<T>,
 ): Promise<T> {
-  return dataSource.transaction(async (manager) => {
-    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-      SYSTEM_ROLE_HEADCOUNT_LOCK_KEY,
-    ]);
-    return fn(manager);
-  });
+  return withAdvisoryXactLock(dataSource, SYSTEM_ROLE_HEADCOUNT_LOCK_KEY, fn);
 }

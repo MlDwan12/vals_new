@@ -23,7 +23,10 @@ export class Case {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Связь с услугами (M2M) — join-таблица `service_to_case`, обе стороны CASCADE
+  // Связь с услугами (M2M) — join-таблица `service_to_case`. Эта (владеющая) сторона — CASCADE:
+  // удаление кейса чистит связь без вопросов. Обратная сторона (Service.cases) — RESTRICT, не
+  // CASCADE (security-audit-2026-08-31.md №4) — удаление услуги, ещё используемой в кейсе,
+  // блокируется явной 409 в ServicesService.remove(), не обнуляет Case.services молча.
   @ManyToMany(() => Service, (service) => service.cases, {
     onDelete: 'CASCADE',
   })
