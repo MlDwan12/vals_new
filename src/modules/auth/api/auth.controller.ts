@@ -61,6 +61,7 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UseGuards(LoginUsernameThrottleGuard)
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(
     @Body() dto: LoginDto,
