@@ -37,6 +37,7 @@ describe('AuditService.log', () => {
         errorMessage: null,
         ip: null,
         meta: null,
+        signed: true,
       }),
     ).resolves.toBeUndefined();
 

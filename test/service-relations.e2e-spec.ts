@@ -67,7 +67,7 @@ describe('Service relations: "смотрите также" (e2e)', () => {
         username: 'service-relations-e2e-content-manager',
         password: 'ServiceRelationsE2e123!',
       });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const raw = login.headers['set-cookie'] as unknown as string[] | undefined;
     contentManagerCookie = (raw ?? [])
       .map((cookie) => cookie.split(';')[0])

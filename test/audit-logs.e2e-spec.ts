@@ -124,7 +124,7 @@ describe('AuditLogsAdminController (e2e)', () => {
       .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ username, password: 'AuditPass123!' });
-    expect(login.status).toBe(201); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
+    expect(login.status).toBe(200); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
     return cookieHeader(login);
   }
 
@@ -166,7 +166,7 @@ describe('AuditLogsAdminController (e2e)', () => {
         path: '/auth/login',
         resource: 'auth',
         resourceId: null,
-        statusCode: 201,
+        statusCode: 200,
       }),
     );
   });

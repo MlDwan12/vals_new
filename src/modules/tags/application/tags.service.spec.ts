@@ -23,6 +23,7 @@ function buildTag(overrides: Partial<Tag> = {}): Tag {
     priority: 0,
     articles: [],
     cases: [],
+    news: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

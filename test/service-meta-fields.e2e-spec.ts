@@ -68,7 +68,7 @@ describe('Мета-поля услуги сохраняются через creat
         username: 'service-meta-e2e-content-manager',
         password: 'ServiceMetaE2ePass123!',
       });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const raw = login.headers['set-cookie'] as unknown as string[] | undefined;
     contentManagerCookie = (raw ?? [])
       .map((cookie) => cookie.split(';')[0])

@@ -108,7 +108,7 @@ describe('Auth (e2e)', () => {
       .set('Origin', ORIGIN)
       .send({ username: 'lifecycle', password: 'LifecyclePass123!' });
 
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const oldCookies = cookieHeader(login);
     expect(oldCookies).toContain('accessToken=');
     expect(oldCookies).toContain('refreshToken=');

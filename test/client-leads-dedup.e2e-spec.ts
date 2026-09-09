@@ -35,6 +35,13 @@ describe('Client dedup and auto-merge (e2e)', () => {
       utm: null,
       payload: {},
       bitrixPayload: {},
+      // Метки формы и источника перехода (EXPANSION_TASKS.md §6/§7) — дедупликация клиентов от
+      // них не зависит, но SubmitLeadInput требует поля явно.
+      formId: null,
+      pagePath: null,
+      referrer: null,
+      landingPath: null,
+      userAgent: null,
     };
   }
 

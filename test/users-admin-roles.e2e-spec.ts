@@ -81,7 +81,7 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
         .post('/auth/login')
         .set('Origin', ORIGIN)
         .send({ username, password: 'RolesPass123!' });
-      expect(login.status).toBe(201); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
+      expect(login.status).toBe(200); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
       cookiesByRole.set(role, cookieHeader(login));
     }
   }, 30_000);

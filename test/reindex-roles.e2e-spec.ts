@@ -82,7 +82,7 @@ describe('Reindex-роуты: SEARCH_REINDEX уже admin, не content_manager 
         .post('/auth/login')
         .set('Origin', ORIGIN)
         .send({ username, password: 'ReindexPass123!' });
-      expect(login.status).toBe(201);
+      expect(login.status).toBe(200);
       cookiesByRole.set(role, cookieHeader(login));
     }
   }, 30_000);

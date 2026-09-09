@@ -47,7 +47,7 @@ describe('Tariff period delete guard (e2e)', () => {
   });
 
   async function createPeriod(months: number): Promise<TariffPeriod> {
-    return tariffPeriodsRepository.create({ months, discountPercent: null });
+    return tariffPeriodsRepository.create({ months });
   }
 
   // Тариф создаётся напрямую через репозиторий (не через TariffsService.create(), который требует

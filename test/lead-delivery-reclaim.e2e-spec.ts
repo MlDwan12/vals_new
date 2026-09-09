@@ -89,6 +89,11 @@ describe('Lead delivery reclaim bound (e2e)', () => {
       utm: null,
       payload: {},
       bitrixPayload: {},
+      formId: null,
+      pagePath: null,
+      referrer: null,
+      landingPath: null,
+      userAgent: null,
     });
     const lead = await leadRepo.findOneByOrFail({ clientId: baseClientId });
     return leadRepo.save({ ...lead, ...overrides });

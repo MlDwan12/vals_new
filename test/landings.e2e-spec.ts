@@ -83,7 +83,7 @@ describe('Landings admin: CRUD + FAQ + delete guards (e2e)', () => {
         username: 'landings-e2e-content-manager',
         password: 'LandingsE2ePass123!',
       });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const raw = login.headers['set-cookie'] as unknown as string[] | undefined;
     contentManagerCookie = (raw ?? [])
       .map((cookie) => cookie.split(';')[0])

@@ -147,7 +147,7 @@ describe('Матрица ролей: каждая роль против кажд
         .post('/auth/login')
         .set('Origin', ORIGIN)
         .send({ username, password: 'MatrixPass123!' });
-      expect(login.status).toBe(201); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
+      expect(login.status).toBe(200); // сорвавшийся логин даёт пустую куку и ложный 401 ниже
       cookiesByRole.set(role, cookieHeader(login));
     }
 
@@ -194,7 +194,7 @@ describe('Матрица ролей: каждая роль против кажд
       .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ username, password: 'MatrixPass123!' });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const cookie = cookieHeader(login);
 
     const getResponse = await request(app.getHttpServer())
@@ -246,7 +246,7 @@ describe('Матрица ролей: каждая роль против кажд
       .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ username, password: 'MatrixPass123!' });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const cookie = cookieHeader(login);
 
     const getResponse = await request(app.getHttpServer())
@@ -294,7 +294,7 @@ describe('Матрица ролей: каждая роль против кажд
         .post('/auth/login')
         .set('Origin', ORIGIN)
         .send({ username, password: 'MatrixPass123!' });
-      expect(login.status).toBe(201);
+      expect(login.status).toBe(200);
       return cookieHeader(login);
     }
 

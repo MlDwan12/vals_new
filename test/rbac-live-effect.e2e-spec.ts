@@ -67,7 +67,7 @@ describe('RBAC: отключение действует на следующем 
       .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ username: 'live-effect-target', password: 'LiveEffectPass123!' });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
     const cookie = cookieHeader(login);
 
     const before = await request(app.getHttpServer())

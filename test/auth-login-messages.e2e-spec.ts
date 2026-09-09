@@ -94,7 +94,7 @@ describe('Auth: три разных сообщения при входе (e2e)',
     expect(wrongPassword.status).toBe(401);
     expect(disabled.status).toBe(401);
     expect(expired.status).toBe(401);
-    expect(success.status).toBe(201);
+    expect(success.status).toBe(200);
 
     // "нет такого логина" и "неверный пароль" — один и тот же текст (анти-энумерация).
     expect(wrongPassword.message).toBe(unknownLogin.message);
@@ -111,6 +111,6 @@ describe('Auth: три разных сообщения при входе (e2e)',
     });
 
     const response = await loginMessage('login-msg-not-yet-expired', PASSWORD);
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
   });
 });

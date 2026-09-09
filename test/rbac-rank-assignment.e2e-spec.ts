@@ -65,7 +65,7 @@ describe('RBAC: нельзя выдать роль/право выше свое�
       .post('/auth/login')
       .set('Origin', ORIGIN)
       .send({ username, password });
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
     return cookieHeader(response);
   }
 

@@ -1,4 +1,9 @@
-import { canAssignRole, canManageTargetUser } from './can-manage.util';
+import {
+  canAssignRole,
+  canManageTargetUser,
+  ManageActor,
+  ManageTargetRole,
+} from './can-manage.util';
 
 describe('canManageTargetUser', () => {
   it('разрешает управление тем, кто ниже по рангу', () => {
@@ -98,15 +103,27 @@ describe('canAssignRole', () => {
   });
 
   it('разрешает роль без единого права (пустой набор — подмножество чего угодно)', () => {
-    const actor = { rank: 40, isSystem: false, permissions: new Set() };
-    const role = { rank: 40, isSystem: false, permissions: new Set() };
+    const actor: ManageActor = {
+      rank: 40,
+      isSystem: false,
+      permissions: new Set(),
+    };
+    const role: ManageTargetRole = {
+      rank: 40,
+      isSystem: false,
+      permissions: new Set(),
+    };
     expect(canAssignRole(actor, role)).toBe(true);
   });
 
   // is_system — тот же байпас, что и в canManageTargetUser: держатель системной роли уже проходит
   // любой @Perm()-гейт выше по стеку, блокировать его тем же набором прав здесь противоречиво.
   it('is_system-актёр может назначить роль выше своего ранга и с любыми правами', () => {
-    const actor = { rank: 1, isSystem: true, permissions: new Set() };
+    const actor: ManageActor = {
+      rank: 1,
+      isSystem: true,
+      permissions: new Set(),
+    };
     const role = {
       rank: 1000,
       isSystem: false,
@@ -125,7 +142,11 @@ describe('canAssignRole', () => {
       isSystem: false,
       permissions: new Set(['roles.manage', 'users.manage'] as const),
     };
-    const systemRole = { rank: 10, isSystem: true, permissions: new Set() };
+    const systemRole: ManageTargetRole = {
+      rank: 10,
+      isSystem: true,
+      permissions: new Set(),
+    };
     expect(canAssignRole(actor, systemRole)).toBe(false);
   });
 });
