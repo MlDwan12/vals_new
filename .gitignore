@@ -19,6 +19,9 @@ lerna-debug.log*
 # env
 .env
 .env.*
+
+# Локальный оверрайд портов compose — у каждого свои конфликты на машине
+docker-compose.override.yml
 !.env.example
 
 # tests
