@@ -351,10 +351,28 @@ async function migrateUsers(
     SELECT id, username, password, role FROM users ORDER BY id
   `)) as Row[];
 
+  // users.role (varchar-код старого enum) заменён на role_id -> roles.code миграцией
+  // AddRolesAndPermissions, которая сидит роли теми же кодами, что были в enum, — сопоставляем
+  // по коду. Ненайденный код останавливает перенос, а не подставляет дефолт: пользователь молча
+  // получил бы не свои права.
+  const roleRows = (await target.query(`SELECT id, code FROM roles`)) as Row[];
+  const roleIdByCode = new Map(
+    roleRows.map((r) => [String(r.code), r.id] as const),
+  );
+
   // is_active/created_at/updated_at не было в старой схеме (см. rewrite-log, этап 1/2) —
   // is_active=true, даты — now() на момент переноса, это уже принятый пробел, не гадаем.
-  const columns = ['id', 'username', 'password', 'role', 'is_active'];
-  const values = rows.map((r) => [r.id, r.username, r.password, r.role, true]);
+  const columns = ['id', 'username', 'password', 'role_id', 'is_active'];
+  const values = rows.map((r) => {
+    const roleId = roleIdByCode.get(String(r.role));
+    if (roleId === undefined) {
+      throw new Error(
+        `Роль "${String(r.role)}" пользователя id=${String(r.id)} не найдена в roles.code — ` +
+          'перенос остановлен, транзакция откатится',
+      );
+    }
+    return [r.id, r.username, r.password, roleId, true];
+  });
   await bulkInsert(target, 'users', columns, values);
   return rows.length;
 }
