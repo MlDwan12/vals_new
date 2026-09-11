@@ -47,6 +47,14 @@
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.3",
+    "@tiptap/core": "3.27.1",
+    "@tiptap/extension-image": "3.27.1",
+    "@tiptap/extension-link": "3.27.1",
+    "@tiptap/extension-table": "3.27.1",
+    "@tiptap/extension-text-align": "3.27.1",
+    "@tiptap/html": "3.27.1",
+    "@tiptap/pm": "3.27.1",
+    "@tiptap/starter-kit": "3.27.1",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -55,6 +63,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "file-type": "^22.0.1",
+    "happy-dom": "^20.14.3",
     "helmet": "^8.3.0",
     "meilisearch": "^0.60.0",
     "multer": "^2.2.0",
@@ -117,5 +126,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "resolutions": {
+    "@tiptap/core": "3.27.1"
   }
 }
