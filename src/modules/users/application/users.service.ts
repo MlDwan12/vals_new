@@ -17,10 +17,10 @@ import {
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
-import { Role as RoleEnum } from '../../../core/enums/role.enum';
 import { AuthenticatedRequestUser } from '../../../core/guards/auth.guard';
 import { permissionCodesOf } from '../../roles/domain/permission-codes.util';
 import { Role } from '../../roles/domain/role.entity';
+import { RoleResponseDto } from '../../roles/dto/role-response.dto';
 import { RolesRepository } from '../../roles/infrastructure/roles.repository';
 import { ChangeUserRoleDto } from '../dto/change-user-role.dto';
 import { CreateUserWithRoleDto } from '../dto/create-user-with-role.dto';
@@ -77,6 +77,27 @@ export class UsersService {
     );
   }
 
+  // Роли, которые актёр вправе назначить — тем же предикатом, которым changeRole/createWithRoleId
+  // потом проверят выбор (canAssignRole). Своя ручка в users, а не переиспользование
+  // /admin/roles: тот список закрыт правом roles.manage, а выбрать роль сотруднику должен уметь
+  // и держатель одного users.manage — иначе смена роли из панели невозможна без права управлять
+  // ролями. Отфильтрованный список безопаснее полного и по содержимому: в нём только роли, все
+  // права которых у актёра и так есть.
+  async findAssignableRoles(
+    actor: AuthenticatedRequestUser,
+  ): Promise<RoleResponseDto[]> {
+    const roles = await this.rolesRepository.findAll();
+    return roles
+      .filter((role) =>
+        canAssignRole(actor, {
+          rank: role.rank,
+          isSystem: role.isSystem,
+          permissions: permissionCodesOf(role.permissions),
+        }),
+      )
+      .map((role) => RoleResponseDto.fromEntity(role));
+  }
+
   async findExpiring(days: number): Promise<UserResponseDto[]> {
     const users = await this.usersRepository.findExpiringWithinDays(days);
     return users.map((user) => UserResponseDto.fromEntity(user));
@@ -90,24 +111,9 @@ export class UsersService {
     return user;
   }
 
-  // Легаси-путь трёх старых ручек (/admin/users/admins|content-managers|client-managers) —
-  // сигнатура не меняется (по-прежнему принимает RoleEnum), внутри резолвит roleId по коду.
-  // Роли сидятся миграцией с теми же кодами, что и старый enum — findByCode всегда находит.
-  async createWithRole(
-    username: string,
-    password: string,
-    roleCode: RoleEnum,
-  ): Promise<void> {
-    const role = await this.rolesRepository.findByCode(roleCode);
-    if (!role) {
-      throw new InternalServerErrorException(
-        `Роль ${roleCode} не найдена в БД — сид не применён`,
-      );
-    }
-    await this.createInternal(username, password, role.id, null);
-  }
-
-  // Универсальное создание под любую (в т.ч. новую) роль (EXPANSION_TASKS.md §1).
+  // Единственный путь создания пользователя: под любую роль, включая заведённые из панели
+  // (EXPANSION_TASKS.md §1). Три легаси-метода под фиксированные роли удалены в срезе A.4 —
+  // они обходили canAssignRole.
   async createWithRoleId(
     actor: AuthenticatedRequestUser,
     dto: CreateUserWithRoleDto,

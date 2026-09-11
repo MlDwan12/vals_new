@@ -85,7 +85,6 @@ function buildRepositories(): {
     findAll: jest.fn(),
     findById: jest.fn(),
     findByIds: jest.fn(),
-    findByCode: jest.fn(),
     create: jest.fn((data) => ({ ...data, id: 1 }) as Role),
     save: saveMock,
     remove: removeMock,

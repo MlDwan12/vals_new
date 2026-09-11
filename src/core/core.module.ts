@@ -10,7 +10,6 @@ import { resolveGlobalThrottleLimit } from './rate-limit/internal-api-throttle.u
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { AuthGuard } from './guards/auth.guard';
 import { CsrfOriginGuard } from './guards/csrf-origin.guard';
-import { RolesGuard } from './guards/roles.guard';
 import { AuditInterceptor } from './interceptors/audit.interceptor';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
 
@@ -55,8 +54,9 @@ const GLOBAL_THROTTLE_LIMIT = 100;
     },
     { provide: APP_GUARD, useClass: CsrfOriginGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // RolesGuard удалён в срезе A.4 вместе с последними @Roles(): доступ везде решается правами
+    // (AuthGuard + @Perm()), а роль — это только набор прав и ранг, не гейт сама по себе.
     { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     // ВАЖНО: должен идти после ResponseInterceptor. Interceptor-провайдеры оборачивают друг друга
     // в порядке регистрации — при таком порядке AuditInterceptor.tap() видит "сырой" возврат

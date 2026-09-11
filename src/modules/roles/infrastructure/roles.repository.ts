@@ -51,15 +51,6 @@ export class RolesRepository {
     });
   }
 
-  // Резолв легаси-ролей по коду (4 сидированные роли) — используется только
-  // UsersService.createWithRole() на трёх старых эндпоинтах (/admin/users/admins|...).
-  findByCode(code: string): Promise<Role | null> {
-    return this.repo.findOne({
-      where: { code },
-      relations: { permissions: true },
-    });
-  }
-
   create(data: CreateRoleRecord): Role {
     return this.repo.create(data);
   }

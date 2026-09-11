@@ -245,4 +245,64 @@ describe('Роль, заведённая из панели: доступ к эк
       '/admin/news': 200,
     });
   });
+
+  // Экран «Пользователи» должен уметь менять роль сотрудника, имея одно лишь users.manage —
+  // /admin/roles для этого не годится (он закрыт правом roles.manage). Отдельная ручка отдаёт
+  // не весь список, а только то, что этот актёр вправе назначить (canAssignRole), — ровно то,
+  // что попадёт в выпадающий список в панели (FULLSTACK_PLAN.md, срез A.4).
+  it('assignable-roles: только роли не выше своего ранга, без системных и без чужих прав', async () => {
+    const hrRole = await createRole(
+      'panel-role-hr',
+      [PERMISSIONS.USERS_MANAGE],
+      { rank: 20 },
+    );
+    // Ранг ниже, но право чужое — в список попасть не должна.
+    const foreignRole = await createRole(
+      'panel-role-foreign-perm',
+      [PERMISSIONS.CLIENTS_READ],
+      { rank: 5 },
+    );
+    const { cookie } = await loginAs('panel-hr', hrRole);
+
+    const response = await request(app.getHttpServer())
+      .get('/admin/users/assignable-roles')
+      .set('Cookie', cookie);
+    expect(response.status).toBe(200);
+
+    const codes = (response.body as { data: { code: string }[] }).data.map(
+      (role) => role.code,
+    );
+    expect(codes).toContain(hrRole.code); // свою роль назначить можно
+    expect(codes).not.toContain(foreignRole.code); // clients.read у актёра нет
+    expect(codes).not.toContain('admin'); // ранг 80 выше своего
+    expect(codes).not.toContain('developer'); // системная
+  });
+
+  // Роль в списке пользователей — не только код: панели нужны название (коды ролей из панели
+  // произвольны), ранг и is_system цели, иначе нечем решить, предлагать ли действия над строкой.
+  it('список пользователей отдаёт роль полем: id, название, ранг, is_system', async () => {
+    const role = await createRole('panel-role-lister', [
+      PERMISSIONS.USERS_MANAGE,
+    ]);
+    const { cookie } = await loginAs('panel-lister', role);
+
+    const response = await request(app.getHttpServer())
+      .get('/admin/users')
+      .set('Cookie', cookie);
+    expect(response.status).toBe(200);
+
+    const items = (
+      response.body as { data: { items: Record<string, unknown>[] } }
+    ).data.items;
+    expect(items.length).toBeGreaterThan(0);
+    expect(items[0]).toEqual(
+      expect.objectContaining({
+        role: expect.any(String) as string,
+        roleId: expect.any(Number) as number,
+        roleTitle: expect.any(String) as string,
+        roleRank: expect.any(Number) as number,
+        roleIsSystem: expect.any(Boolean) as boolean,
+      }),
+    );
+  });
 });

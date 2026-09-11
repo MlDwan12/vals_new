@@ -13,14 +13,14 @@ import { runTestMigrations, startTestDatabase } from './support/test-database';
 
 const ORIGIN = 'http://localhost:3001';
 
-// Отдельный файл (не внутри role-matrix.e2e-spec.ts): те же POST/PATCH/DELETE-роуты нельзя
-// проверить одним "GET-роут на группу" примером, как в role-matrix — гейты различаются ВНУТРИ
-// одной группы контроллера (createAdmin — DEVELOPER-only, createContentManager/
-// createClientManager — ADMIN_ROLES, update/remove — @Perm(USERS_MANAGE)), а гвард проверяет
-// метаданные конкретного МЕТОДА, не только класса. Свой /auth/login (throttle 10/мин на IP) —
-// свой testcontainers Postgres, как и в role-matrix, чтобы не делить бюджет логинов с другими
-// e2e-файлами.
-describe('UsersAdminController: гейты на POST/PATCH/DELETE (e2e)', () => {
+// Отдельный файл (не внутри role-matrix.e2e-spec.ts): role-matrix проверяет по одному GET-роуту
+// на группу, а здесь нужны мутирующие методы — гвард читает метаданные конкретного МЕТОДА, и
+// регрессия «право потерялось на PATCH, но осталось на GET» там не видна. Свой /auth/login
+// (throttle 10/мин на IP) — свой testcontainers Postgres, чтобы не делить бюджет логинов.
+//
+// Тесты трёх легаси-ручек создания (/admin/users/admins|content-managers|client-managers)
+// удалены вместе с самими ручками в срезе A.4.
+describe('UsersAdminController: гейты на PATCH/DELETE (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
@@ -100,102 +100,6 @@ describe('UsersAdminController: гейты на POST/PATCH/DELETE (e2e)', () => 
     uniqueSuffix += 1;
     return `${prefix}-${uniqueSuffix}-${Date.now()}`;
   }
-
-  // Проверяем не только HTTP-статус, но и реально сохранённую роль в БД — иначе регрессия вида
-  // «createContentManager по ошибке вызвал createWithRole(..., Role.CLIENT_MANAGER)» (перепутаны
-  // соседние почти одинаковые хендлеры в users-admin.controller.ts) осталась бы незамеченной:
-  // 201/403 были бы теми же, что и при правильной реализации.
-  async function expectCreatedWithRole(
-    path: string,
-    role: Role,
-    usernamePrefix: string,
-    expectedAssignedRole: Role,
-  ): Promise<void> {
-    const username = uniqueUsername(usernamePrefix);
-    const response = await request(app.getHttpServer())
-      .post(path)
-      .set('Origin', ORIGIN)
-      .set('Cookie', cookiesByRole.get(role)!)
-      .send({ username, password: 'NewPass123!' });
-    expect({ role, status: response.status }).toEqual({ role, status: 201 });
-
-    const created = await users.findOneOrFail({
-      where: { username },
-      relations: { role: true },
-    });
-    expect(created.role.code).toBe(expectedAssignedRole);
-  }
-
-  it('POST /admin/users/admins — только DEVELOPER, остальные 403, роль сохраняется верно', async () => {
-    for (const role of ALL_TEST_ROLES) {
-      if (role === Role.DEVELOPER) {
-        await expectCreatedWithRole(
-          '/admin/users/admins',
-          role,
-          'new-admin',
-          Role.ADMIN,
-        );
-        continue;
-      }
-      const response = await request(app.getHttpServer())
-        .post('/admin/users/admins')
-        .set('Origin', ORIGIN)
-        .set('Cookie', cookiesByRole.get(role)!)
-        .send({
-          username: uniqueUsername('new-admin'),
-          password: 'NewPass123!',
-        });
-      expect({ role, status: response.status }).toEqual({ role, status: 403 });
-    }
-  });
-
-  it('POST /admin/users/content-managers — DEVELOPER и ADMIN, остальные 403, роль сохраняется верно', async () => {
-    const allowed = [Role.DEVELOPER, Role.ADMIN];
-    for (const role of ALL_TEST_ROLES) {
-      if (allowed.includes(role)) {
-        await expectCreatedWithRole(
-          '/admin/users/content-managers',
-          role,
-          'new-content-manager',
-          Role.CONTENT_MANAGER,
-        );
-        continue;
-      }
-      const response = await request(app.getHttpServer())
-        .post('/admin/users/content-managers')
-        .set('Origin', ORIGIN)
-        .set('Cookie', cookiesByRole.get(role)!)
-        .send({
-          username: uniqueUsername('new-content-manager'),
-          password: 'NewPass123!',
-        });
-      expect({ role, status: response.status }).toEqual({ role, status: 403 });
-    }
-  });
-
-  it('POST /admin/users/client-managers — DEVELOPER и ADMIN, остальные 403, роль сохраняется верно', async () => {
-    const allowed = [Role.DEVELOPER, Role.ADMIN];
-    for (const role of ALL_TEST_ROLES) {
-      if (allowed.includes(role)) {
-        await expectCreatedWithRole(
-          '/admin/users/client-managers',
-          role,
-          'new-client-manager',
-          Role.CLIENT_MANAGER,
-        );
-        continue;
-      }
-      const response = await request(app.getHttpServer())
-        .post('/admin/users/client-managers')
-        .set('Origin', ORIGIN)
-        .set('Cookie', cookiesByRole.get(role)!)
-        .send({
-          username: uniqueUsername('new-client-manager'),
-          password: 'NewPass123!',
-        });
-      expect({ role, status: response.status }).toEqual({ role, status: 403 });
-    }
-  });
 
   // Раньше здесь было «только DEVELOPER»: PATCH/DELETE сидели на легаси-@Roles(Role.DEVELOPER),
   // хотя соседние ручки того же контроллера (смена роли, срок доступа) давно на

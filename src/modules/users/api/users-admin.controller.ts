@@ -13,18 +13,15 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ADMIN_ROLES } from '../../../core/enums/role-groups.constant';
-import { Role } from '../../../core/enums/role.enum';
 import { Audit } from '../../../core/decorators/audit.decorator';
 import { Perm } from '../../../core/decorators/perm.decorator';
-import { Roles } from '../../../core/decorators/roles.decorator';
 import { AuthenticatedRequestUser } from '../../../core/guards/auth.guard';
 import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { PERMISSIONS } from '../../../core/permissions/permission.registry';
+import { RoleResponseDto } from '../../roles/dto/role-response.dto';
 import { UsersService } from '../application/users.service';
 import { ChangeUserRoleDto } from '../dto/change-user-role.dto';
-import { CreateUserDto } from '../dto/create-user.dto';
 import { CreateUserWithRoleDto } from '../dto/create-user-with-role.dto';
 import { ExpiringUsersQueryDto } from '../dto/expiring-users-query.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
@@ -42,43 +39,10 @@ const DEFAULT_EXPIRING_DAYS = 14;
 export class UsersAdminController {
   constructor(private readonly usersService: UsersService) {}
 
-  // --- Легаси-путь (роль фиксирована путём, не телом) — единственное место, где остался
-  // @Roles(): createWithRole() не проверяет actor'а (в отличие от createWithRoleId с
-  // canAssignRole), поэтому перевод этих трёх на @Perm(USERS_MANAGE) выдал бы держателю права
-  // возможность завести себе пользователя старшей роли. Уходят вместе с переводом админки на
-  // POST /admin/users (FULLSTACK_PLAN.md, срез A.4).
-  @Post('content-managers')
-  @Roles(...ADMIN_ROLES)
-  async createContentManager(@Body() dto: CreateUserDto): Promise<void> {
-    await this.usersService.createWithRole(
-      dto.username,
-      dto.password,
-      Role.CONTENT_MANAGER,
-    );
-  }
-
-  @Post('client-managers')
-  @Roles(...ADMIN_ROLES)
-  async createClientManager(@Body() dto: CreateUserDto): Promise<void> {
-    await this.usersService.createWithRole(
-      dto.username,
-      dto.password,
-      Role.CLIENT_MANAGER,
-    );
-  }
-
-  @Post('admins')
-  @Roles(Role.DEVELOPER)
-  async createAdmin(@Body() dto: CreateUserDto): Promise<void> {
-    await this.usersService.createWithRole(
-      dto.username,
-      dto.password,
-      Role.ADMIN,
-    );
-  }
-
-  // --- Новый универсальный путь (EXPANSION_TASKS.md §1) — под любую роль, включая заведённые
-  // из панели.
+  // Три легаси-ручки создания (/admin/users/content-managers|client-managers|admins) удалены
+  // в срезе A.4 вместе с переводом админки на POST /admin/users: роль там фиксировалась путём,
+  // а createWithRole() не проверял актёра — единственное место в модуле, где можно было завести
+  // пользователя роли старше своей. Заодно ушёл последний @Roles() в проекте.
   @Post()
   @Perm(PERMISSIONS.USERS_MANAGE)
   async create(
@@ -86,6 +50,14 @@ export class UsersAdminController {
     @Body() dto: CreateUserWithRoleDto,
   ): Promise<void> {
     await this.usersService.createWithRoleId(req.user, dto);
+  }
+
+  // До @Get(':id') — Nest матчит роуты в порядке объявления, иначе 'assignable-roles' уехало бы
+  // в ParseIntPipe как id.
+  @Get('assignable-roles')
+  @Perm(PERMISSIONS.USERS_MANAGE)
+  findAssignableRoles(@Req() req: RequestWithUser): Promise<RoleResponseDto[]> {
+    return this.usersService.findAssignableRoles(req.user);
   }
 
   @Get('expiring')

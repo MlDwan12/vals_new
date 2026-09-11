@@ -71,7 +71,6 @@ function buildRepositories(): {
   } as unknown as jest.Mocked<UsersRepository>;
   const rolesRepository = {
     findById: jest.fn(),
-    findByCode: jest.fn(),
   } as unknown as jest.Mocked<RolesRepository>;
   return { usersRepository, rolesRepository, guardMock, updateMock };
 }
