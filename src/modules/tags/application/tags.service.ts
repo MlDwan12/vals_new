@@ -11,6 +11,7 @@ import {
   isUniqueViolation,
 } from '../../../core/persistence/postgres-error.util';
 import { CreateTagDto } from '../dto/create-tag.dto';
+import { TagContentType } from '../dto/tag-public-list-query.dto';
 import { TagResponseDto } from '../dto/tag-response.dto';
 import { TagWithCountsResponseDto } from '../dto/tag-with-counts-response.dto';
 import { UpdateTagDto } from '../dto/update-tag.dto';
@@ -144,7 +145,7 @@ export class TagsService {
     return rows.map((row) => TagWithCountsResponseDto.fromRow(row));
   }
 
-  async findPublicList(type?: 'article' | 'case'): Promise<TagResponseDto[]> {
+  async findPublicList(type?: TagContentType): Promise<TagResponseDto[]> {
     const tags = await this.tagsRepository.findPublicList(type);
     return tags.map((tag) => TagResponseDto.fromEntity(tag));
   }

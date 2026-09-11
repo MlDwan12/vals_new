@@ -4,6 +4,7 @@ import { ILike, In, Not, Repository } from 'typeorm';
 import { assertRawRowShape } from '../../../core/persistence/assert-raw-row-shape.util';
 import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { isEmptyPatch } from '../../../core/persistence/is-empty-patch.util';
+import { TagContentType } from '../dto/tag-public-list-query.dto';
 import { TagWithCountsRow } from '../dto/tag-with-counts-response.dto';
 import { Tag } from '../domain/tag.entity';
 
@@ -14,6 +15,44 @@ interface CreateTagRecord {
 }
 
 type UpdateTagRecord = Partial<CreateTagRecord>;
+
+interface TagSource {
+  // Таблица связи «материал ↔ тег» и её алиас в подзапросе (алиасы обязаны различаться: все
+  // источники склеиваются одним UNION).
+  joinTable: string;
+  joinAlias: string;
+  // Колонка связи, указывающая на материал.
+  foreignKey: string;
+  // Таблица материалов — из неё берётся date_published.
+  table: string;
+  tableAlias: string;
+}
+
+// Где живут теги каждого типа контента. Все три устроены одинаково: <тип>_tags(tag_id, <тип>_id)
+// плюс таблица материалов с date_published.
+const TAG_SOURCES: Record<TagContentType, TagSource> = {
+  article: {
+    joinTable: 'article_tags',
+    joinAlias: 'at',
+    foreignKey: 'article_id',
+    table: 'articles',
+    tableAlias: 'a',
+  },
+  case: {
+    joinTable: 'case_tags',
+    joinAlias: 'ct',
+    foreignKey: 'case_id',
+    table: 'cases',
+    tableAlias: 'c',
+  },
+  news: {
+    joinTable: 'news_tags',
+    joinAlias: 'nt',
+    foreignKey: 'news_id',
+    table: 'news',
+    tableAlias: 'n',
+  },
+};
 
 @Injectable()
 export class TagsRepository {
@@ -61,12 +100,15 @@ export class TagsRepository {
     await this.repo.delete(id);
   }
 
-  // Админ-таблица — тегов мало, список без пагинации, с количеством привязанных статей/кейсов.
+  // Админ-таблица — тегов мало, список без пагинации, с количеством привязанных материалов.
+  // Новости считаются наравне со статьями и кейсами: без этого тег, использованный только в
+  // новостях, выглядел бы в таблице как ничей (0/0), хотя удалить его база не даст.
   async findAllWithCounts(): Promise<TagWithCountsRow[]> {
     const rows = await this.repo
       .createQueryBuilder('tag')
       .leftJoin('article_tags', 'at', 'at.tag_id = tag.id')
       .leftJoin('case_tags', 'ct', 'ct.tag_id = tag.id')
+      .leftJoin('news_tags', 'nt', 'nt.tag_id = tag.id')
       .select([
         'tag.id AS id',
         'tag.slug AS slug',
@@ -75,6 +117,7 @@ export class TagsRepository {
       ])
       .addSelect('COUNT(DISTINCT at.article_id)', 'articlesCount')
       .addSelect('COUNT(DISTINCT ct.case_id)', 'casesCount')
+      .addSelect('COUNT(DISTINCT nt.news_id)', 'newsCount')
       .groupBy('tag.id')
       .orderBy('tag.name', 'ASC')
       .getRawMany<{
@@ -84,6 +127,7 @@ export class TagsRepository {
         priority: number;
         articlesCount: string;
         casesCount: string;
+        newsCount: string;
       }>();
 
     rows.forEach((row) =>
@@ -101,38 +145,35 @@ export class TagsRepository {
       priority: row.priority,
       articlesCount: Number(row.articlesCount),
       casesCount: Number(row.casesCount),
+      newsCount: Number(row.newsCount),
     }));
   }
 
   // Публичный список для фильтра на сайте — только теги, реально использованные в опубликованном
-  // контенте. `type` сужает до одного источника (статьи/кейсы), без него — объединение обоих.
-  findPublicList(type?: 'article' | 'case'): Promise<Tag[]> {
+  // контенте. `type` сужает до одного источника, без него — объединение всех.
+  findPublicList(type?: TagContentType): Promise<Tag[]> {
     const qb = this.repo.createQueryBuilder('tag');
 
-    const articleIdsSubquery = qb
-      .subQuery()
-      .select('at.tag_id')
-      .from('article_tags', 'at')
-      .innerJoin('articles', 'a', 'a.id = at.article_id')
-      .where('a.date_published IS NOT NULL')
-      .andWhere('a.date_published <= :now')
-      .getQuery();
+    // Подзапрос «tag_id, встречающиеся у опубликованных материалов этого типа». Все три таблицы
+    // связей устроены одинаково, поэтому параметризуем: третья копия того же SQL и тернарник на
+    // три ветки вместо двух — это ровно то место, где следующий тип контента (лендинги, срез F)
+    // снова потребует правки в двух местах.
+    const publishedTagIds = (source: TagSource) =>
+      qb
+        .subQuery()
+        .select(`${source.joinAlias}.tag_id`)
+        .from(source.joinTable, source.joinAlias)
+        .innerJoin(
+          source.table,
+          source.tableAlias,
+          `${source.tableAlias}.id = ${source.joinAlias}.${source.foreignKey}`,
+        )
+        .where(`${source.tableAlias}.date_published IS NOT NULL`)
+        .andWhere(`${source.tableAlias}.date_published <= :now`)
+        .getQuery();
 
-    const caseIdsSubquery = qb
-      .subQuery()
-      .select('ct.tag_id')
-      .from('case_tags', 'ct')
-      .innerJoin('cases', 'c', 'c.id = ct.case_id')
-      .where('c.date_published IS NOT NULL')
-      .andWhere('c.date_published <= :now')
-      .getQuery();
-
-    const usedTagIdsSubquery =
-      type === 'article'
-        ? articleIdsSubquery
-        : type === 'case'
-          ? caseIdsSubquery
-          : `${articleIdsSubquery} UNION ${caseIdsSubquery}`;
+    const sources = type ? [TAG_SOURCES[type]] : Object.values(TAG_SOURCES);
+    const usedTagIdsSubquery = sources.map(publishedTagIds).join(' UNION ');
 
     return qb
       .where(`tag.id IN (${usedTagIdsSubquery})`)

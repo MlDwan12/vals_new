@@ -5,6 +5,7 @@ export interface TagWithCountsRow {
   priority: number;
   articlesCount: number;
   casesCount: number;
+  newsCount: number;
 }
 
 // Проекция для админ-таблицы — тегов мало, пагинация там не нужна (см. TagsRepository.findAllWithCounts).
@@ -15,6 +16,7 @@ export class TagWithCountsResponseDto {
   priority: number;
   articlesCount: number;
   casesCount: number;
+  newsCount: number;
 
   static fromRow(row: TagWithCountsRow): TagWithCountsResponseDto {
     const dto = new TagWithCountsResponseDto();
@@ -24,6 +26,7 @@ export class TagWithCountsResponseDto {
     dto.priority = row.priority;
     dto.articlesCount = row.articlesCount;
     dto.casesCount = row.casesCount;
+    dto.newsCount = row.newsCount;
     return dto;
   }
 }
