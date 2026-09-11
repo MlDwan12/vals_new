@@ -59,20 +59,31 @@ function buildRepositories(): {
   rolesRepository: jest.Mocked<RolesRepository>;
   guardMock: jest.Mock;
   updateMock: jest.Mock;
+  createMock: jest.Mock;
+  findByUsernameMock: jest.Mock;
 } {
   const guardMock = jest.fn().mockResolvedValue('ok');
   const updateMock = jest.fn();
+  const createMock = jest.fn();
+  const findByUsernameMock = jest.fn();
   const usersRepository = {
     findById: jest.fn(),
-    findByUsername: jest.fn(),
-    create: jest.fn(),
+    findByUsername: findByUsernameMock,
+    create: createMock,
     update: updateMock,
     runGuardedBySystemRoleHeadcount: guardMock,
   } as unknown as jest.Mocked<UsersRepository>;
   const rolesRepository = {
     findById: jest.fn(),
   } as unknown as jest.Mocked<RolesRepository>;
-  return { usersRepository, rolesRepository, guardMock, updateMock };
+  return {
+    usersRepository,
+    rolesRepository,
+    guardMock,
+    updateMock,
+    createMock,
+    findByUsernameMock,
+  };
 }
 
 describe('UsersService.changeRole — §1.5', () => {
@@ -163,6 +174,8 @@ describe('UsersService.resetPassword — rank-барьер (закрытый /co
     usersRepository.findById.mockResolvedValue(
       buildUser({ role: buildRole({ rank: 100 }) }),
     );
+    // Права цели сервис читает отдельным запросом за ролью — барьер здесь строже рангового.
+    rolesRepository.findById.mockResolvedValue(buildRole({ rank: 100 }));
     const service = new UsersService(usersRepository, rolesRepository, {
       setContext: jest.fn(),
     } as never);
@@ -180,6 +193,7 @@ describe('UsersService.resetPassword — rank-барьер (закрытый /co
     usersRepository.findById.mockResolvedValue(
       buildUser({ role: buildRole({ rank: 40 }) }),
     );
+    rolesRepository.findById.mockResolvedValue(buildRole({ rank: 40 }));
     updateMock.mockResolvedValue(buildUser());
     const service = new UsersService(usersRepository, rolesRepository, {
       setContext: jest.fn(),
@@ -202,6 +216,44 @@ describe('UsersService.resetPassword — rank-барьер (закрытый /co
 // setAccessExpiry/resetPassword, но были без rank/is_system-проверки вообще — легаси-гейт
 // @Roles(Role.DEVELOPER) на роуте сам по себе не структурная гарантия (RolesService.update()
 // осознанно позволяет понизить ранг/снять is_system у самой роли developer).
+describe('UsersService.resetPassword — барьер по набору прав цели', () => {
+  it('равный ранг, но у цели есть чужое право — 403, пароль не тронут', async () => {
+    const { usersRepository, rolesRepository, updateMock } =
+      buildRepositories();
+    usersRepository.findById.mockResolvedValue(
+      buildUser({ role: buildRole({ rank: 40 }) }),
+    );
+    rolesRepository.findById.mockResolvedValue(
+      buildRole({
+        rank: 40,
+        permissions: [
+          {
+            id: 9,
+            code: PERMISSIONS.ARTICLES_WRITE,
+            title: '',
+            group: 'articles',
+          },
+        ],
+      }),
+    );
+    const service = new UsersService(usersRepository, rolesRepository, {
+      setContext: jest.fn(),
+    } as never);
+    const actor = buildActor({
+      rank: 40,
+      permissions: new Set([
+        PERMISSIONS.USERS_MANAGE,
+        PERMISSIONS.USERS_RESET_PASSWORD,
+      ]),
+    });
+
+    await expect(
+      service.resetPassword(actor, 2, { password: 'NewStrongPass123!' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('UsersService.update/remove — rank-барьер (закрытый /code-review high пробел)', () => {
   it('update() запрещает трогать пользователя с ролью выше своей', async () => {
     const { usersRepository, rolesRepository, updateMock } =
@@ -285,5 +337,96 @@ describe('UsersService.createWithRoleId — §1.3', () => {
         roleId: 1,
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+// Бессрочный доступ — отдельное право users.grant_permanent_access, явно не выданное ни одной
+// роли (миграция AddPermanentAccessPermission): учётка без срока не отвалится сама никогда, и
+// заводит такие только владелец системы. Проверка живёт в сервисе, а не в @Perm() на роуте —
+// она зависит от тела запроса (передан срок или нет).
+describe('UsersService — бессрочный доступ только с users.grant_permanent_access', () => {
+  const buildService = (repos: ReturnType<typeof buildRepositories>) =>
+    new UsersService(repos.usersRepository, repos.rolesRepository, {
+      setContext: jest.fn(),
+    } as never);
+
+  it('создание без срока: держателю одного users.manage — 403, пользователь не создан', async () => {
+    const repos = buildRepositories();
+    repos.rolesRepository.findById.mockResolvedValue(buildRole({ rank: 40 }));
+
+    await expect(
+      buildService(repos).createWithRoleId(buildActor({ rank: 80 }), {
+        username: 'newbie',
+        password: 'StrongPass123!',
+        roleId: 1,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repos.createMock).not.toHaveBeenCalled();
+  });
+
+  it('создание со сроком: тому же актёру — можно', async () => {
+    const repos = buildRepositories();
+    repos.rolesRepository.findById.mockResolvedValue(buildRole({ rank: 40 }));
+    repos.findByUsernameMock.mockResolvedValue(null);
+    repos.createMock.mockResolvedValue(buildUser());
+
+    await buildService(repos).createWithRoleId(buildActor({ rank: 80 }), {
+      username: 'newbie',
+      password: 'StrongPass123!',
+      roleId: 1,
+      accessExpiresAt: '2030-01-01T00:00:00.000Z',
+    });
+    expect(repos.createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('снятие срока у существующей учётки: без права — 403, запись не тронута', async () => {
+    const repos = buildRepositories();
+    repos.usersRepository.findById.mockResolvedValue(
+      buildUser({ role: buildRole({ rank: 40 }) }),
+    );
+
+    await expect(
+      buildService(repos).setAccessExpiry(buildActor({ rank: 80 }), 2, {
+        accessExpiresAt: null,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repos.updateMock).not.toHaveBeenCalled();
+  });
+
+  it('системная роль проходит байпасом — как на любой другой @Perm()', async () => {
+    const repos = buildRepositories();
+    repos.usersRepository.findById.mockResolvedValue(
+      buildUser({ role: buildRole({ rank: 40 }) }),
+    );
+    repos.updateMock.mockResolvedValue(buildUser());
+
+    await buildService(repos).setAccessExpiry(
+      buildActor({ rank: 100, isSystem: true, permissions: new Set() }),
+      2,
+      { accessExpiresAt: null },
+    );
+    expect(repos.updateMock).toHaveBeenCalledWith(2, {
+      accessExpiresAt: null,
+    });
+  });
+
+  it('явно выданное право работает без системной роли', async () => {
+    const repos = buildRepositories();
+    repos.usersRepository.findById.mockResolvedValue(
+      buildUser({ role: buildRole({ rank: 40 }) }),
+    );
+    repos.updateMock.mockResolvedValue(buildUser());
+
+    await buildService(repos).setAccessExpiry(
+      buildActor({
+        permissions: new Set([
+          PERMISSIONS.USERS_MANAGE,
+          PERMISSIONS.USERS_GRANT_PERMANENT_ACCESS,
+        ]),
+      }),
+      2,
+      { accessExpiresAt: null },
+    );
+    expect(repos.updateMock).toHaveBeenCalledTimes(1);
   });
 });

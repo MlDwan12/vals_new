@@ -278,6 +278,51 @@ describe('Роль, заведённая из панели: доступ к эк
     expect(codes).not.toContain('developer'); // системная
   });
 
+  // Бессрочный доступ — отдельное право users.grant_permanent_access, явно не выданное ни одной
+  // роли (миграция AddPermanentAccessPermission): учётка без даты окончания не отвалится сама
+  // никогда, и заводит такие только владелец системы. Проверка в сервисе, а не в @Perm() —
+  // она зависит от тела запроса, поэтому e2e тут не дублирует юнит-тесты, а проверяет проводку:
+  // код в реестре, право в БД, ручка отдаёт 403 именно на отсутствие срока.
+  it('users.manage без users.grant_permanent_access: учётку без срока завести нельзя, со сроком — можно', async () => {
+    const role = await createRole('panel-role-no-permanent', [
+      PERMISSIONS.USERS_MANAGE,
+    ]);
+    const { cookie } = await loginAs('panel-no-permanent', role);
+
+    const permanent = await request(app.getHttpServer())
+      .post('/admin/users')
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({
+        username: `permanent-${Date.now()}`,
+        password: 'NewPass123!',
+        roleId: role.id,
+      });
+    expect(permanent.status).toBe(403);
+
+    const username = `with-expiry-${Date.now()}`;
+    const withExpiry = await request(app.getHttpServer())
+      .post('/admin/users')
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({
+        username,
+        password: 'NewPass123!',
+        roleId: role.id,
+        accessExpiresAt: '2030-01-01T00:00:00.000Z',
+      });
+    expect(withExpiry.status).toBe(201);
+
+    // И снять срок у уже заведённого тоже нельзя — это та же выдача бессрочного доступа.
+    const created = await users.findOneByOrFail({ username });
+    const cleared = await request(app.getHttpServer())
+      .patch(`/admin/users/${created.id}/access-expiry`)
+      .set('Origin', ORIGIN)
+      .set('Cookie', cookie)
+      .send({ accessExpiresAt: null });
+    expect(cleared.status).toBe(403);
+  });
+
   // Роль в списке пользователей — не только код: панели нужны название (коды ролей из панели
   // произвольны), ранг и is_system цели, иначе нечем решить, предлагать ли действия над строкой.
   it('список пользователей отдаёт роль полем: id, название, ранг, is_system', async () => {

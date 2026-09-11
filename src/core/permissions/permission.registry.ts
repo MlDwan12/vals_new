@@ -40,6 +40,10 @@ export const PERMISSIONS = {
   // Отдельный код от USERS_MANAGE (EXPANSION_TASKS.md §1.6) — сброс чужого пароля отдаёт чужую
   // личность, это доверие другого уровня, чем обычная правка учётки.
   USERS_RESET_PASSWORD: 'users.reset_password',
+  // Тоже отдельный код: бессрочный доступ — это учётка, которая не отвалится сама никогда, и
+  // раздавать такие вправе только владелец системы. Явно не выдан ни одной роли (миграция
+  // AddPermanentAccessPermission), проходит его только системная роль — байпасом.
+  USERS_GRANT_PERMANENT_ACCESS: 'users.grant_permanent_access',
   ROLES_MANAGE: 'roles.manage',
   AUDIT_READ: 'audit.read',
   // Кросс-доменный код (как audit.read) — реиндексация дороже обычных CRUD-операций, осознанно

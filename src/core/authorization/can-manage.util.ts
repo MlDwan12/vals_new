@@ -43,6 +43,27 @@ export function canManageTargetUser(
   return target.rank <= actor.rank;
 }
 
+// Сброс чужого пароля — барьер строже, чем у отключения/удаления/смены роли. Там достаточно
+// «не выше по рангу»: иначе скомпрометированную учётку-ровню некому вырубить (см.
+// canManageTargetUser). Здесь ранга мало — сброс пароля отдаёт чужую личность целиком, вместе
+// со всем, что она может. Ранги назначаются руками, и две роли одного ранга запросто имеют
+// совершенно разные наборы прав: роль с users.reset_password ранга 40 сбрасывала пароль
+// контент-менеджеру того же ранга и получала его права (найдено прогоном эскалации, сессия
+// среза A). Поэтому дополнительно требуем: у цели нет права, которого нет у тебя самого — тот
+// же принцип, что и в canAssignRole, только применённый к «перехвату личности».
+export function canResetTargetUserPassword(
+  actor: ManageActor,
+  target: ManageTargetUser & { permissions: ReadonlySet<PermissionCode> },
+): boolean {
+  if (!canManageTargetUser(actor, target)) return false;
+  // canManageTargetUser уже вернул true по байпасу — здесь только не-системный актёр.
+  if (actor.isSystem) return true;
+  for (const code of target.permissions) {
+    if (!actor.permissions.has(code)) return false;
+  }
+  return true;
+}
+
 // Три независимых барьера (§1.3 + §1.1): не-системный актёр не может назначить системную роль
 // (иначе он выдал бы кому-то байпас, которого нет у него самого — см. комментарий у
 // ManageTargetRole.isSystem); ранг назначаемой роли не выше собственного; в ней нет права,

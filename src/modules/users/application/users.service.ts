@@ -11,12 +11,14 @@ import { PinoLogger } from 'nestjs-pino';
 import {
   canAssignRole,
   canManageTargetUser,
+  canResetTargetUserPassword,
 } from '../../../core/authorization/can-manage.util';
 import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
+import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { AuthenticatedRequestUser } from '../../../core/guards/auth.guard';
 import { permissionCodesOf } from '../../roles/domain/permission-codes.util';
 import { Role } from '../../roles/domain/role.entity';
@@ -120,6 +122,10 @@ export class UsersService {
   ): Promise<void> {
     const role = await this.resolveRoleOrFail(dto.roleId);
     this.assertCanAssignRole(actor, role);
+    // Не передали срок — значит заводят бессрочную учётку, а это отдельное право.
+    if (!dto.accessExpiresAt) {
+      this.assertCanGrantPermanentAccess(actor);
+    }
     await this.createInternal(
       dto.username,
       dto.password,
@@ -188,7 +194,9 @@ export class UsersService {
 
     // Снятие срока (null) не угрожает headcount системных ролей — защищать нужно только
     // УСТАНОВКУ срока (EXPANSION_TASKS.md §1.6: "ограничить сроком" последнего активного).
+    // Зато снятие срока — это и есть выдача бессрочного доступа, на неё нужно своё право.
     if (!dto.accessExpiresAt) {
+      this.assertCanGrantPermanentAccess(actor);
       const updated = await this.usersRepository.update(id, {
         accessExpiresAt: null,
       });
@@ -202,19 +210,41 @@ export class UsersService {
   }
 
   // Отдельное право от users.manage (EXPANSION_TASKS.md §1.6) — @Perm(USERS_RESET_PASSWORD)
-  // проверяется декоратором на роуте, но этого недостаточно самого по себе: без rank-проверки
-  // здесь держатель этого права мог бы сбросить пароль ЛЮБОГО пользователя, включая того, кто выше
+  // проверяется декоратором на роуте, но этого недостаточно самого по себе: без проверки здесь
+  // держатель этого права мог бы сбросить пароль ЛЮБОГО пользователя, включая того, кто выше
   // по рангу или системный — де-факто получить его личность (найдено /code-review high, реальный
   // privilege escalation — та же проверка, что у changeRole/setAccessExpiry, здесь отсутствовала).
+  // Барьер строже рангового: у цели не должно быть прав, которых нет у актёра — см.
+  // canResetTargetUserPassword.
   async resetPassword(
     actor: AuthenticatedRequestUser,
     id: number,
     dto: ResetPasswordDto,
   ): Promise<void> {
     const user = await this.findEntityById(id);
-    this.assertCanManageTargetUser(actor, user.role);
+    // Отдельный запрос за ролью: findById пользователя тянет роль без прав, а здесь барьер
+    // строже рангового и смотрит именно на набор прав цели (canResetTargetUserPassword).
+    const targetRole = await this.resolveRoleOrFail(user.roleId);
+    this.assertCanResetPassword(actor, targetRole);
     const passwordHash = await this.hashPassword(dto.password);
     await this.usersRepository.update(id, { password: passwordHash });
+  }
+
+  private assertCanResetPassword(
+    actor: AuthenticatedRequestUser,
+    targetRole: Role,
+  ): void {
+    const allowed = canResetTargetUserPassword(actor, {
+      rank: targetRole.rank,
+      isSystem: targetRole.isSystem,
+      permissions: permissionCodesOf(targetRole.permissions),
+    });
+    if (!allowed) {
+      throw new ForbiddenException(
+        'Нельзя сбросить пароль пользователю с ролью выше своей или с правом, которого нет ' +
+          'у вас самих',
+      );
+    }
   }
 
   // actor обязателен — без rank/is_system-проверки это была бы единственная мутирующая ручка в
@@ -316,6 +346,23 @@ export class UsersService {
         'Нельзя управлять пользователем с ролью выше своей',
       );
     }
+  }
+
+  // Бессрочный доступ (access_expires_at = NULL) — учётка, которая не отвалится сама никогда,
+  // и решение о ней принимает владелец системы, а не любой держатель users.manage. Право явно
+  // не выдано ни одной роли (миграция AddPermanentAccessPermission): его проходит системная
+  // роль — байпасом, как и любой другой @Perm(). Проверка живёт в сервисе, а не декоратором на
+  // роуте: она зависит от ТЕЛА запроса (срок передан или нет), а @Perm() тела не видит.
+  private assertCanGrantPermanentAccess(actor: AuthenticatedRequestUser): void {
+    if (
+      actor.isSystem ||
+      actor.permissions.has(PERMISSIONS.USERS_GRANT_PERMANENT_ACCESS)
+    ) {
+      return;
+    }
+    throw new ForbiddenException(
+      'Бессрочный доступ может выдать только главный разработчик — укажите дату окончания доступа',
+    );
   }
 
   private assertCanAssignRole(

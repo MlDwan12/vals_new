@@ -1,6 +1,7 @@
 import {
   canAssignRole,
   canManageTargetUser,
+  canResetTargetUserPassword,
   ManageActor,
   ManageTargetRole,
 } from './can-manage.util';
@@ -148,5 +149,69 @@ describe('canAssignRole', () => {
       permissions: new Set(),
     };
     expect(canAssignRole(actor, systemRole)).toBe(false);
+  });
+});
+
+// Сброс пароля — «перехват личности», барьер строже рангового: равный по рангу, но более
+// сильный по правам коллега иначе становится ступенькой наверх (найдено прогоном эскалации:
+// роль с users.reset_password ранга 40 сбрасывала пароль контент-менеджеру того же ранга).
+describe('canResetTargetUserPassword', () => {
+  const actor: ManageActor = {
+    rank: 40,
+    isSystem: false,
+    permissions: new Set(['users.manage', 'users.reset_password'] as const),
+  };
+
+  it('запрещает сброс равному по рангу, у которого есть чужое право', () => {
+    expect(
+      canResetTargetUserPassword(actor, {
+        rank: 40,
+        isSystem: false,
+        permissions: new Set(['articles.write'] as const),
+      }),
+    ).toBe(false);
+  });
+
+  it('разрешает сброс равному по рангу, если его права — подмножество своих', () => {
+    expect(
+      canResetTargetUserPassword(actor, {
+        rank: 40,
+        isSystem: false,
+        permissions: new Set(['users.manage'] as const),
+      }),
+    ).toBe(true);
+  });
+
+  it('ранговый барьер остаётся: цель выше по рангу — нет, даже с пустыми правами', () => {
+    expect(
+      canResetTargetUserPassword(actor, {
+        rank: 100,
+        isSystem: false,
+        permissions: new Set(),
+      }),
+    ).toBe(false);
+  });
+
+  it('системная цель — нет (как и в canManageTargetUser)', () => {
+    expect(
+      canResetTargetUserPassword(actor, {
+        rank: 10,
+        isSystem: true,
+        permissions: new Set(),
+      }),
+    ).toBe(false);
+  });
+
+  it('системный актёр проходит байпасом', () => {
+    expect(
+      canResetTargetUserPassword(
+        { rank: 1, isSystem: true, permissions: new Set() },
+        {
+          rank: 1000,
+          isSystem: false,
+          permissions: new Set(['roles.manage'] as const),
+        },
+      ),
+    ).toBe(true);
   });
 });

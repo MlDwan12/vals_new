@@ -199,4 +199,96 @@ describe('RBAC: нельзя выдать роль/право выше свое�
 
     expect(response.status).toBe(403);
   });
+
+  // Сброс пароля — единственная ручка, где рангового барьера мало: он отдаёт чужую личность
+  // целиком. Ранги назначаются руками, и две роли ОДНОГО ранга запросто имеют разные наборы
+  // прав — тогда «равный управляет равным» (нужное послабление, чтобы скомпрометированную
+  // учётку-ровню было кому вырубить) превращается в ступеньку наверх. Найдено прогоном
+  // эскалации на срезе A, закрыто canResetTargetUserPassword.
+  it('PATCH /admin/users/:id/password: равный по рангу, но с чужими правами — 403, со своими — 204', async () => {
+    const [usersManage, resetPassword, auditRead] = await Promise.all([
+      permissionsRepo.findOneByOrFail({ code: PERMISSIONS.USERS_MANAGE }),
+      permissionsRepo.findOneByOrFail({
+        code: PERMISSIONS.USERS_RESET_PASSWORD,
+      }),
+      permissionsRepo.findOneByOrFail({ code: PERMISSIONS.AUDIT_READ }),
+    ]);
+
+    const stamp = Date.now();
+    const actorRole = await rolesRepo.save(
+      rolesRepo.create({
+        code: `pw-actor-${stamp}`,
+        title: 'Сбрасывающий пароли',
+        rank: 40,
+        isSystem: false,
+        permissions: [usersManage, resetPassword],
+      }),
+    );
+    // Тот же ранг 40, но с правом, которого у актёра нет.
+    const strongPeerRole = await rolesRepo.save(
+      rolesRepo.create({
+        code: `pw-strong-peer-${stamp}`,
+        title: 'Ровня посильнее',
+        rank: 40,
+        isSystem: false,
+        permissions: [auditRead],
+      }),
+    );
+    // Тот же ранг, права — подмножество прав актёра.
+    const weakPeerRole = await rolesRepo.save(
+      rolesRepo.create({
+        code: `pw-weak-peer-${stamp}`,
+        title: 'Ровня послабее',
+        rank: 40,
+        isSystem: false,
+        permissions: [usersManage],
+      }),
+    );
+
+    const passwordHash = await bcrypt.hash('PeerPass123!', 4);
+    const [, strongPeer, weakPeer] = await Promise.all([
+      users.save(
+        users.create({
+          username: `pw-actor-${stamp}`,
+          password: passwordHash,
+          roleId: actorRole.id,
+          isActive: true,
+        }),
+      ),
+      users.save(
+        users.create({
+          username: `pw-strong-peer-${stamp}`,
+          password: passwordHash,
+          roleId: strongPeerRole.id,
+          isActive: true,
+        }),
+      ),
+      users.save(
+        users.create({
+          username: `pw-weak-peer-${stamp}`,
+          password: passwordHash,
+          roleId: weakPeerRole.id,
+          isActive: true,
+        }),
+      ),
+    ]);
+
+    const cookie = await loginAs(`pw-actor-${stamp}`, 'PeerPass123!');
+
+    const [blocked, allowed] = await Promise.all([
+      request(app.getHttpServer())
+        .patch(`/admin/users/${strongPeer.id}/password`)
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookie)
+        .send({ password: 'HijackPass123!' }),
+      request(app.getHttpServer())
+        .patch(`/admin/users/${weakPeer.id}/password`)
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookie)
+        .send({ password: 'ResetPass123!' }),
+    ]);
+
+    expect(blocked.status).toBe(403);
+    expect(allowed.status).toBe(204);
+  });
 });
