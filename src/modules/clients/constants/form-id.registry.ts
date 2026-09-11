@@ -14,6 +14,18 @@ export const FORM_IDS = {
 
 export type FormId = (typeof FORM_IDS)[keyof typeof FORM_IDS];
 
+// Человекочитаемые названия форм — только для текста в COMMENTS лида Bitrix: менеджер читает
+// карточку глазами, и slug вида add-question ему ничего не говорит. В нашей базе и в фильтрах
+// админки везде остаётся slug.
+export const FORM_ID_LABELS: Record<FormId, string> = {
+  [FORM_IDS.FREE_CONSULTATION]: 'Бесплатная консультация',
+  [FORM_IDS.FREE_AUDIT]: 'Бесплатный аудит',
+  [FORM_IDS.TARIFF_REQUEST]: 'Заявка на тариф',
+  [FORM_IDS.ADD_QUESTION]: 'Вопрос с сайта',
+  [FORM_IDS.PARTNER]: 'Заявка от партнёра',
+  [FORM_IDS.EXIT_INTENT]: 'Модалка при уходе со страницы',
+};
+
 const KNOWN_FORM_IDS = new Set<string>(Object.values(FORM_IDS));
 
 export function isKnownFormId(value: string): value is FormId {

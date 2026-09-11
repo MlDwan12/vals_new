@@ -45,6 +45,17 @@ export class LeadsService {
           )
         : null;
 
+    // Метки собираются до пейлоада: в Bitrix уезжает ровно то же, что ляжет в колонки
+    // client_leads — иначе незнакомый formId был бы null у нас и текстом в CRM, и две версии
+    // правды разошлись бы молча.
+    const source = {
+      formId: this.resolveFormId(dto.formId),
+      pagePath: dto.pagePath ?? null,
+      blockId: dto.blockId ?? null,
+      referrer: dto.referrer ?? null,
+      landingPath: dto.landingPath ?? null,
+    };
+
     const bitrixPayload = buildBitrixPayload({
       type: dto.type,
       name: dto.name,
@@ -53,14 +64,13 @@ export class LeadsService {
       message: dto.message ?? null,
       comment: dto.comment ?? null,
       tariff,
+      source,
     });
 
     const utm = parseUtm(dto.utm);
     if (utm) {
       Object.assign(bitrixPayload, utm);
     }
-
-    const formId = this.resolveFormId(dto.formId);
 
     // Остальные поля запроса (name/phone/email/type/message/comment) уже сохраняются как отдельные
     // типизированные колонки ClientLead — здесь нужен только тарифный снапшот и blockId (третье
@@ -87,10 +97,10 @@ export class LeadsService {
         utm,
         payload,
         bitrixPayload,
-        formId,
-        pagePath: dto.pagePath ?? null,
-        referrer: dto.referrer ?? null,
-        landingPath: dto.landingPath ?? null,
+        formId: source.formId,
+        pagePath: source.pagePath,
+        referrer: source.referrer,
+        landingPath: source.landingPath,
         userAgent,
       });
     } catch (error) {
