@@ -28,6 +28,7 @@ import { LandingResponseDto } from '../dto/landing-response.dto';
 import { LandingSitemapItemDto } from '../dto/landing-sitemap-item.dto';
 import { UpdateLandingDto } from '../dto/update-landing.dto';
 import { LandingsRepository } from '../infrastructure/landings.repository';
+import { ContentHtmlService } from '../../../core/content/content-html.service';
 
 @Injectable()
 export class LandingsService {
@@ -39,6 +40,7 @@ export class LandingsService {
     private readonly mediaRepository: MediaRepository,
     private readonly searchIndexService: SearchIndexService,
     private readonly landingFaqService: LandingFaqService,
+    private readonly contentHtmlService: ContentHtmlService,
   ) {}
 
   async create(dto: CreateLandingDto): Promise<LandingResponseDto> {
@@ -59,7 +61,11 @@ export class LandingsService {
       h1: dto.h1,
       subtitle: dto.subtitle,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      // HTML собирает бек; присланный клиентом остаётся запасным на случай сбоя сборки
+      // (переходный период среза X — в X.3 админка перестанет его слать).
+      contentHtml: this.contentHtmlService.render(dto.content, {
+        clientHtml: dto.contentHtml,
+      }),
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,
@@ -110,13 +116,23 @@ export class LandingsService {
       landing.cover = await this.resolveCover(dto.coverMediaId);
     }
 
+    // HTML пересобирается только вместе с контентом: без нового JSON прежний HTML ему и
+    // соответствует, а присланный клиентом сам по себе — не повод переписывать сохранённый.
+    const contentHtml =
+      dto.content === undefined
+        ? undefined
+        : this.contentHtmlService.render(dto.content, {
+            clientHtml: dto.contentHtml,
+            previousHtml: landing.contentHtml,
+          });
+
     applyDefinedFields(landing, {
       slug: dto.slug,
       title: dto.title,
       h1: dto.h1,
       subtitle: dto.subtitle,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      contentHtml,
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,

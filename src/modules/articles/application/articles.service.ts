@@ -30,6 +30,7 @@ import { ArticleSitemapItemDto } from '../dto/article-sitemap-item.dto';
 import { CreateArticleDto } from '../dto/create-article.dto';
 import { UpdateArticleDto } from '../dto/update-article.dto';
 import { ArticlesRepository } from '../infrastructure/articles.repository';
+import { ContentHtmlService } from '../../../core/content/content-html.service';
 
 @Injectable()
 export class ArticlesService {
@@ -40,6 +41,7 @@ export class ArticlesService {
     private readonly tagsRepository: TagsRepository,
     private readonly searchIndexService: SearchIndexService,
     private readonly articleFaqService: ArticleFaqService,
+    private readonly contentHtmlService: ContentHtmlService,
   ) {}
 
   async create(dto: CreateArticleDto): Promise<ArticleResponseDto> {
@@ -63,7 +65,11 @@ export class ArticlesService {
       title: dto.title,
       description: dto.description,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      // HTML собирает бек; присланный клиентом остаётся запасным на случай сбоя сборки
+      // (переходный период среза X — в X.3 админка перестанет его слать).
+      contentHtml: this.contentHtmlService.render(dto.content, {
+        clientHtml: dto.contentHtml,
+      }),
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,
@@ -119,12 +125,22 @@ export class ArticlesService {
         : null;
     }
 
+    // HTML пересобирается только вместе с контентом: без нового JSON прежний HTML ему и
+    // соответствует, а присланный клиентом сам по себе — не повод переписывать сохранённый.
+    const contentHtml =
+      dto.content === undefined
+        ? undefined
+        : this.contentHtmlService.render(dto.content, {
+            clientHtml: dto.contentHtml,
+            previousHtml: article.contentHtml,
+          });
+
     applyDefinedFields(article, {
       slug: dto.slug,
       title: dto.title,
       description: dto.description,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      contentHtml,
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,

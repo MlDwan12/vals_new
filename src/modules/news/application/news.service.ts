@@ -27,6 +27,7 @@ import { NewsResponseDto } from '../dto/news-response.dto';
 import { NewsSitemapItemDto } from '../dto/news-sitemap-item.dto';
 import { UpdateNewsDto } from '../dto/update-news.dto';
 import { NewsRepository } from '../infrastructure/news.repository';
+import { ContentHtmlService } from '../../../core/content/content-html.service';
 
 @Injectable()
 export class NewsService {
@@ -36,6 +37,7 @@ export class NewsService {
     private readonly mediaRepository: MediaRepository,
     private readonly tagsRepository: TagsRepository,
     private readonly searchIndexService: SearchIndexService,
+    private readonly contentHtmlService: ContentHtmlService,
   ) {}
 
   async create(dto: CreateNewsDto): Promise<NewsResponseDto> {
@@ -59,7 +61,11 @@ export class NewsService {
       title: dto.title,
       announce: dto.announce,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      // HTML собирает бек; присланный клиентом остаётся запасным на случай сбоя сборки
+      // (переходный период среза X — в X.3 админка перестанет его слать).
+      contentHtml: this.contentHtmlService.render(dto.content, {
+        clientHtml: dto.contentHtml,
+      }),
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,
@@ -111,12 +117,22 @@ export class NewsService {
         : null;
     }
 
+    // HTML пересобирается только вместе с контентом: без нового JSON прежний HTML ему и
+    // соответствует, а присланный клиентом сам по себе — не повод переписывать сохранённый.
+    const contentHtml =
+      dto.content === undefined
+        ? undefined
+        : this.contentHtmlService.render(dto.content, {
+            clientHtml: dto.contentHtml,
+            previousHtml: news.contentHtml,
+          });
+
     applyDefinedFields(news, {
       slug: dto.slug,
       title: dto.title,
       announce: dto.announce,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      contentHtml,
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,

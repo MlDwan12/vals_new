@@ -10,6 +10,7 @@ import { NewsReindexScheduler } from './application/news-reindex.scheduler';
 import { NewsService } from './application/news.service';
 import { News } from './domain/news.entity';
 import { NewsRepository } from './infrastructure/news.repository';
+import { ContentModule } from '../../core/content/content.module';
 
 @Module({
   imports: [
@@ -18,6 +19,8 @@ import { NewsRepository } from './infrastructure/news.repository';
     MediaModule,
     TagsModule,
     SearchModule,
+
+    ContentModule,
   ],
   controllers: [NewsController, NewsAdminController],
   providers: [NewsService, NewsRepository, NewsReindexScheduler],

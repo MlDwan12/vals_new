@@ -15,6 +15,7 @@ import { LandingFaq } from './domain/landing-faq.entity';
 import { Landing } from './domain/landing.entity';
 import { LandingFaqRepository } from './infrastructure/landing-faq.repository';
 import { LandingsRepository } from './infrastructure/landings.repository';
+import { ContentModule } from '../../core/content/content.module';
 
 @Module({
   imports: [
@@ -24,6 +25,8 @@ import { LandingsRepository } from './infrastructure/landings.repository';
     CasesModule,
     MediaModule,
     SearchModule,
+
+    ContentModule,
   ],
   controllers: [
     LandingsController,

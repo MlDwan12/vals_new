@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ContentModule } from '../../core/content/content.module';
 import { EmployeesModule } from '../employees/employees.module';
 import { MediaModule } from '../media/media.module';
 import { SearchModule } from '../search/search.module';
@@ -22,6 +23,7 @@ import { ArticlesRepository } from './infrastructure/articles.repository';
     MediaModule,
     TagsModule,
     SearchModule,
+    ContentModule,
   ],
   controllers: [
     ArticlesController,

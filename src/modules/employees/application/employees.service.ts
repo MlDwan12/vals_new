@@ -18,14 +18,28 @@ import { EmployeeMainInfoDto } from '../dto/employee-main-info.dto';
 import { EmployeeResponseDto } from '../dto/employee-response.dto';
 import { UpdateEmployeeDto } from '../dto/update-employee.dto';
 import { EmployeesRepository } from '../infrastructure/employees.repository';
+import { ContentHtmlService } from '../../../core/content/content-html.service';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly employeesRepository: EmployeesRepository) {}
+  constructor(
+    private readonly employeesRepository: EmployeesRepository,
+    private readonly contentHtmlService: ContentHtmlService,
+  ) {}
 
   async create(dto: CreateEmployeeDto): Promise<EmployeeResponseDto> {
     try {
-      const employee = await this.employeesRepository.create(dto);
+      const employee = await this.employeesRepository.create({
+        ...dto,
+        // HTML биографии собирает бек — присланный клиентом остаётся запасным (переходный период
+        // среза X). Без bio нечего и собирать: у сотрудника биография необязательна.
+        bioHtml:
+          dto.bio === undefined
+            ? undefined
+            : this.contentHtmlService.render(dto.bio, {
+                clientHtml: dto.bioHtml,
+              }),
+      });
       return EmployeeResponseDto.fromEntity(employee);
     } catch (error) {
       throw this.mapSlugConflict(error);
@@ -36,8 +50,24 @@ export class EmployeesService {
     id: number,
     dto: UpdateEmployeeDto,
   ): Promise<EmployeeResponseDto> {
+    // Сотрудник читается до правки ради прежнего HTML: он третий уровень запасного варианта, если
+    // сборка упадёт, а клиент HTML не прислал. Заодно 404 отвечается до попытки сохранения.
+    const existing = await this.employeesRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException(`Сотрудник с ID ${id} не найден`);
+    }
+
     try {
-      const updated = await this.employeesRepository.update(id, dto);
+      const updated = await this.employeesRepository.update(id, {
+        ...dto,
+        bioHtml:
+          dto.bio === undefined
+            ? undefined
+            : this.contentHtmlService.render(dto.bio, {
+                clientHtml: dto.bioHtml,
+                previousHtml: existing.bioHtml,
+              }),
+      });
       if (!updated) {
         throw new NotFoundException(`Сотрудник с ID ${id} не найден`);
       }

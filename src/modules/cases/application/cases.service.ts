@@ -35,6 +35,7 @@ import { CaseSitemapItemDto } from '../dto/case-sitemap-item.dto';
 import { CreateCaseDto } from '../dto/create-case.dto';
 import { UpdateCaseDto } from '../dto/update-case.dto';
 import { CasesRepository } from '../infrastructure/cases.repository';
+import { ContentHtmlService } from '../../../core/content/content-html.service';
 
 @Injectable()
 export class CasesService {
@@ -46,6 +47,7 @@ export class CasesService {
     private readonly tagsRepository: TagsRepository,
     private readonly searchIndexService: SearchIndexService,
     private readonly caseFaqService: CaseFaqService,
+    private readonly contentHtmlService: ContentHtmlService,
   ) {}
 
   async create(dto: CreateCaseDto): Promise<CaseResponseDto> {
@@ -78,7 +80,11 @@ export class CasesService {
       result: dto.result,
       industry: dto.industry,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      // HTML собирает бек; присланный клиентом остаётся запасным на случай сбоя сборки
+      // (переходный период среза X — в X.3 админка перестанет его слать).
+      contentHtml: this.contentHtmlService.render(dto.content, {
+        clientHtml: dto.contentHtml,
+      }),
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,
@@ -140,6 +146,16 @@ export class CasesService {
         : null;
     }
 
+    // HTML пересобирается только вместе с контентом: без нового JSON прежний HTML ему и
+    // соответствует, а присланный клиентом сам по себе — не повод переписывать сохранённый.
+    const contentHtml =
+      dto.content === undefined
+        ? undefined
+        : this.contentHtmlService.render(dto.content, {
+            clientHtml: dto.contentHtml,
+            previousHtml: caseEntity.contentHtml,
+          });
+
     applyDefinedFields(caseEntity, {
       slug: dto.slug,
       title: dto.title,
@@ -148,7 +164,7 @@ export class CasesService {
       result: dto.result,
       industry: dto.industry,
       content: dto.content,
-      contentHtml: dto.contentHtml,
+      contentHtml,
       metaTitle: dto.metaTitle,
       metaDescription: dto.metaDescription,
       keywords: dto.keywords,

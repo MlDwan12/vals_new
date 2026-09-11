@@ -15,6 +15,7 @@ import { CaseFaq } from './domain/case-faq.entity';
 import { Case } from './domain/case.entity';
 import { CaseFaqRepository } from './infrastructure/case-faq.repository';
 import { CasesRepository } from './infrastructure/cases.repository';
+import { ContentModule } from '../../core/content/content.module';
 
 @Module({
   imports: [
@@ -24,6 +25,8 @@ import { CasesRepository } from './infrastructure/cases.repository';
     TagsModule,
     ServicesModule,
     SearchModule,
+
+    ContentModule,
   ],
   controllers: [CasesController, CasesAdminController, CaseFaqAdminController],
   providers: [
