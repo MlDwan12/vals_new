@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsEnum,
   IsInt,
   IsISO8601,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
+import { AuditOutcome } from '../enums/audit-outcome.enum';
 
 export class AuditLogQueryDto extends PaginationQueryDto {
   @IsOptional()
@@ -31,6 +33,13 @@ export class AuditLogQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   resource?: string;
+
+  // Исход (успех / отказ / ошибка) вместо statusCode: половина журнала — отказы, и экрану нужно
+  // «покажи всё, кроме них». Через action такой фильтр не собирается — ACCESS_DENIED ставится
+  // только HttpExceptionFilter'ом, а 400/404 приходят с обычными CREATE/UPDATE.
+  @IsOptional()
+  @IsEnum(AuditOutcome)
+  outcome?: AuditOutcome;
 
   @IsOptional()
   @IsISO8601()

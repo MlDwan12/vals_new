@@ -7,6 +7,7 @@ import {
 import { AuditLogResponseDto } from '../dto/audit-log-response.dto';
 import { AuditLogQueryDto } from '../dto/audit-log-query.dto';
 import {
+  AuditLogFacets,
   AuditLogRepository,
   CreateAuditLogRecord,
 } from '../infrastructure/audit-log.repository';
@@ -42,6 +43,7 @@ export class AuditService {
       username: query.username,
       action: query.action,
       resource: query.resource,
+      outcome: query.outcome,
       dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
       dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
     });
@@ -52,5 +54,10 @@ export class AuditService {
       query.page,
       query.limit,
     );
+  }
+
+  // Значения для селектов фильтра — те, что реально встречаются в журнале.
+  findFacets(): Promise<AuditLogFacets> {
+    return this.repository.findFacets();
   }
 }

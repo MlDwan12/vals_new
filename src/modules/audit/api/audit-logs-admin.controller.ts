@@ -5,6 +5,7 @@ import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { AuditService } from '../application/audit.service';
 import { AuditLogQueryDto } from '../dto/audit-log-query.dto';
 import { AuditLogResponseDto } from '../dto/audit-log-response.dto';
+import { AuditLogFacets } from '../infrastructure/audit-log.repository';
 
 @Controller('audit-logs')
 @Perm(PERMISSIONS.AUDIT_READ)
@@ -16,5 +17,12 @@ export class AuditLogsAdminController {
     @Query() query: AuditLogQueryDto,
   ): Promise<PaginatedResult<AuditLogResponseDto>> {
     return this.auditService.findAll(query);
+  }
+
+  // Значения для селектов фильтра. Объявлен после @Get() — параметрических маршрутов в этом
+  // контроллере нет, так что порядок ничего не перехватывает.
+  @Get('facets')
+  findFacets(): Promise<AuditLogFacets> {
+    return this.auditService.findFacets();
   }
 }
