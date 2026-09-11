@@ -15,6 +15,7 @@ import {
   resolveAuditResource,
   resolveClientIp,
 } from '../audit/resolve-audit-context.util';
+import { sanitizeAuditBody } from '../audit/sanitize-audit-body.util';
 import { AuthenticatedRequestUser } from '../guards/auth.guard';
 import { ErrorCode } from '../exceptions/error-code.enum';
 
@@ -224,7 +225,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       errorMessage,
       ip,
-      meta: null,
+      // У неудавшейся мутации тело запроса — самое интересное: текст отказа говорит «обложка
+      // с ID 9999 не существует», а что именно пытались сохранить, видно только отсюда. Раньше
+      // здесь всегда стоял null, и разбирать ошибку приходилось по адресу запроса.
+      //
+      // Только для запросов вошедшего сотрудника: у публичных мутаций (заявка с сайта, попытка
+      // логина) `user` не выставлен, и их тело в журнал не попадает — ровно та же осторожность,
+      // что у AuditInterceptor с @Public-роутами (там сырые phone/email/name заявки намеренно не
+      // дублируются в audit_logs под общей retention-политикой). Проверка по `user`, а не по
+      // списку путей: новый публичный роут унаследует безопасный дефолт сам.
+      meta:
+        isMutation && user !== undefined
+          ? (sanitizeAuditBody(request.body) ?? null)
+          : null,
       // Этот путь никогда не смотрит на @Audit — только AuditInterceptor (успешные мутации) это
       // делает (EXPANSION_TASKS.md §2.3), поэтому здесь всегда автоправило.
       signed: false,
