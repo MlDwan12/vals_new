@@ -6,8 +6,11 @@ import { PinoLogger } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { EnvConfig } from '../../../config/env.validation';
 import { User } from '../../users/domain/user.entity';
+import {
+  AuthContextService,
+  RequestAuthContext,
+} from '../../users/application/auth-context.service';
 import { UsersService } from '../../users/application/users.service';
-import { UserResponseDto } from '../../users/dto/user-response.dto';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_RACE_GRACE_MS,
@@ -41,6 +44,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<EnvConfig, true>,
     private readonly usersService: UsersService,
+    private readonly authContextService: AuthContextService,
     private readonly refreshSessionsRepository: RefreshSessionsRepository,
     private readonly logger: PinoLogger,
   ) {
@@ -176,8 +180,11 @@ export class AuthService {
     }
   }
 
-  getMe(userId: number): Promise<UserResponseDto> {
-    return this.usersService.findById(userId);
+  // Профиль для ответа /auth/login — тот же самый объект, который AuthGuard кладёт в
+  // request.user на каждом защищённом запросе (роль, ранг, is_system, коды прав живьём из БД).
+  // /auth/me его уже не запрашивает: там этот контекст посчитан гвардом на том же запросе.
+  getProfile(userId: number): Promise<RequestAuthContext> {
+    return this.authContextService.resolveRequestUser(userId);
   }
 
   private async issueTokens(

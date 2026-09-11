@@ -25,6 +25,7 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
 } from '../auth.constants';
 import { AuthService, AuthTokens } from '../application/auth.service';
+import { AuthProfileDto } from '../dto/auth-profile.dto';
 import { LoginDto } from '../dto/login.dto';
 import { LoginUsernameThrottleGuard } from '../guards/login-username-throttle.guard';
 import { RefreshAuthGuard } from '../guards/refresh-auth.guard';
@@ -36,11 +37,6 @@ interface RequestWithRefreshUser extends Request {
 
 interface RequestWithAccessUser extends Request {
   user: AuthenticatedRequestUser;
-}
-
-interface WhoAmI {
-  username: string;
-  role: string;
 }
 
 // Общий текст и на "нет такого логина", и на "неверный пароль" (анти-энумерация, M10 в журнале) —
@@ -67,7 +63,7 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<WhoAmI> {
+  ): Promise<AuthProfileDto> {
     const result = await this.authService.validateUser(
       dto.username,
       dto.password,
@@ -87,7 +83,12 @@ export class AuthController {
     const tokens = await this.authService.login(user, fingerprintOf(req));
     this.setCookies(res, tokens);
 
-    return { username: user.username, role: user.role.code };
+    // Тот же профиль, что и у /auth/me: админка кладёт ответ логина прямо в стор и строит по
+    // нему гейт — отдай здесь урезанное {username, role}, и до первого /auth/me все разделы были
+    // бы закрыты (FULLSTACK_PLAN.md, срез A.1).
+    return AuthProfileDto.fromRequestUser(
+      await this.authService.getProfile(user.id),
+    );
   }
 
   @Public()
@@ -116,10 +117,12 @@ export class AuthController {
     return { message: 'logged out' };
   }
 
+  // Без обращения к БД: AuthGuard на этом же запросе уже прочитал роль/права/isActive/
+  // access_expires_at живьём (AuthContextService) и положил результат в request.user — второй
+  // запрос за тем же самым был бы чистой тратой.
   @Get('me')
-  async me(@Req() req: RequestWithAccessUser): Promise<WhoAmI> {
-    const user = await this.authService.getMe(req.user.sub);
-    return { username: user.username, role: user.role };
+  me(@Req() req: RequestWithAccessUser): AuthProfileDto {
+    return AuthProfileDto.fromRequestUser(req.user);
   }
 
   private setCookies(res: Response, tokens: AuthTokens): void {

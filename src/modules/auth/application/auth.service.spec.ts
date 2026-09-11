@@ -51,10 +51,15 @@ function createService(overrides: {
     warn: jest.fn(),
   } as unknown as PinoLogger;
 
+  // authContextService в этих тестах не участвует (он нужен только getProfile на /auth/login) —
+  // пустой заглушкой, чтобы не размывать фокус файла на гонке ротации.
+  const authContextService = { resolveRequestUser: jest.fn() };
+
   const service = new AuthService(
     jwtService as never,
     configService as never,
     usersService as never,
+    authContextService as never,
     refreshSessionsRepository as never,
     logger,
   );

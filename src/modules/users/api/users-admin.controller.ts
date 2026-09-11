@@ -42,8 +42,11 @@ const DEFAULT_EXPIRING_DAYS = 14;
 export class UsersAdminController {
   constructor(private readonly usersService: UsersService) {}
 
-  // --- Легаси-путь (роль фиксирована путём, не телом) — не трогаем, фронта под перевод на
-  // POST /admin/users нет в этой сессии (EXPANSION_TASKS.md §1.7).
+  // --- Легаси-путь (роль фиксирована путём, не телом) — единственное место, где остался
+  // @Roles(): createWithRole() не проверяет actor'а (в отличие от createWithRoleId с
+  // canAssignRole), поэтому перевод этих трёх на @Perm(USERS_MANAGE) выдал бы держателю права
+  // возможность завести себе пользователя старшей роли. Уходят вместе с переводом админки на
+  // POST /admin/users (FULLSTACK_PLAN.md, срез A.4).
   @Post('content-managers')
   @Roles(...ADMIN_ROLES)
   async createContentManager(@Body() dto: CreateUserDto): Promise<void> {
@@ -94,7 +97,7 @@ export class UsersAdminController {
   }
 
   @Get()
-  @Roles(...ADMIN_ROLES)
+  @Perm(PERMISSIONS.USERS_MANAGE)
   paginate(
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedResult<UserResponseDto>> {
@@ -102,7 +105,7 @@ export class UsersAdminController {
   }
 
   @Get(':id')
-  @Roles(...ADMIN_ROLES)
+  @Perm(PERMISSIONS.USERS_MANAGE)
   findById(@Param('id', ParseIntPipe) id: number): Promise<UserResponseDto> {
     return this.usersService.findById(id);
   }
@@ -143,8 +146,11 @@ export class UsersAdminController {
     await this.usersService.resetPassword(req.user, id, dto);
   }
 
+  // users.manage, а не developer-only: рангом и is_system цель защищена в самом сервисе
+  // (canManageTargetUser), а держатель права уже может сменить цели роль и срок доступа
+  // соседними ручками — запрет на переименование/отключение был только легаси-перекосом.
   @Patch(':id')
-  @Roles(Role.DEVELOPER)
+  @Perm(PERMISSIONS.USERS_MANAGE)
   update(
     @Req() req: RequestWithUser,
     @Param('id', ParseIntPipe) id: number,
@@ -154,7 +160,7 @@ export class UsersAdminController {
   }
 
   @Delete(':id')
-  @Roles(Role.DEVELOPER)
+  @Perm(PERMISSIONS.USERS_MANAGE)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Req() req: RequestWithUser,

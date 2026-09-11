@@ -14,12 +14,13 @@ import { runTestMigrations, startTestDatabase } from './support/test-database';
 const ORIGIN = 'http://localhost:3001';
 
 // Отдельный файл (не внутри role-matrix.e2e-spec.ts): те же POST/PATCH/DELETE-роуты нельзя
-// проверить одним "GET-роут на группу" примером, как в role-matrix — у admin/users роли различаются
-// ВНУТРИ одной группы контроллера (createAdmin — DEVELOPER-only, createContentManager/
-// createClientManager — ADMIN_ROLES, update/remove — DEVELOPER-only), RolesGuard проверяет метаданные
-// конкретного МЕТОДА, не только класса. Свой /auth/login (throttle 10/мин на IP) — свой testcontainers
-// Postgres, как и в role-matrix, чтобы не делить бюджет логинов с другими e2e-файлами.
-describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)', () => {
+// проверить одним "GET-роут на группу" примером, как в role-matrix — гейты различаются ВНУТРИ
+// одной группы контроллера (createAdmin — DEVELOPER-only, createContentManager/
+// createClientManager — ADMIN_ROLES, update/remove — @Perm(USERS_MANAGE)), а гвард проверяет
+// метаданные конкретного МЕТОДА, не только класса. Свой /auth/login (throttle 10/мин на IP) —
+// свой testcontainers Postgres, как и в role-matrix, чтобы не делить бюджет логинов с другими
+// e2e-файлами.
+describe('UsersAdminController: гейты на POST/PATCH/DELETE (e2e)', () => {
   let app: INestApplication;
   let postgres: StartedTestContainer;
   let users: Repository<User>;
@@ -60,6 +61,14 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     Role.CONTENT_MANAGER,
     Role.CLIENT_MANAGER,
   ];
+
+  // admin несёт весь реестр прав (сид AddRolesAndPermissions), в том числе users.manage;
+  // developer — системная роль и проходит байпасом. У content_manager/client_manager этого
+  // права нет.
+  const ROLES_WITH_USERS_MANAGE = [Role.DEVELOPER, Role.ADMIN];
+  const ROLES_WITHOUT_USERS_MANAGE = ALL_TEST_ROLES.filter(
+    (role) => !ROLES_WITH_USERS_MANAGE.includes(role),
+  );
 
   const cookiesByRole = new Map<Role, string>();
 
@@ -188,22 +197,24 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     }
   });
 
-  it('PATCH /admin/users/:id — только DEVELOPER, остальные 403 без изменения записи', async () => {
-    const targetHash = await bcrypt.hash('TargetPass123!', 4);
-    const targetRoleId = await resolveRoleId(moduleRef, Role.CONTENT_MANAGER);
-    const target = await users.save(
-      users.create({
-        username: uniqueUsername('patch-target'),
-        password: targetHash,
-        roleId: targetRoleId,
-        isActive: true,
-      }),
-    );
+  // Раньше здесь было «только DEVELOPER»: PATCH/DELETE сидели на легаси-@Roles(Role.DEVELOPER),
+  // хотя соседние ручки того же контроллера (смена роли, срок доступа) давно на
+  // @Perm(USERS_MANAGE). Срез A.1 убрал перекос — гейт у всех один, а цель по-прежнему защищена
+  // рангом и is_system в самом сервисе (canManageTargetUser).
+  it('PATCH /admin/users/:id — роли с users.manage, остальные 403 без изменения записи', async () => {
+    const createTarget = async () =>
+      users.save(
+        users.create({
+          username: uniqueUsername('patch-target'),
+          password: await bcrypt.hash('TargetPass123!', 4),
+          roleId: await resolveRoleId(moduleRef, Role.CONTENT_MANAGER),
+          isActive: true,
+        }),
+      );
 
-    const nonDeveloperRoles = ALL_TEST_ROLES.filter(
-      (role) => role !== Role.DEVELOPER,
-    );
-    for (const role of nonDeveloperRoles) {
+    const target = await createTarget();
+
+    for (const role of ROLES_WITHOUT_USERS_MANAGE) {
       const response = await request(app.getHttpServer())
         .patch(`/admin/users/${target.id}`)
         .set('Origin', ORIGIN)
@@ -218,36 +229,38 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     const stillActive = await users.findOneByOrFail({ id: target.id });
     expect(stillActive.isActive).toBe(true); // ни один 403 не должен был тронуть запись
 
-    const developerResponse = await request(app.getHttpServer())
-      .patch(`/admin/users/${target.id}`)
-      .set('Origin', ORIGIN)
-      .set('Cookie', cookiesByRole.get(Role.DEVELOPER)!)
-      .send({ isActive: false });
-    expect(developerResponse.status).toBe(200);
-    // Глобальный ResponseInterceptor оборачивает тело в {success, status, data} — как и везде в
-    // проекте (см. audit-logs.e2e-spec.ts), сырой .body не содержит полей DTO напрямую.
-    const patchedBody = developerResponse.body as {
-      data: { isActive: boolean };
-    };
-    expect(patchedBody.data.isActive).toBe(false);
+    // Свой target на каждую разрешённую роль: иначе вторая правка шла бы по уже отключённой
+    // записи и её 200 ничего не доказывал бы.
+    for (const role of ROLES_WITH_USERS_MANAGE) {
+      const allowedTarget =
+        role === Role.DEVELOPER ? target : await createTarget();
+      const response = await request(app.getHttpServer())
+        .patch(`/admin/users/${allowedTarget.id}`)
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookiesByRole.get(role)!)
+        .send({ isActive: false });
+      expect({ role, status: response.status }).toEqual({ role, status: 200 });
+      // Глобальный ResponseInterceptor оборачивает тело в {success, status, data} — как и везде в
+      // проекте (см. audit-logs.e2e-spec.ts), сырой .body не содержит полей DTO напрямую.
+      const patchedBody = response.body as { data: { isActive: boolean } };
+      expect(patchedBody.data.isActive).toBe(false);
+    }
   });
 
-  it('DELETE /admin/users/:id — только DEVELOPER, остальные 403 без удаления записи', async () => {
-    const targetHash = await bcrypt.hash('TargetPass123!', 4);
-    const targetRoleId = await resolveRoleId(moduleRef, Role.CONTENT_MANAGER);
-    const target = await users.save(
-      users.create({
-        username: uniqueUsername('delete-target'),
-        password: targetHash,
-        roleId: targetRoleId,
-        isActive: true,
-      }),
-    );
+  it('DELETE /admin/users/:id — роли с users.manage, остальные 403 без удаления записи', async () => {
+    const createTarget = async () =>
+      users.save(
+        users.create({
+          username: uniqueUsername('delete-target'),
+          password: await bcrypt.hash('TargetPass123!', 4),
+          roleId: await resolveRoleId(moduleRef, Role.CONTENT_MANAGER),
+          isActive: true,
+        }),
+      );
 
-    const nonDeveloperRoles = ALL_TEST_ROLES.filter(
-      (role) => role !== Role.DEVELOPER,
-    );
-    for (const role of nonDeveloperRoles) {
+    const target = await createTarget();
+
+    for (const role of ROLES_WITHOUT_USERS_MANAGE) {
       const response = await request(app.getHttpServer())
         .delete(`/admin/users/${target.id}`)
         .set('Origin', ORIGIN)
@@ -261,13 +274,15 @@ describe('UsersAdminController: роль-гейты на POST/PATCH/DELETE (e2e)
     const stillThere = await users.findOneBy({ id: target.id });
     expect(stillThere).not.toBeNull(); // ни один 403 не должен был удалить запись
 
-    const developerResponse = await request(app.getHttpServer())
-      .delete(`/admin/users/${target.id}`)
-      .set('Origin', ORIGIN)
-      .set('Cookie', cookiesByRole.get(Role.DEVELOPER)!);
-    expect(developerResponse.status).toBe(204);
-
-    const afterDelete = await users.findOneBy({ id: target.id });
-    expect(afterDelete).toBeNull();
+    for (const role of ROLES_WITH_USERS_MANAGE) {
+      const allowedTarget =
+        role === Role.DEVELOPER ? target : await createTarget();
+      const response = await request(app.getHttpServer())
+        .delete(`/admin/users/${allowedTarget.id}`)
+        .set('Origin', ORIGIN)
+        .set('Cookie', cookiesByRole.get(role)!);
+      expect({ role, status: response.status }).toEqual({ role, status: 204 });
+      expect(await users.findOneBy({ id: allowedTarget.id })).toBeNull();
+    }
   });
 });

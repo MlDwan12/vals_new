@@ -59,8 +59,7 @@ export class UsersService {
 
   // Единственный источник маппинга в DTO — контроллер раньше вызывал UserResponseDto.fromEntity()
   // сам (единственное исключение из паттерна проекта среди ~18 admin/public контроллеров, где DTO
-  // всегда собирает сервис). AuthService.getMe переиспользует этот метод для /auth/me — там нужны
-  // только username/role, которые есть и в DTO, отдельного метода на "сырую" сущность не требуется.
+  // всегда собирает сервис).
   async findById(id: number): Promise<UserResponseDto> {
     return UserResponseDto.fromEntity(await this.findEntityById(id));
   }
