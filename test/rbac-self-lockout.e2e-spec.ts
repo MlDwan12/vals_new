@@ -27,6 +27,7 @@ describe('Self-lockout последнего активного системно�
       sub,
       username: 'actor',
       role: 'developer',
+      roleTitle: 'Разработчик',
       rank: 100,
       isSystem: true,
       permissions: new Set([PERMISSIONS.USERS_MANAGE]),

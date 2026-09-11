@@ -9,6 +9,9 @@ export class AuthProfileDto {
   id: number;
   username: string;
   role: string;
+  // Название роли из БД: коды ролей, заведённых из панели, произвольны — подписывать ими шапку
+  // админки нечестно, а отдельной ручки "прочитать свою роль" у неносителя roles.manage нет.
+  roleTitle: string;
   // Ранг нужен фронту, чтобы не предлагать действия, которые бек всё равно отклонит
   // (can-manage.util.ts: «не выше по рангу») — например правку пользователя старшей роли.
   rank: number;
@@ -26,6 +29,7 @@ export class AuthProfileDto {
     dto.id = user.sub;
     dto.username = user.username;
     dto.role = user.role;
+    dto.roleTitle = user.roleTitle;
     dto.rank = user.rank;
     dto.isSystem = user.isSystem;
     // Сортировка — ради стабильного тела ответа (диффы в тестах и в devtools), порядок из

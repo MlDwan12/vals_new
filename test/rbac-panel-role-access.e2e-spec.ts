@@ -23,6 +23,7 @@ interface AuthProfileBody {
     id: number;
     username: string;
     role: string;
+    roleTitle: string;
     rank: number;
     isSystem: boolean;
     permissions: string[];
@@ -206,6 +207,7 @@ describe('Роль, заведённая из панели: доступ к эк
       id: expect.any(Number) as number,
       username: 'panel-profile',
       role: role.code,
+      roleTitle: 'Тестовая роль, заведённая из панели',
       rank: 25,
       isSystem: false,
       // Отсортированы — порядок role_permissions ничего не значит, а стабильное тело удобнее

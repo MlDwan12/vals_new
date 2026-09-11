@@ -7,6 +7,7 @@ export interface RequestAuthContext {
   sub: number;
   username: string;
   role: string;
+  roleTitle: string;
   rank: number;
   isSystem: boolean;
   permissions: ReadonlySet<PermissionCode>;
@@ -37,6 +38,7 @@ export class AuthContextService {
       sub: user.id,
       username: user.username,
       role: user.role.code,
+      roleTitle: user.role.title,
       rank: user.role.rank,
       isSystem: user.role.isSystem,
       permissions: permissionCodesOf(user.role.permissions),

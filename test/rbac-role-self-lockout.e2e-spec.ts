@@ -36,6 +36,7 @@ describe('Self-lockout при снятии is_system у роли (e2e, security-
       sub,
       username: 'actor',
       role: 'developer',
+      roleTitle: 'Разработчик',
       rank: 100,
       isSystem: true,
       permissions: new Set(),

@@ -14,6 +14,7 @@ function buildActor(
     sub: 1,
     username: 'actor',
     role: 'admin',
+    roleTitle: 'Администратор',
     rank: 80,
     isSystem: false,
     permissions: new Set([PERMISSIONS.USERS_MANAGE]),

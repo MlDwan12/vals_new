@@ -27,6 +27,9 @@ export interface AuthenticatedRequestUser {
   sub: number;
   username: string;
   role: string;
+  // Человекочитаемое название роли — админке нечем подписать шапку, как только роли заводятся
+  // из панели и их коды произвольны (FULLSTACK_PLAN.md, срез A.2).
+  roleTitle: string;
   rank: number;
   isSystem: boolean;
   permissions: ReadonlySet<PermissionCode>;
