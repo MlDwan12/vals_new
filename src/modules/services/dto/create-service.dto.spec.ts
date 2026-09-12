@@ -66,9 +66,19 @@ describe('CreateServiceDto — мета-поля', () => {
     expect(errors.some((e) => e.property === 'h1')).toBe(true);
   });
 
-  it('больше 5 ключевых фраз в keywords отклоняется', async () => {
+  // Лимит у услуг выше, чем у прочих сущностей (10 против 5) — живая мета 18 услуг держит 6–8
+  // фраз, см. комментарий в create-service.dto.ts.
+  it('восемь ключевых фраз в keywords проходят', async () => {
     const errors = await validateDto({
-      keywords: 'раз, два, три, четыре, пять, шесть',
+      keywords: 'раз, два, три, четыре, пять, шесть, семь, восемь',
+    });
+    expect(errors).toHaveLength(0);
+  });
+
+  it('больше 10 ключевых фраз в keywords отклоняется', async () => {
+    const errors = await validateDto({
+      keywords:
+        'раз, два, три, четыре, пять, шесть, семь, восемь, девять, десять, одиннадцать',
     });
     expect(errors.some((e) => e.property === 'keywords')).toBe(true);
   });
