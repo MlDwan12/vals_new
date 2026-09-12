@@ -83,6 +83,21 @@ describe('CreateServiceDto — мета-поля', () => {
     expect(errors.some((e) => e.property === 'keywords')).toBe(true);
   });
 
+  // Заголовок услуги хранится с разметкой — см. комментарий к h1 в create-service.dto.ts.
+  it('h1 с <br> и <span> проходит', async () => {
+    const errors = await validateDto({
+      h1: 'Геомаркетинг: <br> клиенты из <br><span>карт и навигаторов</span>',
+    });
+    expect(errors).toHaveLength(0);
+  });
+
+  it('h1 с посторонним тегом отклоняется', async () => {
+    const errors = await validateDto({
+      h1: 'Заголовок <script>alert(1)</script>',
+    });
+    expect(errors.some((e) => e.property === 'h1')).toBe(true);
+  });
+
   it('валидные мета-поля проходят', async () => {
     const errors = await validateDto({
       metaTitle: 'Заголовок',

@@ -21,11 +21,15 @@ loadEnv({ quiet: true });
  * Отчёт обязателен: это SEO-тексты живого сайта, и потерянный или подменённый title — прямая
  * просадка позиций, которую не видно ни в одном тесте.
  *
+ * `h1` живёт не в `*.seo.ts`, а в `*.data.tsx` (`hero.title`), и это не строка, а разметка:
+ * переносы строк и выделенная часть, у которой на сайте своя линия под текстом. Поэтому h1
+ * переносится оттуда и хранится с двумя тегами — `<br>` и `<span>`, больше в заголовках услуг
+ * ничего не встречается. Скрипт проверяет это на каждой услуге и падает, если найдёт что-то ещё.
+ *
  * Чего скрипт не делает:
- *   - не трогает `h1` — в `*.seo.ts` его нет вовсе, заголовок страницы лежит в `*.data.tsx`
- *     (`hero.title`) и остаётся в коде; пустой `h1` в базе означает «берём из кода» (E.3);
  *   - не переписывает непустые поля без `--overwrite`: после E.1 мету уже можно править из
- *     панели, и молча затирать ручную правку файлом из репозитория нельзя.
+ *     панели, и молча затирать ручную правку файлом из репозитория нельзя;
+ *   - не переносит JSON-LD, canonical и openGraph — полей под них нет, остаются в коде.
  */
 
 const SEO_SOURCE_DEFAULT = path.resolve(
@@ -44,6 +48,7 @@ interface FileMeta {
   metaTitle: string;
   metaDescription: string;
   keywords: string;
+  h1: string;
 }
 
 interface DbRow {
@@ -52,6 +57,7 @@ interface DbRow {
   meta_title: string | null;
   meta_description: string | null;
   keywords: string | null;
+  h1: string | null;
 }
 
 function requireEnv(name: string): string {
@@ -95,6 +101,50 @@ function readKeywords(source: string, file: string): string {
   return keywords.join(', ');
 }
 
+/**
+ * `hero.title` из `*.data.tsx` → строка с разметкой.
+ *
+ * В коде сайта это JSX-фрагмент: `<>Геомаркетинг: <br/> клиенты из <br/><span>карт и
+ * навигаторов</span></>`. В базу он ложится тем же текстом, только `<br/>` приводится к `<br>`.
+ * Ничего, кроме этих двух тегов, в заголовках услуг нет — и если появится, лучше упасть здесь,
+ * чем отдать сайту разметку, которую он не ждёт.
+ */
+function readHeroTitle(source: string, file: string): string {
+  const match = source.match(
+    /hero:\s*\{[\s\S]*?\btitle:\s*(<>[\s\S]*?<\/>|'[^']*'|`[^`]*`)/,
+  );
+  if (!match) {
+    throw new Error(`${file}: не найден hero.title`);
+  }
+
+  const raw = match[1];
+  // Обычная строка в кавычках — заголовок без разметки, такие тоже допустимы.
+  const inner = raw.startsWith('<>') ? raw.slice(2, -3) : raw.slice(1, -1);
+
+  const html = inner
+    .replace(/<br\s*\/?>/g, '<br>')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const tags = html.match(/<[^>]*>/g) ?? [];
+  const unexpected = tags.filter(
+    (tag) => !['<br>', '<span>', '</span>'].includes(tag),
+  );
+  if (unexpected.length > 0) {
+    throw new Error(
+      `${file}: в hero.title есть разметка сверх <br> и <span> — ${unexpected.join(' ')}`,
+    );
+  }
+
+  if (html.includes('{')) {
+    throw new Error(
+      `${file}: в hero.title есть подстановка из кода — переносить нечего, заголовок собирается на лету`,
+    );
+  }
+
+  return html;
+}
+
 function readSourceDir(dir: string): FileMeta[] {
   if (!fs.existsSync(dir)) {
     throw new Error(
@@ -109,12 +159,22 @@ function readSourceDir(dir: string): FileMeta[] {
     .sort()
     .map((file) => {
       const source = fs.readFileSync(path.join(dir, file), 'utf8');
+      const slug = file.replace(/\.seo\.ts$/, '');
+
+      // Заголовок лежит в соседнем файле услуги — там же, где остальные тексты страницы.
+      const dataFile = `${slug}.data.tsx`;
+      const dataPath = path.join(dir, dataFile);
+      if (!fs.existsSync(dataPath)) {
+        throw new Error(`${file}: рядом нет ${dataFile}, неоткуда взять h1`);
+      }
+
       return {
-        slug: file.replace(/\.seo\.ts$/, ''),
+        slug,
         file,
         metaTitle: readTemplateConst(source, 'TITLE', file),
         metaDescription: readTemplateConst(source, 'DESCRIPTION', file),
         keywords: readKeywords(source, file),
+        h1: readHeroTitle(fs.readFileSync(dataPath, 'utf8'), dataFile),
       };
     });
 }
@@ -156,7 +216,7 @@ async function main(): Promise<void> {
 
   try {
     const rows: DbRow[] = await dataSource.query(
-      'SELECT id, slug, meta_title, meta_description, keywords FROM services ORDER BY slug',
+      'SELECT id, slug, meta_title, meta_description, keywords, h1 FROM services ORDER BY slug',
     );
     const bySlug = new Map(rows.map((row) => [row.slug, row]));
     console.log(`Услуг в базе:            ${rows.length}`);
@@ -176,7 +236,8 @@ async function main(): Promise<void> {
       const same =
         row.meta_title === meta.metaTitle &&
         row.meta_description === meta.metaDescription &&
-        row.keywords === meta.keywords;
+        row.keywords === meta.keywords &&
+        row.h1 === meta.h1;
 
       if (same) {
         identical += 1;
@@ -186,7 +247,8 @@ async function main(): Promise<void> {
       const hasOwnMeta =
         row.meta_title !== null ||
         row.meta_description !== null ||
-        row.keywords !== null;
+        row.keywords !== null ||
+        row.h1 !== null;
 
       if (hasOwnMeta && !overwrite) {
         occupied.push(meta.slug);
@@ -208,13 +270,22 @@ async function main(): Promise<void> {
       console.log(
         `    keywords (${meta.keywords.split(',').length}):    ${describeCurrent(row.keywords)} → «${meta.keywords}»`,
       );
+      console.log(
+        `    h1:               ${describeCurrent(row.h1)} → «${meta.h1}»`,
+      );
 
       if (apply) {
         await dataSource.query(
           `UPDATE services
-           SET meta_title = $1, meta_description = $2, keywords = $3
-           WHERE id = $4`,
-          [meta.metaTitle, meta.metaDescription, meta.keywords, row.id],
+           SET meta_title = $1, meta_description = $2, keywords = $3, h1 = $4
+           WHERE id = $5`,
+          [
+            meta.metaTitle,
+            meta.metaDescription,
+            meta.keywords,
+            meta.h1,
+            row.id,
+          ],
         );
         updated += 1;
       }
@@ -249,7 +320,7 @@ async function main(): Promise<void> {
 
   console.log('');
   console.log(
-    'h1 не переносится: в *.seo.ts его нет, заголовок остаётся в *.data.tsx.',
+    'h1 взят из hero.title соседнего *.data.tsx и хранится с разметкой: только <br> и <span>.',
   );
 
   if (!apply) {
