@@ -81,10 +81,12 @@ export class ServiceRelationsService {
   async paginate(
     page: number,
     limit: number,
+    serviceId?: number,
   ): Promise<PaginatedResult<ServiceRelationResponseDto>> {
     const [items, total] = await this.serviceRelationsRepository.findAndCount(
       page,
       limit,
+      serviceId,
     );
     return buildPaginatedResult(
       items.map((item) => ServiceRelationResponseDto.fromEntity(item)),

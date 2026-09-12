@@ -188,6 +188,53 @@ describe('Service relations: "смотрите также" (e2e)', () => {
     expect(duplicateOrder.status).toBe(409);
   });
 
+  // Карточка услуги в панели показывает связи только своей услуги — без фильтра ей пришлось бы
+  // тянуть связи всех услуг и отбирать нужные у себя, теряя всё, что не влезло в страницу.
+  it('список связей фильтруется по serviceId и отдаётся в порядке order', async () => {
+    const [a, b, c, other] = await Promise.all([
+      createService('relations-filter-a'),
+      createService('relations-filter-b'),
+      createService('relations-filter-c'),
+      createService('relations-filter-other'),
+    ]);
+
+    await agent('post', '/admin/service-relations').send({
+      serviceId: a.id,
+      relatedServiceId: c.id,
+      order: 2,
+    });
+    await agent('post', '/admin/service-relations').send({
+      serviceId: a.id,
+      relatedServiceId: b.id,
+      order: 1,
+    });
+    await agent('post', '/admin/service-relations').send({
+      serviceId: other.id,
+      relatedServiceId: b.id,
+      order: 1,
+    });
+
+    const response = await agent(
+      'get',
+      `/admin/service-relations?serviceId=${a.id}&limit=100`,
+    );
+    expect(response.status).toBe(200);
+
+    const items = (
+      response.body as {
+        data: {
+          items: {
+            serviceId: number;
+            relatedServiceId: number;
+            order: number;
+          }[];
+        };
+      }
+    ).data.items;
+    expect(items.every((item) => item.serviceId === a.id)).toBe(true);
+    expect(items.map((item) => item.relatedServiceId)).toEqual([b.id, c.id]);
+  });
+
   it('публичный /services/info/:slug отдаёт relatedServices, отсортированные по order', async () => {
     const [main, second, first] = await Promise.all([
       createService('relations-public-main'),

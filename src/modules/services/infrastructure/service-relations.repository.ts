@@ -22,9 +22,13 @@ export class ServiceRelationsRepository {
   findAndCount(
     page: number,
     limit: number,
+    serviceId?: number,
   ): Promise<[ServiceRelation[], number]> {
     return this.repo.findAndCount({
-      order: { id: 'ASC' },
+      where: serviceId === undefined ? {} : { serviceId },
+      // Внутри одной услуги порядок задаёт редактор — по нему список и отдаётся; id остаётся
+      // вторым ключом, чтобы выдача была устойчивой и без фильтра.
+      order: { order: 'ASC', id: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
     });

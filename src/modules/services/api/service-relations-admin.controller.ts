@@ -11,12 +11,12 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { PaginationQueryDto } from '../../../core/dto/pagination-query.dto';
 import { Perm } from '../../../core/decorators/perm.decorator';
 import { PaginatedResult } from '../../../core/pagination/paginated-result.interface';
 import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ServiceRelationsService } from '../application/service-relations.service';
 import { CreateServiceRelationDto } from '../dto/create-service-relation.dto';
+import { ServiceRelationListQueryDto } from '../dto/service-relation-list-query.dto';
 import { ServiceRelationResponseDto } from '../dto/service-relation-response.dto';
 import { UpdateServiceRelationDto } from '../dto/update-service-relation.dto';
 
@@ -39,9 +39,13 @@ export class ServiceRelationsAdminController {
   @Get()
   @Perm(PERMISSIONS.SERVICES_READ)
   paginate(
-    @Query() query: PaginationQueryDto,
+    @Query() query: ServiceRelationListQueryDto,
   ): Promise<PaginatedResult<ServiceRelationResponseDto>> {
-    return this.serviceRelationsService.paginate(query.page, query.limit);
+    return this.serviceRelationsService.paginate(
+      query.page,
+      query.limit,
+      query.serviceId,
+    );
   }
 
   @Get(':id')
