@@ -377,7 +377,16 @@ async function migrateUsers(
           'перенос остановлен, транзакция откатится',
       );
     }
-    return [r.id, r.username, r.password, roleId, true];
+    // Логин — в нижнем регистре: UsersService.normalizeUsername приводит к нему ввод при входе и
+    // создании, а поиск точный. Перенесённый как есть "Khantai" не находился ни при каком вводе
+    // (выкатка 2026-09-13).
+    return [
+      r.id,
+      String(r.username).trim().toLowerCase(),
+      r.password,
+      roleId,
+      true,
+    ];
   });
   await bulkInsert(target, 'users', columns, values);
   return rows.length;
