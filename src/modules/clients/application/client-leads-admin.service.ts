@@ -7,7 +7,10 @@ import {
 import { ClientLeadListQueryDto } from '../dto/client-lead-list-query.dto';
 import { ClientLeadResponseDto } from '../dto/client-lead-response.dto';
 import { ClientLead } from '../domain/client-lead.entity';
-import { ClientLeadsRepository } from '../infrastructure/client-leads.repository';
+import {
+  AdminLeadFacets,
+  ClientLeadsRepository,
+} from '../infrastructure/client-leads.repository';
 import { LeadDeliveryService } from './lead-delivery.service';
 
 @Injectable()
@@ -28,6 +31,10 @@ export class ClientLeadsAdminService {
       type: query.type,
       formId: query.formId,
       pagePath: query.pagePath,
+      status: query.status,
+      dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
+      dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
+      search: query.search,
       page: query.page,
       limit: query.limit,
     });
@@ -37,6 +44,11 @@ export class ClientLeadsAdminService {
       query.page,
       query.limit,
     );
+  }
+
+  // Значения для селектов фильтра — те, что реально встречаются в заявках.
+  findFacets(): Promise<AdminLeadFacets> {
+    return this.clientLeadsRepository.findFacets();
   }
 
   async findById(id: number): Promise<ClientLeadResponseDto> {

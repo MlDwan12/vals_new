@@ -12,6 +12,7 @@ import { PERMISSIONS } from '../../../core/permissions/permission.registry';
 import { ClientLeadsAdminService } from '../application/client-leads-admin.service';
 import { ClientLeadListQueryDto } from '../dto/client-lead-list-query.dto';
 import { ClientLeadResponseDto } from '../dto/client-lead-response.dto';
+import { AdminLeadFacets } from '../infrastructure/client-leads.repository';
 
 @Controller('admin/client-leads')
 export class ClientLeadsAdminController {
@@ -25,6 +26,14 @@ export class ClientLeadsAdminController {
     @Query() query: ClientLeadListQueryDto,
   ): Promise<PaginatedResult<ClientLeadResponseDto>> {
     return this.clientLeadsAdminService.findAndCount(query);
+  }
+
+  // Значения для селектов фильтра. Объявлен до @Get(':id') — иначе 'facets' ушёл бы в
+  // ParseIntPipe параметрического маршрута и отдал 400.
+  @Get('facets')
+  @Perm(PERMISSIONS.CLIENTS_READ)
+  findFacets(): Promise<AdminLeadFacets> {
+    return this.clientLeadsAdminService.findFacets();
   }
 
   @Get('client/:clientId')

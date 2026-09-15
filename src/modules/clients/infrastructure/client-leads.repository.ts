@@ -1,12 +1,15 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import {
+  Brackets,
   DataSource,
   EntityManager,
   IsNull,
   LessThanOrEqual,
   Repository,
+  SelectQueryBuilder,
 } from 'typeorm';
+import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern.util';
 import { isUniqueViolation } from '../../../core/persistence/postgres-error.util';
 import { maskTail } from '../util/mask-tail.util';
 import { normalizeEmail } from '../util/normalize-email.util';
@@ -46,8 +49,18 @@ interface AdminLeadFilter {
   type?: ClientLeadType;
   formId?: string;
   pagePath?: string;
+  status?: LeadDeliveryStatus;
+  dateFrom?: Date;
+  dateTo?: Date;
+  search?: string;
   page: number;
   limit: number;
+}
+
+// Значения, которыми реально заполнены заявки, — для селектов фильтра в админке.
+export interface AdminLeadFacets {
+  formIds: string[];
+  pagePaths: string[];
 }
 
 @Injectable()
@@ -535,17 +548,96 @@ export class ClientLeadsRepository {
   }
 
   async findAndCount(filter: AdminLeadFilter): Promise<[ClientLead[], number]> {
-    return this.dataSource.getRepository(ClientLead).findAndCount({
-      where: {
-        ...(filter.clientId ? { clientId: filter.clientId } : {}),
-        ...(filter.type ? { type: filter.type } : {}),
-        ...(filter.formId ? { formId: filter.formId } : {}),
-        ...(filter.pagePath ? { pagePath: filter.pagePath } : {}),
-      },
-      order: { id: 'DESC' },
-      skip: (filter.page - 1) * filter.limit,
-      take: filter.limit,
-    });
+    const qb = this.dataSource
+      .getRepository(ClientLead)
+      .createQueryBuilder('lead')
+      .orderBy('lead.id', 'DESC')
+      .skip((filter.page - 1) * filter.limit)
+      .take(filter.limit);
+
+    if (filter.clientId) {
+      qb.andWhere('lead.clientId = :clientId', { clientId: filter.clientId });
+    }
+    if (filter.type) {
+      qb.andWhere('lead.type = :type', { type: filter.type });
+    }
+    if (filter.formId) {
+      qb.andWhere('lead.formId = :formId', { formId: filter.formId });
+    }
+    if (filter.pagePath) {
+      qb.andWhere('lead.pagePath = :pagePath', { pagePath: filter.pagePath });
+    }
+    if (filter.status) {
+      // SENDING наружу показывается как PENDING (ClientLeadResponseDto) — и в фильтре тоже, иначе
+      // заявка, которую планировщик забрал в эту секунду, пропадала бы из «в очереди».
+      const statuses =
+        filter.status === LeadDeliveryStatus.PENDING
+          ? [LeadDeliveryStatus.PENDING, LeadDeliveryStatus.SENDING]
+          : [filter.status];
+      qb.andWhere('lead.status IN (:...statuses)', { statuses });
+    }
+    if (filter.dateFrom) {
+      qb.andWhere('lead.createdAt >= :dateFrom', { dateFrom: filter.dateFrom });
+    }
+    if (filter.dateTo) {
+      qb.andWhere('lead.createdAt <= :dateTo', { dateTo: filter.dateTo });
+    }
+    if (filter.search?.trim()) {
+      this.applySearch(qb, filter.search.trim());
+    }
+
+    return qb.getManyAndCount();
+  }
+
+  // Имя и почта — подстрокой без учёта регистра. Телефон — по цифрам нормализованной колонки: в
+  // phone_raw пишут как угодно («+7 (900) 000-00-00», «8900…»), а искать нужно по тому же номеру
+  // в любой записи. Ведущая 8 полного номера приводится к 7 — так хранит normalizePhone.
+  private applySearch(
+    qb: SelectQueryBuilder<ClientLead>,
+    search: string,
+  ): void {
+    const pattern = `%${escapeLikePattern(search)}%`;
+    let digits = search.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('8')) {
+      digits = `7${digits.slice(1)}`;
+    }
+
+    qb.andWhere(
+      new Brackets((where) => {
+        where
+          .where('lead.name ILIKE :pattern', { pattern })
+          .orWhere('lead.emailNormalized ILIKE :pattern', { pattern });
+        if (digits) {
+          where.orWhere('lead.phoneNormalized LIKE :digits', {
+            digits: `%${digits}%`,
+          });
+        }
+      }),
+    );
+  }
+
+  // DISTINCT по колонкам, а не справочник в коде: formId пополняется реестром форм, pagePath —
+  // любой новой страницей сайта, и захардкоженный список молча отстал бы (тот же подход, что у
+  // AuditLogRepository.findFacets).
+  async findFacets(): Promise<AdminLeadFacets> {
+    const distinct = (column: 'formId' | 'pagePath') =>
+      this.dataSource
+        .getRepository(ClientLead)
+        .createQueryBuilder('lead')
+        .select(`DISTINCT lead.${column}`, 'value')
+        .where(`lead.${column} IS NOT NULL`)
+        .orderBy('value', 'ASC')
+        .getRawMany<{ value: string }>();
+
+    const [formIds, pagePaths] = await Promise.all([
+      distinct('formId'),
+      distinct('pagePath'),
+    ]);
+
+    return {
+      formIds: formIds.map((row) => row.value),
+      pagePaths: pagePaths.map((row) => row.value),
+    };
   }
 
   findByClientId(clientId: number): Promise<ClientLead[]> {
