@@ -8,7 +8,7 @@ interface CreateEmployeeRecord {
   slug: string;
   name: string;
   position: string;
-  photoUrl?: string;
+  photo?: Employee['photo'];
   shortBio?: string;
   bio?: Record<string, unknown>;
   bioHtml?: string;
@@ -34,7 +34,7 @@ export class EmployeesRepository {
   }
 
   findById(id: number): Promise<Employee | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.repo.findOne({ where: { id }, relations: { photo: true } });
   }
 
   create(data: CreateEmployeeRecord): Promise<Employee> {
@@ -61,6 +61,7 @@ export class EmployeesRepository {
   // Админ-таблица — все сотрудники, включая скрытых, с пагинацией.
   findAndCount(page: number, limit: number): Promise<[Employee[], number]> {
     return this.repo.findAndCount({
+      relations: { photo: true },
       order: { priority: 'DESC', id: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -71,12 +72,16 @@ export class EmployeesRepository {
   findPublishedList(): Promise<Employee[]> {
     return this.repo.find({
       where: { isVisible: true },
+      relations: { photo: true },
       order: { priority: 'DESC', id: 'ASC' },
     });
   }
 
   // Публичный эндпоинт — персональная страница /ob-avtore/:slug.
   findBySlugPublished(slug: string): Promise<Employee | null> {
-    return this.repo.findOne({ where: { slug, isVisible: true } });
+    return this.repo.findOne({
+      where: { slug, isVisible: true },
+      relations: { photo: true },
+    });
   }
 }

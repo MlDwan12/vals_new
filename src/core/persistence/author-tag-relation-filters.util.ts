@@ -5,9 +5,18 @@ export const AUTHOR_SHORT_FIELDS = [
   'author.id',
   'author.slug',
   'author.name',
-  'author.photoUrl',
   'author.position',
   'author.experience',
+];
+
+// Фото автора — отдельный джойн `.leftJoin('author.photo', 'authorPhoto')` рядом с авторами; поля
+// те же, что у обложки (MEDIA_COVER_SHORT_FIELDS), только под своим алиасом.
+export const AUTHOR_PHOTO_SHORT_FIELDS = [
+  'authorPhoto.id',
+  'authorPhoto.fileName',
+  'authorPhoto.alt',
+  'authorPhoto.width',
+  'authorPhoto.height',
 ];
 
 export const TAG_SHORT_FIELDS = [

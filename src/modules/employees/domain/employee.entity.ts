@@ -3,12 +3,15 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToMany,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Article } from '../../articles/domain/article.entity';
 import { Case } from '../../cases/domain/case.entity';
+import { Media } from '../../media/domain/media.entity';
 import { News } from '../../news/domain/news.entity';
 
 @Entity('employees')
@@ -26,8 +29,12 @@ export class Employee {
   @Column({ type: 'varchar', length: 255 })
   position: string;
 
-  @Column({ name: 'photo_url', type: 'varchar', length: 2048, nullable: true })
-  photoUrl: string | null;
+  // Фото — опциональная ссылка на медиатеку, по образцу Article.cover: только relation, без
+  // скалярной photo_media_id-колонки (см. комментарий там). Удаление файла не роняет сотрудника.
+  @Index()
+  @ManyToOne(() => Media, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'photo_media_id' })
+  photo: Media | null;
 
   // короткое описание — карточка «О компании» + подпись под статьёй/кейсом
   @Column({ name: 'short_bio', type: 'text', nullable: true })

@@ -1,3 +1,4 @@
+import { MediaCoverDto } from '../../media/dto/media-cover.dto';
 import { Employee } from '../domain/employee.entity';
 
 // Проекция для списков (публичный блок «Команда» и админ-таблица) — без тяжёлых bio/bioHtml/meta.
@@ -6,7 +7,7 @@ export class EmployeeMainInfoDto {
   slug: string;
   name: string;
   position: string;
-  photoUrl: string | null;
+  photo: MediaCoverDto | null;
   shortBio: string | null;
   experience: string | null;
   priority: number;
@@ -20,7 +21,9 @@ export class EmployeeMainInfoDto {
     dto.slug = employee.slug;
     dto.name = employee.name;
     dto.position = employee.position;
-    dto.photoUrl = employee.photoUrl;
+    dto.photo = employee.photo
+      ? MediaCoverDto.fromEntity(employee.photo)
+      : null;
     dto.shortBio = employee.shortBio;
     dto.experience = employee.experience;
     dto.priority = employee.priority;

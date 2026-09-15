@@ -12,6 +12,8 @@ import {
   buildPaginatedResult,
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
+import { resolveOptionalEntityById } from '../../../core/persistence/resolve-entities-by-ids.util';
+import { MediaRepository } from '../../media/infrastructure/media.repository';
 import { CreateEmployeeDto } from '../dto/create-employee.dto';
 import { Employee } from '../domain/employee.entity';
 import { EmployeeMainInfoDto } from '../dto/employee-main-info.dto';
@@ -24,13 +26,18 @@ import { ContentHtmlService } from '../../../core/content/content-html.service';
 export class EmployeesService {
   constructor(
     private readonly employeesRepository: EmployeesRepository,
+    private readonly mediaRepository: MediaRepository,
     private readonly contentHtmlService: ContentHtmlService,
   ) {}
 
   async create(dto: CreateEmployeeDto): Promise<EmployeeResponseDto> {
+    const { photoMediaId, ...fields } = dto;
+    const photo = await this.resolvePhoto(photoMediaId);
+
     try {
       const employee = await this.employeesRepository.create({
-        ...dto,
+        ...fields,
+        photo,
         // HTML биографии собирает бек — присланный клиентом остаётся запасным (переходный период
         // среза X). Без bio нечего и собирать: у сотрудника биография необязательна.
         bioHtml:
@@ -57,9 +64,18 @@ export class EmployeesService {
       throw new NotFoundException(`Сотрудник с ID ${id} не найден`);
     }
 
+    // Фото — relation-сущностью, не FK-скаляром: см. ArticlesService.update (у загруженной
+    // employee.photo TypeORM при save() берёт FK из relation-объекта). undefined — не трогать.
+    const { photoMediaId, ...fields } = dto;
+    const photo =
+      photoMediaId === undefined
+        ? undefined
+        : await this.resolvePhoto(photoMediaId);
+
     try {
       const updated = await this.employeesRepository.update(id, {
-        ...dto,
+        ...fields,
+        photo,
         bioHtml:
           dto.bio === undefined
             ? undefined
@@ -137,6 +153,14 @@ export class EmployeesService {
       throw new NotFoundException(`Сотрудник с ID ${id} не найден`);
     }
     return employee;
+  }
+
+  private resolvePhoto(photoMediaId: number | null | undefined) {
+    return resolveOptionalEntityById(
+      photoMediaId,
+      (id) => this.mediaRepository.findById(id),
+      'Фото',
+    );
   }
 
   private mapSlugConflict(error: unknown): unknown {

@@ -6,6 +6,7 @@ import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern
 import {
   applyAuthorSlugFilter,
   applyTagSlugFilter,
+  AUTHOR_PHOTO_SHORT_FIELDS,
   AUTHOR_SHORT_FIELDS,
   TAG_SHORT_FIELDS,
 } from '../../../core/persistence/author-tag-relation-filters.util';
@@ -70,10 +71,12 @@ export class NewsRepository {
     const qb = this.repo
       .createQueryBuilder('news')
       .leftJoin('news.authors', 'author')
+      .leftJoin('author.photo', 'authorPhoto')
       .leftJoin('news.tags', 'tag')
       .leftJoin('news.cover', 'cover')
       .select(NEWS_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
+      .addSelect(AUTHOR_PHOTO_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
       .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .skip((query.page - 1) * query.limit)
@@ -141,14 +144,14 @@ export class NewsRepository {
   findBySlugPublished(slug: string): Promise<News | null> {
     return this.repo.findOne({
       where: { slug, datePublished: LessThanOrEqual(new Date()) },
-      relations: { authors: true, tags: true, cover: true },
+      relations: { authors: { photo: true }, tags: true, cover: true },
     });
   }
 
   findById(id: number): Promise<News | null> {
     return this.repo.findOne({
       where: { id },
-      relations: { authors: true, tags: true, cover: true },
+      relations: { authors: { photo: true }, tags: true, cover: true },
     });
   }
 
@@ -190,10 +193,12 @@ export class NewsRepository {
     const items = await this.repo
       .createQueryBuilder('news')
       .leftJoin('news.authors', 'author')
+      .leftJoin('author.photo', 'authorPhoto')
       .leftJoin('news.tags', 'tag')
       .leftJoin('news.cover', 'cover')
       .select(NEWS_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
+      .addSelect(AUTHOR_PHOTO_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
       .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .where('news.id IN (:...ids)', { ids })

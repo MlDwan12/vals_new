@@ -1,3 +1,4 @@
+import { MediaCoverDto } from '../../media/dto/media-cover.dto';
 import { Employee } from '../domain/employee.entity';
 
 // Полная проекция — админ-CRUD и персональная страница сотрудника (/employees/info/:slug).
@@ -6,7 +7,7 @@ export class EmployeeResponseDto {
   slug: string;
   name: string;
   position: string;
-  photoUrl: string | null;
+  photo: MediaCoverDto | null;
   shortBio: string | null;
   bio: Record<string, unknown> | null;
   bioHtml: string | null;
@@ -23,7 +24,9 @@ export class EmployeeResponseDto {
     dto.slug = employee.slug;
     dto.name = employee.name;
     dto.position = employee.position;
-    dto.photoUrl = employee.photoUrl;
+    dto.photo = employee.photo
+      ? MediaCoverDto.fromEntity(employee.photo)
+      : null;
     dto.shortBio = employee.shortBio;
     dto.bio = employee.bio;
     dto.bioHtml = employee.bioHtml;

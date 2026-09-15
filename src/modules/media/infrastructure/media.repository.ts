@@ -17,6 +17,7 @@ import { Media } from '../domain/media.entity';
 // знает обо всех сущностях DataSource глобально, независимо от forFeature конкретного модуля).
 import { Article } from '../../articles/domain/article.entity';
 import { Case } from '../../cases/domain/case.entity';
+import { Employee } from '../../employees/domain/employee.entity';
 import { Landing } from '../../landings/domain/landing.entity';
 import { News } from '../../news/domain/news.entity';
 
@@ -89,24 +90,29 @@ export class MediaRepository {
       ): MediaCoverUsage[] =>
         rows.map((row) => ({ type, id: row.id, title: row.title }));
 
-      const [articleRows, caseRows, newsRows, landingRows] = await Promise.all([
-        manager.find(Article, {
-          where: { cover: { id } },
-          select: { id: true, title: true },
-        }),
-        manager.find(Case, {
-          where: { cover: { id } },
-          select: { id: true, title: true },
-        }),
-        manager.find(News, {
-          where: { cover: { id } },
-          select: { id: true, title: true },
-        }),
-        manager.find(Landing, {
-          where: { cover: { id } },
-          select: { id: true, title: true },
-        }),
-      ]);
+      const [articleRows, caseRows, newsRows, landingRows, employeeRows] =
+        await Promise.all([
+          manager.find(Article, {
+            where: { cover: { id } },
+            select: { id: true, title: true },
+          }),
+          manager.find(Case, {
+            where: { cover: { id } },
+            select: { id: true, title: true },
+          }),
+          manager.find(News, {
+            where: { cover: { id } },
+            select: { id: true, title: true },
+          }),
+          manager.find(Landing, {
+            where: { cover: { id } },
+            select: { id: true, title: true },
+          }),
+          manager.find(Employee, {
+            where: { photo: { id } },
+            select: { id: true, name: true },
+          }),
+        ]);
 
       await manager.delete(Media, id);
 
@@ -117,6 +123,10 @@ export class MediaRepository {
           ...toUsage('case', caseRows),
           ...toUsage('news', newsRows),
           ...toUsage('landing', landingRows),
+          ...toUsage(
+            'employee',
+            employeeRows.map((row) => ({ id: row.id, title: row.name })),
+          ),
         ],
       };
     });

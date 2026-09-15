@@ -30,10 +30,11 @@ export class CreateEmployeeDto {
   @MaxLength(255)
   position: string;
 
+  // Фото — опциональная ссылка на медиатеку. null — явно снять фото на PATCH.
   @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  photoUrl?: string;
+  @IsInt()
+  @Min(1)
+  photoMediaId?: number | null;
 
   // Короткое описание 1-2 предложения — карточка «О компании» + подпись под статьёй/кейсом
   @IsOptional()

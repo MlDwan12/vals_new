@@ -10,6 +10,7 @@ import { escapeLikePattern } from '../../../core/persistence/escape-like-pattern
 import {
   applyAuthorSlugFilter,
   applyTagSlugFilter,
+  AUTHOR_PHOTO_SHORT_FIELDS,
   AUTHOR_SHORT_FIELDS,
   TAG_SHORT_FIELDS,
 } from '../../../core/persistence/author-tag-relation-filters.util';
@@ -77,10 +78,12 @@ export class CasesRepository {
     const qb = this.repo
       .createQueryBuilder('cases')
       .leftJoin('cases.authors', 'author')
+      .leftJoin('author.photo', 'authorPhoto')
       .leftJoin('cases.tags', 'tag')
       .leftJoin('cases.cover', 'cover')
       .select(CASE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
+      .addSelect(AUTHOR_PHOTO_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
       .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .skip((query.page - 1) * query.limit)
@@ -150,7 +153,7 @@ export class CasesRepository {
       where: { slug },
       relations: {
         services: true,
-        authors: true,
+        authors: { photo: true },
         tags: true,
         faq: true,
         cover: true,
@@ -164,7 +167,7 @@ export class CasesRepository {
       where: { slug, datePublished: LessThanOrEqual(new Date()) },
       relations: {
         services: true,
-        authors: true,
+        authors: { photo: true },
         tags: true,
         faq: true,
         cover: true,
@@ -178,7 +181,7 @@ export class CasesRepository {
       where: { id },
       relations: {
         services: true,
-        authors: true,
+        authors: { photo: true },
         tags: true,
         faq: true,
         cover: true,
@@ -251,10 +254,12 @@ export class CasesRepository {
     const items = await this.repo
       .createQueryBuilder('cases')
       .leftJoin('cases.authors', 'author')
+      .leftJoin('author.photo', 'authorPhoto')
       .leftJoin('cases.tags', 'tag')
       .leftJoin('cases.cover', 'cover')
       .select(CASE_MAIN_FIELDS)
       .addSelect(AUTHOR_SHORT_FIELDS)
+      .addSelect(AUTHOR_PHOTO_SHORT_FIELDS)
       .addSelect(TAG_SHORT_FIELDS)
       .addSelect(MEDIA_COVER_SHORT_FIELDS)
       .where('cases.id IN (:...ids)', { ids })
@@ -329,10 +334,12 @@ export function findPublishedCasesByServiceId(
     .createQueryBuilder('cases')
     .innerJoin('cases.services', 'service')
     .leftJoin('cases.authors', 'author')
+    .leftJoin('author.photo', 'authorPhoto')
     .leftJoin('cases.tags', 'tag')
     .leftJoin('cases.cover', 'cover')
     .select(CASE_MAIN_FIELDS)
     .addSelect(AUTHOR_SHORT_FIELDS)
+    .addSelect(AUTHOR_PHOTO_SHORT_FIELDS)
     .addSelect(TAG_SHORT_FIELDS)
     .addSelect(MEDIA_COVER_SHORT_FIELDS)
     .where('service.id = :serviceId', { serviceId })

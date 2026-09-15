@@ -87,8 +87,10 @@ async function migrateEmployees(
   source: Queryable,
   target: Queryable,
 ): Promise<number> {
+  // "photoUrl" не переносится: в источнике пуст у всех, а в новой схеме фото — ссылка на медиатеку
+  // (employees.photo_media_id), строкового URL больше нет.
   const rows = (await source.query(`
-    SELECT id, slug, name, "position", "photoUrl", "shortBio", bio, "bioHtml",
+    SELECT id, slug, name, "position", "shortBio", bio, "bioHtml",
            experience, "sameAs", "metaTitle", "metaDescription", priority,
            "isVisible", "createdAt", "updatedAt"
     FROM employees ORDER BY id
@@ -99,7 +101,6 @@ async function migrateEmployees(
     'slug',
     'name',
     'position',
-    'photo_url',
     'short_bio',
     'bio',
     'bio_html',
@@ -117,7 +118,6 @@ async function migrateEmployees(
     r.slug,
     r.name,
     r.position,
-    r.photoUrl,
     r.shortBio,
     r.bio,
     r.bioHtml,

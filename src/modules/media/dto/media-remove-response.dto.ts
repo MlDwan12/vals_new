@@ -1,8 +1,9 @@
 // Форма строки использования — определена здесь, MediaRepository.findCoverUsage() строит массив
 // этой формы (тот же приём, что TagWithCountsRow в tags/dto/tag-with-counts-response.dto.ts:
 // репозиторий соответствует форме, заданной в dto/, не наоборот).
+// employee — файл стоял фото сотрудника; title у него — имя.
 export interface MediaCoverUsage {
-  type: 'article' | 'case' | 'news' | 'landing';
+  type: 'article' | 'case' | 'news' | 'landing' | 'employee';
   id: number;
   title: string;
 }
