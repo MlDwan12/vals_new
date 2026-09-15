@@ -117,14 +117,14 @@ describe('Lead source fields — EXPANSION_TASKS.md §6/§7 (e2e)', () => {
     expect(submit.status).toBe(201);
 
     const cookies = await loginAsClientManager();
+    // Поиском по номеру: в ответе админки phoneRaw замаскирован.
     const list = await request(app.getHttpServer())
-      .get('/admin/client-leads?limit=50')
+      .get('/admin/client-leads?limit=50&search=79990005555')
       .set('Cookie', cookies);
-    const lead = leadListItems(list).find(
-      (item) => item.phoneRaw === '79990005555',
-    );
+    const [lead] = leadListItems(list);
 
     expect(lead).toMatchObject({
+      phoneRaw: '+7 999 ***-**-55',
       formId: 'free-consultation',
       pagePath: '/services/orm',
       referrer: 'https://google.com/search?q=orm',
@@ -160,12 +160,11 @@ describe('Lead source fields — EXPANSION_TASKS.md §6/§7 (e2e)', () => {
 
     const cookies = await loginAsClientManager();
     const list = await request(app.getHttpServer())
-      .get('/admin/client-leads?limit=50')
+      .get('/admin/client-leads?limit=50&search=79990006666')
       .set('Cookie', cookies);
-    const lead = leadListItems(list).find(
-      (item) => item.phoneRaw === '79990006666',
-    );
+    const [lead] = leadListItems(list);
 
-    expect(lead?.formId).toBeNull();
+    expect(lead).toBeDefined();
+    expect(lead.formId).toBeNull();
   });
 });

@@ -208,14 +208,14 @@ describe('Leads (e2e)', () => {
     expect(before.status).toBe(201);
 
     const cookies = await loginAsClientManager();
+    // Поиском по номеру, а не сравнением phoneRaw: в ответе админки телефон замаскирован, и
+    // сравнение с полным номером прошло бы всегда, даже если заявка сохранилась.
     const list = await request(app.getHttpServer())
-      .get('/admin/client-leads?limit=50')
+      .get('/admin/client-leads?limit=50&search=79990003333')
       .set('Cookie', cookies);
 
-    const spamLead = leadListItems(list).find(
-      (item) => item.phoneRaw === '79990003333',
-    );
-    expect(spamLead).toBeUndefined();
+    expect(list.status).toBe(200);
+    expect(leadListItems(list)).toHaveLength(0);
   });
 
   it('невалидный тип заявки отклоняется 400', async () => {

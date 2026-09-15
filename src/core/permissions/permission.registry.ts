@@ -36,6 +36,10 @@ export const PERMISSIONS = {
   CLIENTS_WRITE: 'clients.write',
   CLIENTS_DELETE: 'clients.delete',
   CLIENTS_EXPORT: 'clients.export',
+  // Отдельный код от clients.read: в ответах админки телефон и почта замаскированы, а полные
+  // контакты — это персональные данные, их просмотр пишется в журнал (миграция
+  // AddClientContactsPermission).
+  CLIENTS_VIEW_CONTACTS: 'clients.view_contacts',
   USERS_MANAGE: 'users.manage',
   // Отдельный код от USERS_MANAGE (EXPANSION_TASKS.md §1.6) — сброс чужого пароля отдаёт чужую
   // личность, это доверие другого уровня, чем обычная правка учётки.

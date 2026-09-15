@@ -5,6 +5,7 @@ import {
   PaginatedResult,
 } from '../../../core/pagination/paginated-result.interface';
 import { ClientLeadListQueryDto } from '../dto/client-lead-list-query.dto';
+import { ClientLeadContactsResponseDto } from '../dto/client-lead-contacts-response.dto';
 import { ClientLeadResponseDto } from '../dto/client-lead-response.dto';
 import { ClientLead } from '../domain/client-lead.entity';
 import {
@@ -54,6 +55,11 @@ export class ClientLeadsAdminService {
   async findById(id: number): Promise<ClientLeadResponseDto> {
     const lead = await this.findEntityByIdOrFail(id);
     return ClientLeadResponseDto.fromEntity(lead);
+  }
+
+  async findContacts(id: number): Promise<ClientLeadContactsResponseDto> {
+    const lead = await this.findEntityByIdOrFail(id);
+    return ClientLeadContactsResponseDto.fromEntity(lead);
   }
 
   async findByClientId(clientId: number): Promise<ClientLeadResponseDto[]> {

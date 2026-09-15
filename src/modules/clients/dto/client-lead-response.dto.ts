@@ -1,6 +1,7 @@
 import { ClientLead } from '../domain/client-lead.entity';
 import { ClientLeadType } from '../enums/client-lead-type.enum';
 import { LeadDeliveryStatus } from '../enums/lead-delivery-status.enum';
+import { maskEmail, maskPhone } from '../util/mask-contact.util';
 
 export class ClientLeadResponseDto {
   id: number;
@@ -36,8 +37,10 @@ export class ClientLeadResponseDto {
     dto.externalSystem = lead.externalSystem;
     dto.type = lead.type;
     dto.name = lead.name;
-    dto.phoneRaw = lead.phoneRaw;
-    dto.emailRaw = lead.emailRaw;
+    // Имена полей прежние (контракт админки), значения — маски: полные контакты отдаёт только
+    // POST /admin/client-leads/:id/contacts под clients.view_contacts, с записью в журнал.
+    dto.phoneRaw = maskPhone(lead.phoneRaw);
+    dto.emailRaw = maskEmail(lead.emailRaw);
     dto.message = lead.message;
     dto.comment = lead.comment;
     dto.utm = lead.utm;

@@ -1,5 +1,6 @@
 import { ClientContact } from '../domain/client-contact.entity';
 import { ClientContactType } from '../enums/client-contact-type.enum';
+import { maskEmail, maskPhone } from '../util/mask-contact.util';
 
 export class ClientContactResponseDto {
   id: number;
@@ -14,7 +15,12 @@ export class ClientContactResponseDto {
     dto.id = contact.id;
     dto.clientId = contact.clientId;
     dto.type = contact.type;
-    dto.value = contact.value;
+    // Маска, как и в заявках (см. ClientLeadResponseDto). value в базе не пустой — `?? ''` только
+    // для типа: маска пустого значения возвращает null.
+    dto.value =
+      (contact.type === ClientContactType.PHONE
+        ? maskPhone(contact.value)
+        : maskEmail(contact.value)) ?? '';
     dto.isPrimary = contact.isPrimary;
     dto.createdAt = contact.createdAt;
     return dto;
