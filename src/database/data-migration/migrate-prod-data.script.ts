@@ -122,7 +122,13 @@ async function migrateEmployees(
     r.bio,
     r.bioHtml,
     r.experience,
-    jsonbArray(r.sameAs),
+    // В новой схеме профиль — пара {type, url}. Площадку тут не угадываем: в источнике sameAs пуст
+    // у всех, а если что-то появится — тип поправят в панели.
+    jsonbArray(
+      Array.isArray(r.sameAs)
+        ? (r.sameAs as string[]).map((url) => ({ type: 'other', url }))
+        : r.sameAs,
+    ),
     r.metaTitle,
     r.metaDescription,
     r.priority,

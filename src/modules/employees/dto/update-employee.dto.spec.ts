@@ -33,11 +33,35 @@ describe('UpdateEmployeeDto', () => {
 
   it('валидный патч проходит', async () => {
     const dto = plainToInstance(UpdateEmployeeDto, {
-      sameAs: ['https://t.me/example'],
+      sameAs: [{ type: 'telegram', url: 'https://t.me/example' }],
       priority: 3,
       isVisible: true,
     });
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
+  });
+
+  it('профиль строкой (старая форма sameAs) отклоняется', async () => {
+    const dto = plainToInstance(UpdateEmployeeDto, {
+      sameAs: ['https://t.me/example'],
+    });
+    const errors = await validate(dto);
+    expect(errors.some((e) => e.property === 'sameAs')).toBe(true);
+  });
+
+  it('неизвестная площадка отклоняется', async () => {
+    const dto = plainToInstance(UpdateEmployeeDto, {
+      sameAs: [{ type: 'myspace', url: 'https://myspace.com/example' }],
+    });
+    const errors = await validate(dto);
+    expect(errors.some((e) => e.property === 'sameAs')).toBe(true);
+  });
+
+  it('ссылка не по http(s) отклоняется', async () => {
+    const dto = plainToInstance(UpdateEmployeeDto, {
+      sameAs: [{ type: 'other', url: 'javascript:alert(1)' }],
+    });
+    const errors = await validate(dto);
+    expect(errors.some((e) => e.property === 'sameAs')).toBe(true);
   });
 });

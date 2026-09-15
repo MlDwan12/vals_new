@@ -1,5 +1,5 @@
 import { MediaCoverDto } from '../../media/dto/media-cover.dto';
-import { Employee } from '../domain/employee.entity';
+import { Employee, EmployeeProfileLink } from '../domain/employee.entity';
 
 // Полная проекция — админ-CRUD и персональная страница сотрудника (/employees/info/:slug).
 export class EmployeeResponseDto {
@@ -12,7 +12,7 @@ export class EmployeeResponseDto {
   bio: Record<string, unknown> | null;
   bioHtml: string | null;
   experience: string | null;
-  sameAs: string[];
+  sameAs: EmployeeProfileLink[];
   metaTitle: string | null;
   metaDescription: string | null;
   priority: number;

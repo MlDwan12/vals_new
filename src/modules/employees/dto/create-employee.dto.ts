@@ -10,7 +10,10 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { EmployeeProfileLinkDto } from './employee-profile-link.dto';
 
 export class CreateEmployeeDto {
   // Slug сотрудника — уникальный URL персональной страницы
@@ -55,13 +58,14 @@ export class CreateEmployeeDto {
   @IsString()
   experience?: string;
 
-  // Ссылки на внешние профили. NOT NULL с дефолтом '[]' в БД — @IsOptional() пропустил бы явный
-  // null мимо валидации (падал бы not-null violation'ом в БД, code review).
+  // Внешние профили — пары «площадка + ссылка». NOT NULL с дефолтом '[]' в БД — @IsOptional()
+  // пропустил бы явный null мимо валидации (падал бы not-null violation'ом в БД, code review).
   @ValidateIf((_, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(20)
-  @IsString({ each: true })
-  sameAs?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => EmployeeProfileLinkDto)
+  sameAs?: EmployeeProfileLinkDto[];
 
   @IsOptional()
   @IsString()

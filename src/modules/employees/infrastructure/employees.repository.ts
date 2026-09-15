@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { applyDefinedFields } from '../../../core/persistence/apply-defined-fields.util';
-import { Employee } from '../domain/employee.entity';
+import { Employee, EmployeeProfileLink } from '../domain/employee.entity';
 
 interface CreateEmployeeRecord {
   slug: string;
@@ -13,7 +13,7 @@ interface CreateEmployeeRecord {
   bio?: Record<string, unknown>;
   bioHtml?: string;
   experience?: string;
-  sameAs?: string[];
+  sameAs?: EmployeeProfileLink[];
   metaTitle?: string;
   metaDescription?: string;
   priority?: number;

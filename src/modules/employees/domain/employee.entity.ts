@@ -12,6 +12,12 @@ import {
 import { Article } from '../../articles/domain/article.entity';
 import { Case } from '../../cases/domain/case.entity';
 import { Media } from '../../media/domain/media.entity';
+import { EmployeeProfileType } from '../enums/employee-profile-type.enum';
+
+export interface EmployeeProfileLink {
+  type: EmployeeProfileType;
+  url: string;
+}
 import { News } from '../../news/domain/news.entity';
 
 @Entity('employees')
@@ -51,9 +57,9 @@ export class Employee {
   @Column({ type: 'text', nullable: true })
   experience: string | null;
 
-  // ссылки на внешние профили (LinkedIn, VK, СМИ)
+  // внешние профили: [{ type: 'telegram', url: 'https://t.me/...' }, ...]
   @Column({ name: 'same_as', type: 'jsonb', default: () => "'[]'" })
-  sameAs: string[];
+  sameAs: EmployeeProfileLink[];
 
   // SEO персональной страницы
   @Column({ name: 'meta_title', type: 'varchar', length: 255, nullable: true })
